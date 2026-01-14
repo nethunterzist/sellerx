@@ -11,6 +11,7 @@ public class HealthSecurityRules implements SecurityRules {
     public void configure(AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry registry) {
         registry
                 .requestMatchers(HttpMethod.GET, "/health").permitAll()
-                .requestMatchers(HttpMethod.GET, "/").permitAll();
+                .requestMatchers(HttpMethod.GET, "/").permitAll()
+                .requestMatchers("/actuator/**").permitAll();
     }
 }

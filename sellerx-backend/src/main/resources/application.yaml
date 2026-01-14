@@ -38,6 +38,16 @@ app:
     base-url: ${WEBHOOK_BASE_URL:http://localhost:8080}
     api-key: ${WEBHOOK_API_KEY:sellerx-webhook-key}
 
+# Actuator configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
 logging:
   level:
     com.ecommerce.sellerx.products: INFO
