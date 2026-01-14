@@ -1,0 +1,16 @@
+services:
+  db:
+    image: postgres:latest
+    container_name: sellerx-db
+    restart: always
+    ports:
+      - "5434:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 123123
+      POSTGRES_DB: sellerx_db
+    volumes:
+      - seller-x-db-data:/var/lib/postgresql/data
+
+volumes:
+  seller-x-db-data:

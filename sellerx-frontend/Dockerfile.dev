@@ -1,0 +1,32 @@
+# Development Dockerfile for Next.js with VSCode integration
+FROM node:20-alpine
+
+# Install curl for healthcheck and git for VSCode integration
+RUN apk add --no-cache curl git
+
+WORKDIR /app
+
+# Copy package files first for better layer caching
+COPY package.json package-lock.json* ./
+
+# Install dependencies
+RUN npm ci
+
+# Install development tools
+RUN npm install -g nodemon
+
+# Copy source code
+COPY . .
+
+# Create necessary directories and set permissions
+RUN mkdir -p .next && \
+    chown -R node:node /app
+
+# Switch to node user
+USER node
+
+# Expose port
+EXPOSE 3000
+
+# Start development server with polling for better file watching in Docker
+CMD ["npm", "run", "dev", "--", "--hostname", "0.0.0.0", "--port", "3000"]

@@ -1,0 +1,2545 @@
+{
+  "bodyBg": "rgb(255, 255, 255)",
+  "bodyColor": "rgb(0, 0, 0)",
+  "bodyFont": "\"Open sans\"",
+  "allColors": [
+    {
+      "tag": "BODY",
+      "class": "sellerboard dashboard-panels-new navigation-uncoll",
+      "bg": "rgb(255, 255, 255)",
+      "color": "rgb(0, 0, 0)",
+      "borderColor": "rgb(0, 0, 0)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "DIV",
+      "class": "sellerboard-topbar no-print js-sellerboard-top-bar",
+      "bg": "rgb(255, 255, 255)",
+      "color": "rgb(0, 0, 0)",
+      "borderColor": "rgb(0, 0, 0)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "A",
+      "class": "only-mob burger-mobile",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(29, 112, 241)",
+      "borderColor": "rgb(29, 112, 241)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "svg",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(29, 112, 241)",
+      "borderColor": "rgb(29, 112, 241)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "line",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(29, 112, 241)",
+      "borderColor": "rgb(29, 112, 241)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "line",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(29, 112, 241)",
+      "borderColor": "rgb(29, 112, 241)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "line",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(29, 112, 241)",
+      "borderColor": "rgb(29, 112, 241)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "A",
+      "class": "",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(29, 112, 241)",
+      "borderColor": "rgb(29, 112, 241)",
+      "fontSize": "12px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "svg",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(29, 112, 241)",
+      "borderColor": "rgb(29, 112, 241)",
+      "fontSize": "12px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "rect",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(29, 112, 241)",
+      "borderColor": "rgb(29, 112, 241)",
+      "fontSize": "12px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "rect",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(29, 112, 241)",
+      "borderColor": "rgb(29, 112, 241)",
+      "fontSize": "12px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "rect",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(29, 112, 241)",
+      "borderColor": "rgb(29, 112, 241)",
+      "fontSize": "12px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "rect",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(29, 112, 241)",
+      "borderColor": "rgb(29, 112, 241)",
+      "fontSize": "12px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "SPAN",
+      "class": "",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(29, 112, 241)",
+      "borderColor": "rgb(29, 112, 241)",
+      "fontSize": "12px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "UL",
+      "class": "dropdown-menu dropdown-menu-right",
+      "bg": "rgb(255, 255, 255)",
+      "color": "rgb(0, 0, 0)",
+      "borderColor": "rgba(0, 0, 0, 0.2)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "A",
+      "class": "btn btn-third sm icon-only round help",
+      "bg": "rgb(232, 241, 254)",
+      "color": "rgb(29, 112, 241)",
+      "borderColor": "rgb(29, 112, 241)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "svg",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(29, 112, 241)",
+      "borderColor": "rgb(29, 112, 241)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "path",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(29, 112, 241)",
+      "borderColor": "rgb(29, 112, 241)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "path",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(29, 112, 241)",
+      "borderColor": "rgb(29, 112, 241)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "DIV",
+      "class": "modalHints alertsPanel panel panel-default",
+      "bg": "rgb(255, 255, 255)",
+      "color": "rgb(0, 0, 0)",
+      "borderColor": "rgb(221, 221, 221)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "DIV",
+      "class": "video-block",
+      "bg": "rgb(232, 241, 254)",
+      "color": "rgb(0, 0, 0)",
+      "borderColor": "rgb(0, 0, 0)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "DIV",
+      "class": "video-button",
+      "bg": "rgb(29, 112, 241)",
+      "color": "rgb(0, 0, 0)",
+      "borderColor": "rgb(0, 0, 0)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "DIV",
+      "class": "video-text",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(29, 112, 241)",
+      "borderColor": "rgb(29, 112, 241)",
+      "fontSize": "16px",
+      "fontWeight": "600"
+    },
+    {
+      "tag": "DIV",
+      "class": "video-block",
+      "bg": "rgb(232, 241, 254)",
+      "color": "rgb(0, 0, 0)",
+      "borderColor": "rgb(0, 0, 0)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "DIV",
+      "class": "video-button",
+      "bg": "rgb(29, 112, 241)",
+      "color": "rgb(0, 0, 0)",
+      "borderColor": "rgb(0, 0, 0)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "DIV",
+      "class": "video-text",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(29, 112, 241)",
+      "borderColor": "rgb(29, 112, 241)",
+      "fontSize": "16px",
+      "fontWeight": "600"
+    },
+    {
+      "tag": "DIV",
+      "class": "time-date-item__dropdown",
+      "bg": "rgb(0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "12px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "TIME",
+      "class": "",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "12px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "A",
+      "class": "",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(29, 112, 241)",
+      "borderColor": "rgb(29, 112, 241)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "SPAN",
+      "class": "navbar-right__notifications-badge",
+      "bg": "rgb(254, 183, 43)",
+      "color": "rgb(0, 0, 0)",
+      "borderColor": "rgb(0, 0, 0)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "DIV",
+      "class": "alertsPanel panel panel-default  ng-scope",
+      "bg": "rgb(255, 255, 255)",
+      "color": "rgb(0, 0, 0)",
+      "borderColor": "rgb(221, 221, 221)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "BUTTON",
+      "class": "alertsPanel-readAll btn btn-fourth",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(115, 115, 115)",
+      "borderColor": "rgba(0, 0, 0, 0.1)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "SPAN",
+      "class": "alertsPanel-readAll-text",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(115, 115, 115)",
+      "borderColor": "rgb(115, 115, 115)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "SPAN",
+      "class": "alertsPanel-readAll-loading loader-img2",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(115, 115, 115)",
+      "borderColor": "rgb(115, 115, 115)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "SPAN",
+      "class": "alertsPanel-readAll-loading",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(115, 115, 115)",
+      "borderColor": "rgb(115, 115, 115)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "DIV",
+      "class": "alerts-inner-scroll",
+      "bg": "rgb(230, 230, 230)",
+      "color": "rgb(0, 0, 0)",
+      "borderColor": "rgb(0, 0, 0)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "A",
+      "class": "",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(29, 112, 241)",
+      "borderColor": "rgb(29, 112, 241)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "SPAN",
+      "class": "sellerboard-account-accountName-icon",
+      "bg": "rgb(29, 112, 241)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "svg",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "path",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "circle",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "DIV",
+      "class": "accountFilter-dropdown",
+      "bg": "rgb(255, 255, 255)",
+      "color": "rgb(0, 0, 0)",
+      "borderColor": "rgb(0, 0, 0)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "svg",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(29, 112, 241)",
+      "borderColor": "rgb(29, 112, 241)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "path",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(29, 112, 241)",
+      "borderColor": "rgb(29, 112, 241)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "path",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(29, 112, 241)",
+      "borderColor": "rgb(29, 112, 241)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "SPAN",
+      "class": "accountFilter-dropdown-list-item-link-text",
+      "bg": "rgba(0, 0, 0, 0.05)",
+      "color": "rgb(83, 143, 254)",
+      "borderColor": "rgb(83, 143, 254)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "SPAN",
+      "class": "privacyBlock text-line",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(83, 143, 254)",
+      "borderColor": "rgb(83, 143, 254)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "A",
+      "class": "",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(29, 112, 241)",
+      "borderColor": "rgb(29, 112, 241)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "SPAN",
+      "class": "accountFilter-dropdown-list-item-link-text ",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(29, 112, 241)",
+      "borderColor": "rgb(29, 112, 241)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "svg",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(29, 112, 241)",
+      "borderColor": "rgb(29, 112, 241)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "path",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(29, 112, 241)",
+      "borderColor": "rgb(29, 112, 241)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "path",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(29, 112, 241)",
+      "borderColor": "rgb(29, 112, 241)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "SPAN",
+      "class": "navbar-right__item-text",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(29, 112, 241)",
+      "borderColor": "rgb(29, 112, 241)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "SPAN",
+      "class": "navbar-right__notifications-badge",
+      "bg": "rgb(254, 183, 43)",
+      "color": "rgb(0, 0, 0)",
+      "borderColor": "rgb(0, 0, 0)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "A",
+      "class": "time-date-item__link",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(29, 112, 241)",
+      "borderColor": "rgb(29, 112, 241)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "SPAN",
+      "class": "accountFilter-dropdown-list-item-link-text",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(29, 112, 241)",
+      "borderColor": "rgb(29, 112, 241)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "svg",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(29, 112, 241)",
+      "borderColor": "rgb(29, 112, 241)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "circle",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(29, 112, 241)",
+      "borderColor": "rgb(29, 112, 241)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "polyline",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(29, 112, 241)",
+      "borderColor": "rgb(29, 112, 241)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "DIV",
+      "class": "time-date-item__dropdown",
+      "bg": "rgb(0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "12px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "TIME",
+      "class": "",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "12px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "A",
+      "class": "sellerboard-account-theme-switcher",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(29, 112, 241)",
+      "borderColor": "rgb(29, 112, 241)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "SPAN",
+      "class": "accountFilter-dropdown-list-item-link-text theme-b",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(29, 112, 241)",
+      "borderColor": "rgb(29, 112, 241)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "svg",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(29, 112, 241)",
+      "borderColor": "rgb(29, 112, 241)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "circle",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(29, 112, 241)",
+      "borderColor": "rgb(29, 112, 241)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "line",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(29, 112, 241)",
+      "borderColor": "rgb(29, 112, 241)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "line",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(29, 112, 241)",
+      "borderColor": "rgb(29, 112, 241)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "line",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(29, 112, 241)",
+      "borderColor": "rgb(29, 112, 241)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "line",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(29, 112, 241)",
+      "borderColor": "rgb(29, 112, 241)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "line",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(29, 112, 241)",
+      "borderColor": "rgb(29, 112, 241)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "line",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(29, 112, 241)",
+      "borderColor": "rgb(29, 112, 241)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "line",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(29, 112, 241)",
+      "borderColor": "rgb(29, 112, 241)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "line",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(29, 112, 241)",
+      "borderColor": "rgb(29, 112, 241)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "SPAN",
+      "class": "accountFilter-dropdown-list-item-link-text theme-b",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(29, 112, 241)",
+      "borderColor": "rgb(29, 112, 241)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "svg",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(29, 112, 241)",
+      "borderColor": "rgb(29, 112, 241)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "path",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(29, 112, 241)",
+      "borderColor": "rgb(29, 112, 241)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "A",
+      "class": "accountFilter-dropdown-list-item-link",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(243, 78, 27)",
+      "borderColor": "rgb(243, 78, 27)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "SPAN",
+      "class": "accountFilter-dropdown-list-item-link-text",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(243, 78, 27)",
+      "borderColor": "rgb(243, 78, 27)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "svg",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(243, 78, 27)",
+      "borderColor": "rgb(243, 78, 27)",
+      "fontSize": "11.96px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "path",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(243, 78, 27)",
+      "borderColor": "rgb(243, 78, 27)",
+      "fontSize": "11.96px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "line",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(243, 78, 27)",
+      "borderColor": "rgb(243, 78, 27)",
+      "fontSize": "11.96px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "A",
+      "class": "nav_try_for_free js-demo-btn hidden-xs",
+      "bg": "rgb(254, 183, 43)",
+      "color": "rgb(0, 0, 0)",
+      "borderColor": "rgb(0, 0, 0)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "NAV",
+      "class": "sellerboard-navigation no-print uncollapsed simple",
+      "bg": "rgb(51, 51, 51)",
+      "color": "rgb(0, 0, 0)",
+      "borderColor": "rgb(0, 0, 0)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "HEADER",
+      "class": "sellerboard-navigation-header false ",
+      "bg": "rgb(51, 51, 51)",
+      "color": "rgb(0, 0, 0)",
+      "borderColor": "rgb(0, 0, 0)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "A",
+      "class": "sellerboard-navigation-collapse on-uncollapsed",
+      "bg": "rgba(255, 255, 255, 0.1)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "svg",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "line",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "line",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "line",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "SPAN",
+      "class": "",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "A",
+      "class": "sellerboard-navigation-logo",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "IMG",
+      "class": "sellerboard-navigation-logo-image on-collapsed",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "svg",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "path",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "path",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "path",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "path",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "path",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "path",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "path",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "path",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "path",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "path",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "path",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "DL",
+      "class": "",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "DT",
+      "class": "active                         opened             ",
+      "bg": "rgb(64, 64, 64)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "700"
+    },
+    {
+      "tag": "A",
+      "class": "",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "700"
+    },
+    {
+      "tag": "svg",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "700"
+    },
+    {
+      "tag": "rect",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "700"
+    },
+    {
+      "tag": "line",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "700"
+    },
+    {
+      "tag": "line",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "700"
+    },
+    {
+      "tag": "SPAN",
+      "class": "title",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "12px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "DD",
+      "class": "active                        opened",
+      "bg": "rgb(64, 64, 64)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "UL",
+      "class": "",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "LI",
+      "class": "active",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "A",
+      "class": "",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(83, 143, 254)",
+      "borderColor": "rgb(83, 143, 254)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "svg",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(83, 143, 254)",
+      "borderColor": "rgb(83, 143, 254)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "rect",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(83, 143, 254)",
+      "borderColor": "rgb(83, 143, 254)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "line",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(83, 143, 254)",
+      "borderColor": "rgb(83, 143, 254)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "line",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(83, 143, 254)",
+      "borderColor": "rgb(83, 143, 254)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "SPAN",
+      "class": "title",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(83, 143, 254)",
+      "borderColor": "rgb(83, 143, 254)",
+      "fontSize": "12px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "LI",
+      "class": "",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "A",
+      "class": "",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "svg",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "path",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "rect",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "SPAN",
+      "class": "title",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "12px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "LI",
+      "class": "",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "A",
+      "class": "",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "svg",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "rect",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "polygon",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "circle",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "circle",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "SPAN",
+      "class": "title",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "12px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "LI",
+      "class": "",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "A",
+      "class": "",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "svg",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "rect",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "line",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "SPAN",
+      "class": "title",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "12px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "LI",
+      "class": "",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "A",
+      "class": "",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "svg",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "path",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "path",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "SPAN",
+      "class": "title",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "12px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "LI",
+      "class": "",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "A",
+      "class": "",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "svg",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "circle",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "line",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "SPAN",
+      "class": "title",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "12px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "LI",
+      "class": "",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "A",
+      "class": "",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "svg",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "circle",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "polyline",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "SPAN",
+      "class": "title",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "12px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "LI",
+      "class": "",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "A",
+      "class": "",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "svg",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "line",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "path",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "SPAN",
+      "class": "title",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "12px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "LI",
+      "class": "",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "A",
+      "class": "",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "svg",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "polyline",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "line",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "path",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "SPAN",
+      "class": "title",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "12px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "DT",
+      "class": "                                                 h",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "700"
+    },
+    {
+      "tag": "A",
+      "class": "",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "700"
+    },
+    {
+      "tag": "I",
+      "class": "icon announcement_speaker",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "700"
+    },
+    {
+      "tag": "SPAN",
+      "class": "title",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "12px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "DD",
+      "class": "                        ",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "UL",
+      "class": "",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "LI",
+      "class": "",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "A",
+      "class": "",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "svg",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "polyline",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "polyline",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "SPAN",
+      "class": "title",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "12px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "LI",
+      "class": "",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "A",
+      "class": "",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "svg",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "polyline",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "rect",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "line",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "SPAN",
+      "class": "title",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "12px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "LI",
+      "class": "",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "A",
+      "class": "",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "svg",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "path",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "polyline",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "line",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "line",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "polyline",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "SPAN",
+      "class": "title",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "12px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "DT",
+      "class": "                                                 h",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "700"
+    },
+    {
+      "tag": "A",
+      "class": "",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "700"
+    },
+    {
+      "tag": "svg",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "700"
+    },
+    {
+      "tag": "polyline",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "700"
+    },
+    {
+      "tag": "rect",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "700"
+    },
+    {
+      "tag": "line",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "700"
+    },
+    {
+      "tag": "SPAN",
+      "class": "title",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "12px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "DD",
+      "class": "                        ",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "UL",
+      "class": "",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "LI",
+      "class": "",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "A",
+      "class": "",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "svg",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "path",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "polyline",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "line",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "line",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "polyline",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "SPAN",
+      "class": "title",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "12px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "LI",
+      "class": "",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "A",
+      "class": "",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "svg",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "path",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "path",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "SPAN",
+      "class": "title",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "12px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "LI",
+      "class": "",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "A",
+      "class": "",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "svg",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "line",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "path",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "polyline",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "line",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "SPAN",
+      "class": "title",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "12px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "LI",
+      "class": "",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "A",
+      "class": "",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "svg",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "rect",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "polygon",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "circle",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "circle",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "SPAN",
+      "class": "title",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "12px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "LI",
+      "class": "",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "A",
+      "class": "",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "svg",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "circle",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "line",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "path",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "SPAN",
+      "class": "title",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "12px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "DT",
+      "class": "                                                 h",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "700"
+    },
+    {
+      "tag": "A",
+      "class": "",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "700"
+    },
+    {
+      "tag": "svg",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "700"
+    },
+    {
+      "tag": "path",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "700"
+    },
+    {
+      "tag": "polyline",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "700"
+    },
+    {
+      "tag": "SPAN",
+      "class": "title",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "12px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "DD",
+      "class": "                        ",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "UL",
+      "class": "",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "LI",
+      "class": "",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "A",
+      "class": "",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "svg",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "line",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "line",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "line",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "line",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "line",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "line",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "SPAN",
+      "class": "title",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "12px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "LI",
+      "class": "",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "A",
+      "class": "",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "svg",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "path",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "rect",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "SPAN",
+      "class": "title",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "12px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "LI",
+      "class": "",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "A",
+      "class": "",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "svg",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "circle",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "circle",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "path",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "SPAN",
+      "class": "title",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "12px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "DT",
+      "class": "                                                 h",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "700"
+    },
+    {
+      "tag": "A",
+      "class": "",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "700"
+    },
+    {
+      "tag": "svg",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "700"
+    },
+    {
+      "tag": "polyline",
+      "class": "[object SVGAnimatedString]",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(255, 255, 255)",
+      "borderColor": "rgb(255, 255, 255)",
+      "fontSize": "13px",
+      "fontWeight": "700"
+    }
+  ]
+}

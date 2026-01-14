@@ -1,0 +1,13 @@
+{
+  "Dashboard": "Dashboard",
+  "Welcome": "Welcome to Seller Suite!",
+  "Sidebar": {
+    "menu": "Menu",
+    "main_page": "Main Page",
+    "dashboard": "Dashboard",
+    "products": "Products",
+    "expenses": "Expenses",
+    "reports": "Reports",
+    "settings": "Settings"
+  }
+}

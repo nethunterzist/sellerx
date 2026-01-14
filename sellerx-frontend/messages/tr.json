@@ -1,0 +1,13 @@
+{
+  "Dashboard": "Gösterge Paneli",
+  "Welcome": "Seller Suite'e Hoş Geldiniz!",
+  "Sidebar": {
+    "menu": "Menü",
+    "main_page": "Ana sayfa",
+    "dashboard": "Kontrol Paneli",
+    "products": "Ürünler",
+    "expenses": "Giderler",
+    "reports": "Raporlar",
+    "settings": "Ayarlar"
+  }
+}

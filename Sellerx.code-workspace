@@ -1,0 +1,63 @@
+{
+  "folders": [
+    {
+      "name": "Frontend (Next.js)",
+      "path": "./sellerx-frontend"
+    },
+    {
+      "name": "Backend (Spring Boot)",
+      "path": "./sellerx-backend"
+    },
+    {
+      "name": "Root",
+      "path": "./"
+    }
+  ],
+  "settings": {
+    "typescript.preferences.importModuleSpecifier": "relative",
+    "editor.codeActionsOnSave": {
+      "source.fixAll.eslint": "explicit"
+    },
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "typescript.updateImportsOnFileMove.enabled": "always",
+    "emmet.includeLanguages": {
+      "typescript": "html"
+    },
+    "tailwindCSS.includeLanguages": {
+      "typescript": "html",
+      "typescriptreact": "html"
+    },
+    "files.associations": {
+      "*.css": "tailwindcss"
+    },
+    "eslint.workingDirectories": ["./sellerx-frontend"],
+    "java.configuration.workspaces": ["./sellerx-backend"],
+    "search.exclude": {
+      "**/node_modules": true,
+      "**/dist": true,
+      "**/.next": true,
+      "**/target": true,
+      "**/build": true
+    },
+    "files.watcherExclude": {
+      "**/node_modules/**": true,
+      "**/.next/**": true,
+      "**/target/**": true
+    }
+  },
+  "extensions": {
+    "recommendations": [
+      "ms-vscode-remote.remote-containers",
+      "bradlc.vscode-tailwindcss",
+      "esbenp.prettier-vscode",
+      "dbaeumer.vscode-eslint",
+      "ms-vscode.vscode-typescript-next",
+      "formulahendry.auto-rename-tag",
+      "ms-vscode.vscode-json",
+      "redhat.vscode-yaml",
+      "vscjava.vscode-java-pack",
+      "ms-vscode.remote-explorer"
+    ]
+  }
+}

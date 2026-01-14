@@ -1,0 +1,76 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: sellerx-postgres:15-alpine
+    container_name: sellerx-postgres
+    restart: no
+    environment:
+      POSTGRES_DB: sellerx_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 123123
+    ports:
+      - "5411:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./sellerx-backend/migration:/docker-entrypoint-initdb.d
+    networks:
+      - sellerx-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend (Spring Boot)
+  backend:
+    build:
+      context: ./sellerx-backend
+      dockerfile: Dockerfile
+    container_name: sellerx-backend
+    restart: no
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/sellerx_db
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=123123
+      - JWT_SECRET=HSOC9PbFyuEU/bb0rfaabsyB+rORKzIcR3UIUlvKuSI=
+    ports:
+      - "8011:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - sellerx-network
+
+  # Frontend (Next.js)
+  frontend:
+    build:
+      context: ./sellerx-frontend
+      dockerfile: Dockerfile.dev
+    container_name: sellerx-frontend
+    restart: no
+    environment:
+      - NODE_ENV=development
+      - API_BASE_URL=http://backend:8080
+      - NEXT_PUBLIC_API_BASE_URL=http://localhost:8011
+      - WATCHPACK_POLLING=true
+      - CHOKIDAR_USEPOLLING=true
+    ports:
+      - "3011:3000"
+    volumes:
+      # Mount source code for hot reload
+      - ./sellerx-frontend:/app
+      # Exclude node_modules to avoid conflicts
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      - backend
+    networks:
+      - sellerx-network
+
+volumes:
+  postgres_data:
+
+networks:
+  sellerx-network:
+    driver: bridge
