@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Table,
   TableBody,
@@ -21,23 +21,30 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Edit, Trash2 } from "lucide-react";
+import { Edit, Trash2, RefreshCw, Calendar, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { useDeleteExpense } from "@/hooks/queries/use-expenses";
-import type { StoreExpense } from "@/types/expense";
+import type { StoreExpense, ExpenseFrequency } from "@/types/expense";
 import { frequencyLabels } from "@/types/expense";
+import { cn } from "@/lib/utils";
+import { useCurrency } from "@/lib/contexts/currency-context";
+
+type SortField = "amount" | "date" | "category" | null;
+type SortDirection = "asc" | "desc";
+
+// Frequency badge colors
+const frequencyColors: Record<ExpenseFrequency, { bg: string; text: string }> = {
+  DAILY: { bg: "bg-red-100 dark:bg-red-900/30", text: "text-red-700 dark:text-red-300" },
+  WEEKLY: { bg: "bg-orange-100 dark:bg-orange-900/30", text: "text-orange-700 dark:text-orange-300" },
+  MONTHLY: { bg: "bg-blue-100 dark:bg-blue-900/30", text: "text-blue-700 dark:text-blue-300" },
+  YEARLY: { bg: "bg-purple-100 dark:bg-purple-900/30", text: "text-purple-700 dark:text-purple-300" },
+  ONE_TIME: { bg: "bg-gray-100 dark:bg-gray-800", text: "text-gray-700 dark:text-gray-300" },
+};
 
 interface ExpenseListProps {
   expenses: StoreExpense[];
   storeId: string;
   isLoading?: boolean;
   onEdit: (expense: StoreExpense) => void;
-}
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat("tr-TR", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
 }
 
 function formatDate(dateString: string): string {
@@ -78,8 +85,56 @@ export function ExpenseList({
   isLoading,
   onEdit,
 }: ExpenseListProps) {
-  const [deleteExpenseId, setDeleteExpenseId] = useState<number | null>(null);
+  const { formatCurrency } = useCurrency();
+  const [deleteExpenseId, setDeleteExpenseId] = useState<string | null>(null);
+  const [sortField, setSortField] = useState<SortField>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const deleteMutation = useDeleteExpense();
+
+  // Sorting logic
+  const sortedExpenses = useMemo(() => {
+    if (!sortField) return expenses;
+
+    return [...expenses].sort((a, b) => {
+      let comparison = 0;
+
+      switch (sortField) {
+        case "amount":
+          comparison = a.amount - b.amount;
+          break;
+        case "date":
+          comparison = new Date(a.date).getTime() - new Date(b.date).getTime();
+          break;
+        case "category":
+          comparison = (a.expenseCategoryName || "").localeCompare(
+            b.expenseCategoryName || ""
+          );
+          break;
+      }
+
+      return sortDirection === "asc" ? comparison : -comparison;
+    });
+  }, [expenses, sortField, sortDirection]);
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDirection("desc");
+    }
+  };
+
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="h-3 w-3 ml-1 opacity-50" />;
+    }
+    return sortDirection === "asc" ? (
+      <ArrowUp className="h-3 w-3 ml-1" />
+    ) : (
+      <ArrowDown className="h-3 w-3 ml-1" />
+    );
+  };
 
   const handleDelete = () => {
     if (deleteExpenseId) {
@@ -96,14 +151,38 @@ export function ExpenseList({
 
   return (
     <>
-      <div className="rounded-lg border border-gray-200 overflow-hidden">
+      <div className="rounded-lg border border-border overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead>Kategori</TableHead>
-              <TableHead className="text-right">Tutar</TableHead>
+              <TableHead>
+                <button
+                  onClick={() => handleSort("category")}
+                  className="flex items-center hover:text-foreground transition-colors"
+                >
+                  Kategori
+                  <SortIcon field="category" />
+                </button>
+              </TableHead>
+              <TableHead className="text-right">
+                <button
+                  onClick={() => handleSort("amount")}
+                  className="flex items-center ml-auto hover:text-foreground transition-colors"
+                >
+                  Tutar (KDV Hariç)
+                  <SortIcon field="amount" />
+                </button>
+              </TableHead>
               <TableHead>Sıklık</TableHead>
-              <TableHead>Başlangıç</TableHead>
+              <TableHead>
+                <button
+                  onClick={() => handleSort("date")}
+                  className="flex items-center hover:text-foreground transition-colors"
+                >
+                  Başlangıç
+                  <SortIcon field="date" />
+                </button>
+              </TableHead>
               <TableHead>Açıklama</TableHead>
               <TableHead className="w-[100px] text-right">İşlemler</TableHead>
             </TableRow>
@@ -115,35 +194,50 @@ export function ExpenseList({
                 <ExpenseRowSkeleton />
                 <ExpenseRowSkeleton />
               </>
-            ) : expenses.length === 0 ? (
+            ) : sortedExpenses.length === 0 ? (
               <TableRow>
                 <TableCell
                   colSpan={6}
-                  className="h-24 text-center text-gray-500"
+                  className="h-24 text-center text-muted-foreground"
                 >
                   Henüz gider eklenmemiş
                 </TableCell>
               </TableRow>
             ) : (
-              expenses.map((expense) => (
-                <TableRow key={expense.id} className="hover:bg-gray-50">
+              sortedExpenses.map((expense) => (
+                <TableRow key={expense.id} className="hover:bg-muted">
                   <TableCell className="font-medium">
-                    {expense.category.name}
+                    {expense.expenseCategoryName || expense.name}
                   </TableCell>
-                  <TableCell className="text-right font-medium">
-                    {formatCurrency(expense.amount)} TL
+                  <TableCell className="text-right">
+                    <div className="font-medium">{formatCurrency(expense.amount)}</div>
+                    {expense.vatRate != null ? (
+                      <div className="text-xs text-muted-foreground">
+                        KDV %{expense.vatRate}: {formatCurrency(expense.vatAmount ?? 0)}
+                      </div>
+                    ) : (
+                      <div className="text-xs text-muted-foreground">Faturasız</div>
+                    )}
                   </TableCell>
                   <TableCell>
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                      {frequencyLabels[expense.frequency]}
+                    <span className={cn(
+                      "inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium",
+                      frequencyColors[expense.frequency].bg,
+                      frequencyColors[expense.frequency].text
+                    )}>
+                      {expense.frequency === "ONE_TIME" ? (
+                        <Calendar className="h-3 w-3" />
+                      ) : (
+                        <RefreshCw className="h-3 w-3" />
+                      )}
+                      {expense.frequencyDisplayName || frequencyLabels[expense.frequency]}
                     </span>
                   </TableCell>
-                  <TableCell className="text-gray-500">
-                    {formatDate(expense.startDate)}
-                    {expense.endDate && ` - ${formatDate(expense.endDate)}`}
+                  <TableCell className="text-muted-foreground">
+                    {formatDate(expense.date?.split("T")[0] || "")}
                   </TableCell>
-                  <TableCell className="text-gray-500 max-w-[200px] truncate">
-                    {expense.description || "-"}
+                  <TableCell className="text-muted-foreground max-w-[200px] truncate">
+                    {expense.name || "-"}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1 justify-end">

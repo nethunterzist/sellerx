@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { logger } from "@/lib/logger";
 
 const API_BASE_URL = process.env.API_BASE_URL;
 
@@ -38,7 +39,7 @@ export async function POST(
     return NextResponse.json(data);
   } catch (error) {
     const { storeId } = await params;
-    console.error(`[API] /products/sync/${storeId} error:`, error);
+    logger.error(`POST /products/sync/${storeId} error`, { endpoint: `/products/sync/${storeId}`, storeId, error });
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },

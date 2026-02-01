@@ -8,7 +8,7 @@ interface User {
   id: string;
   email: string;
   name: string;
-  // ...diğer user alanları
+  role?: "USER" | "ADMIN";
 }
 
 interface AuthContextType {

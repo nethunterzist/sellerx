@@ -1,30 +1,97 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useSelectedStore } from "@/hooks/queries/use-stores";
 import { useStoreExpenses } from "@/hooks/queries/use-expenses";
 import { Button } from "@/components/ui/button";
 import { ExpenseList } from "@/components/expenses/expense-list";
 import { ExpenseFormModal } from "@/components/expenses/expense-form-modal";
-import { Plus, Receipt, TrendingDown } from "lucide-react";
+import { ExpenseStatsCards } from "@/components/expenses/expense-stats-cards";
+import { ExpenseCategoryChart } from "@/components/expenses/expense-category-chart";
+import { ExpenseTrendChart } from "@/components/expenses/expense-trend-chart";
+import { ExpenseFiltersComponent, type ExpenseFilters } from "@/components/expenses/expense-filters";
+import { Plus } from "lucide-react";
 import type { StoreExpense } from "@/types/expense";
+import {
+  StatCardSkeleton,
+  ChartSkeleton,
+  FilterBarSkeleton,
+  TableSkeleton,
+  PaginationSkeleton,
+} from "@/components/ui/skeleton-blocks";
 
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat("tr-TR", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
+const DEFAULT_FILTERS: ExpenseFilters = {
+  category: "all",
+  frequency: "all",
+  search: "",
+};
+
+function ExpensesPageSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <StatCardSkeleton key={i} />
+        ))}
+      </div>
+      <div className="grid gap-4 md:grid-cols-2">
+        <ChartSkeleton />
+        <ChartSkeleton />
+      </div>
+      <FilterBarSkeleton showSearch={true} buttonCount={2} />
+      <TableSkeleton columns={6} rows={8} />
+      <PaginationSkeleton />
+    </div>
+  );
 }
 
 export default function ExpensesPage() {
   const [modalOpen, setModalOpen] = useState(false);
-  const [editingExpense, setEditingExpense] = useState<StoreExpense | null>(
-    null
-  );
+  const [editingExpense, setEditingExpense] = useState<StoreExpense | null>(null);
+  const [filters, setFilters] = useState<ExpenseFilters>(DEFAULT_FILTERS);
+
   const { data: selectedStore, isLoading: storeLoading } = useSelectedStore();
   const storeId = selectedStore?.selectedStoreId;
 
   const { data, isLoading } = useStoreExpenses(storeId || undefined);
+
+  // Get unique categories from expenses
+  const categories = useMemo(() => {
+    if (!data?.expenses) return [];
+    const uniqueCategories = new Set(
+      data.expenses.map((e) => e.expenseCategoryName).filter(Boolean)
+    );
+    return Array.from(uniqueCategories).sort();
+  }, [data?.expenses]);
+
+  // Filter expenses based on filters
+  const filteredExpenses = useMemo(() => {
+    if (!data?.expenses) return [];
+
+    return data.expenses.filter((expense) => {
+      // Category filter
+      if (filters.category !== "all" && expense.expenseCategoryName !== filters.category) {
+        return false;
+      }
+
+      // Frequency filter
+      if (filters.frequency !== "all" && expense.frequency !== filters.frequency) {
+        return false;
+      }
+
+      // Search filter
+      if (filters.search) {
+        const searchLower = filters.search.toLowerCase();
+        const nameMatch = expense.name?.toLowerCase().includes(searchLower);
+        const categoryMatch = expense.expenseCategoryName?.toLowerCase().includes(searchLower);
+        if (!nameMatch && !categoryMatch) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [data?.expenses, filters]);
 
   const handleEdit = (expense: StoreExpense) => {
     setEditingExpense(expense);
@@ -46,19 +113,19 @@ export default function ExpensesPage() {
   if (!storeId && !storeLoading) {
     return (
       <div className="p-8">
-        <h1 className="text-2xl font-bold mb-4">Giderler</h1>
         <p className="text-muted-foreground">Lütfen önce bir mağaza seçin.</p>
       </div>
     );
   }
+
+  if (isLoading) return <ExpensesPageSkeleton />;
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Giderler</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-muted-foreground">
             Mağazanızın sabit ve değişken giderlerini yönetin
           </p>
         </div>
@@ -69,46 +136,48 @@ export default function ExpensesPage() {
         </Button>
       </div>
 
-      {/* Stats Card */}
+      {/* Stats Cards */}
       {data && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-red-100 flex items-center justify-center">
-                <TrendingDown className="h-5 w-5 text-red-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Aylık Toplam Gider</p>
-                <p className="text-xl font-bold text-gray-900">
-                  {formatCurrency(data.totalMonthlyAmount)} TL
-                </p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                <Receipt className="h-5 w-5 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Toplam Gider Kalemi</p>
-                <p className="text-xl font-bold text-gray-900">
-                  {data.expenses.length}
-                </p>
-              </div>
-            </div>
-          </div>
+        <ExpenseStatsCards
+          expenses={data.expenses}
+          totalExpense={data.totalExpense || 0}
+        />
+      )}
+
+      {/* Charts Row - Two charts side by side */}
+      {data && data.expenses.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Pie Chart - Category Distribution */}
+          <ExpenseCategoryChart expenses={data.expenses} />
+
+          {/* Bar Chart - Frequency Distribution */}
+          <ExpenseTrendChart expenses={data.expenses} />
         </div>
       )}
 
-      {/* Expense List */}
-      <div className="bg-white rounded-lg border border-gray-200">
-        <div className="p-4 border-b border-gray-200">
-          <h2 className="font-semibold text-gray-900">Gider Listesi</h2>
+      {/* Expense Table - Full Width */}
+      <div className="bg-card rounded-lg border border-border">
+        <div className="p-4 border-b border-border">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+            <h2 className="font-semibold text-foreground">Gider Listesi</h2>
+            {data && (
+              <span className="text-sm text-muted-foreground">
+                {filteredExpenses.length} / {data.expenses.length} gider
+              </span>
+            )}
+          </div>
+          {/* Filters inside table header */}
+          {data && data.expenses.length > 0 && (
+            <ExpenseFiltersComponent
+              filters={filters}
+              onFiltersChange={setFilters}
+              categories={categories}
+            />
+          )}
         </div>
         <div className="p-4">
           <ExpenseList
-            expenses={data?.expenses || []}
+            expenses={filteredExpenses}
             storeId={storeId || ""}
             isLoading={isLoading}
             onEdit={handleEdit}

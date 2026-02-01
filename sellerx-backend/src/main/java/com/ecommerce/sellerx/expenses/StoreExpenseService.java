@@ -1,5 +1,7 @@
 package com.ecommerce.sellerx.expenses;
 
+import com.ecommerce.sellerx.common.exception.ResourceNotFoundException;
+import com.ecommerce.sellerx.common.exception.UnauthorizedAccessException;
 import com.ecommerce.sellerx.products.TrendyolProductRepository;
 import com.ecommerce.sellerx.stores.Store;
 import com.ecommerce.sellerx.stores.StoreRepository;
@@ -67,21 +69,25 @@ public class StoreExpenseService {
         // Product varsa kontrol et ve set et
         if (request.productId() != null) {
             var product = productRepository.findById(request.productId())
-                .orElseThrow(() -> new RuntimeException("Product not found"));
-            
+                .orElseThrow(() -> new ResourceNotFoundException("Product", request.productId().toString()));
+
             // Product'ın bu store'a ait olduğunu kontrol et
             if (!product.getStore().getId().equals(storeId)) {
-                throw new RuntimeException("Product does not belong to this store");
+                throw new UnauthorizedAccessException("Product", request.productId().toString());
             }
-            
+
             expense.setProduct(product);
         }
-        
+
         // Date null ise şimdi olarak set et
         if (request.date() == null) {
             expense.setDate(LocalDateTime.now());
         }
-        
+
+        // KDV hesaplama
+        expense.setVatRate(request.vatRate());
+        expense.calculateVatFields();
+
         storeExpenseRepository.save(expense);
         return storeExpenseMapper.toDto(expense);
     }
@@ -97,26 +103,30 @@ public class StoreExpenseService {
             .orElseThrow(() -> new StoreExpenseNotFoundException("Store expense not found"));
         
         if (!expense.getStore().getId().equals(storeId)) {
-            throw new RuntimeException("Expense does not belong to this store");
+            throw new UnauthorizedAccessException("Expense", expenseId.toString());
         }
-        
+
         // Expense category'nin varlığını kontrol et
         var expenseCategory = expenseCategoryRepository.findById(request.expenseCategoryId())
             .orElseThrow(() -> new ExpenseCategoryNotFoundException("Expense category not found"));
         
         storeExpenseMapper.update(request, expense);
         expense.setExpenseCategory(expenseCategory);
-        
+
+        // KDV hesaplama
+        expense.setVatRate(request.vatRate());
+        expense.calculateVatFields();
+
         // Product varsa kontrol et ve set et
         if (request.productId() != null) {
             var product = productRepository.findById(request.productId())
-                .orElseThrow(() -> new RuntimeException("Product not found"));
-            
+                .orElseThrow(() -> new ResourceNotFoundException("Product", request.productId().toString()));
+
             // Product'ın bu store'a ait olduğunu kontrol et
             if (!product.getStore().getId().equals(storeId)) {
-                throw new RuntimeException("Product does not belong to this store");
+                throw new UnauthorizedAccessException("Product", request.productId().toString());
             }
-            
+
             expense.setProduct(product);
         } else {
             expense.setProduct(null);
@@ -137,9 +147,9 @@ public class StoreExpenseService {
             .orElseThrow(() -> new StoreExpenseNotFoundException("Store expense not found"));
         
         if (!expense.getStore().getId().equals(storeId)) {
-            throw new RuntimeException("Expense does not belong to this store");
+            throw new UnauthorizedAccessException("Expense", expenseId.toString());
         }
-        
+
         storeExpenseRepository.delete(expense);
     }
 }

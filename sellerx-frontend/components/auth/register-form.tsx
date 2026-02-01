@@ -2,16 +2,18 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useRegister } from "@/hooks/queries/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Gift, Loader2 } from "lucide-react";
 
 export function RegisterForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const referralCode = searchParams.get("ref");
   const { mutate: register, isPending } = useRegister();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -46,7 +48,7 @@ export function RegisterForm() {
     }
 
     register(
-      { name, email, password },
+      { name, email, password, ...(referralCode ? { referralCode } : {}) },
       {
         onSuccess: () => {
           router.push("/dashboard");
@@ -67,6 +69,14 @@ export function RegisterForm() {
           Hesabınızı oluşturun
         </p>
       </div>
+
+      {/* Referral Banner */}
+      {referralCode && (
+        <div className="mb-4 flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+          <Gift className="h-4 w-4 shrink-0" />
+          <span>Davet koduyla kayıt oluyorsunuz — <strong>30 gün ücretsiz deneme</strong> kazanacaksınız!</span>
+        </div>
+      )}
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-4">

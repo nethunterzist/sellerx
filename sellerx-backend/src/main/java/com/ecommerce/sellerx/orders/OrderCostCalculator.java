@@ -69,32 +69,90 @@ public class OrderCostCalculator {
     
     /**
      * Set commission information for an OrderItem builder (as estimated values)
+     * Uses fallback logic: lastCommissionRate → commissionRate → 0
      */
     public void setCommissionInfo(OrderItem.OrderItemBuilder itemBuilder, TrendyolProduct product) {
-        if (product.getCommissionRate() != null) {
-            itemBuilder.estimatedCommissionRate(product.getCommissionRate());
+        // Commission rate fallback: lastCommissionRate → commissionRate → 0
+        BigDecimal commissionRate = getEffectiveCommissionRate(product);
+
+        if (commissionRate.compareTo(BigDecimal.ZERO) > 0) {
+            itemBuilder.estimatedCommissionRate(commissionRate);
         }
-        
+
         if (product.getShippingVolumeWeight() != null) {
             itemBuilder.estimatedShippingVolumeWeight(product.getShippingVolumeWeight());
         }
     }
-    
+
+    /**
+     * Get effective commission rate with fallback logic.
+     * Priority: lastCommissionRate (from Financial API) → commissionRate (from Product API) → 0
+     *
+     * @param product The product to get commission rate from
+     * @return The effective commission rate
+     */
+    public BigDecimal getEffectiveCommissionRate(TrendyolProduct product) {
+        if (product.getLastCommissionRate() != null) {
+            return product.getLastCommissionRate();
+        } else if (product.getCommissionRate() != null) {
+            return product.getCommissionRate();
+        }
+        return BigDecimal.ZERO;
+    }
+
+    /**
+     * Get effective shipping cost per unit.
+     * Returns lastShippingCostPerUnit from most recent cargo invoice, or 0 if not available.
+     *
+     * @param product The product to get shipping cost from
+     * @return The effective shipping cost per unit (TL/adet)
+     */
+    public BigDecimal getEffectiveShippingCostPerUnit(TrendyolProduct product) {
+        if (product.getLastShippingCostPerUnit() != null) {
+            return product.getLastShippingCostPerUnit();
+        }
+        return BigDecimal.ZERO;
+    }
+
     /**
      * Calculate unit estimated commission for an OrderItem
-     * Formula: (unitPriceOrder - unitPriceDiscount) * commissionRate / 100
+     *
+     * IMPORTANT: In Trendyol API, the field named "vatBaseAmount" is actually the VAT RATE (e.g., 20 for 20%),
+     * NOT the VAT base amount. This is a naming issue in Trendyol's API.
+     *
+     * Formula: (price / (1 + vatRate/100)) * commissionRate / 100
+     *
+     * Example:
+     * - price: 799.40 TL (VAT included)
+     * - vatRate: 20 (meaning 20%)
+     * - actualVatBase: 799.40 / 1.20 = 666.17 TL
+     * - commissionRate: 19%
+     * - commission: 666.17 * 0.19 = 126.57 TL
+     *
+     * This is an ESTIMATED commission. Real commission is set by Financial API
+     * and will update the order's isCommissionEstimated flag to false.
+     *
+     * @param price The item price (VAT included)
+     * @param vatRate The VAT rate (e.g., 20 for 20%) - NOTE: This comes from vatBaseAmount field
+     * @param commissionRate The commission rate (percentage)
+     * @return The calculated commission amount
      */
-    public BigDecimal calculateUnitEstimatedCommission(BigDecimal unitPriceOrder, 
-                                                      BigDecimal unitPriceDiscount, 
+    public BigDecimal calculateUnitEstimatedCommission(BigDecimal price,
+                                                      BigDecimal vatRate,
                                                       BigDecimal commissionRate) {
-        if (unitPriceOrder == null || commissionRate == null) {
+        if (price == null || commissionRate == null) {
             return BigDecimal.ZERO;
         }
-        
-        BigDecimal discount = unitPriceDiscount != null ? unitPriceDiscount : BigDecimal.ZERO;
-        BigDecimal netAmount = unitPriceOrder.subtract(discount);
-        
-        return netAmount.multiply(commissionRate).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+
+        // Default VAT rate to 20% if not provided (cosmetics category default in Turkey)
+        BigDecimal effectiveVatRate = vatRate != null ? vatRate : BigDecimal.valueOf(20);
+
+        // Calculate actual VAT base: price / (1 + vatRate/100)
+        BigDecimal divisor = BigDecimal.ONE.add(effectiveVatRate.divide(BigDecimal.valueOf(100), 6, RoundingMode.HALF_UP));
+        BigDecimal actualVatBase = price.divide(divisor, 2, RoundingMode.HALF_UP);
+
+        // Calculate commission: actualVatBase * commissionRate / 100
+        return actualVatBase.multiply(commissionRate).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
     }
     
     /**

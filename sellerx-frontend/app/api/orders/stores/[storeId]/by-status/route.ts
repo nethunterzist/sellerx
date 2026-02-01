@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
 const API_BASE_URL = process.env.API_BASE_URL;
+const isDev = process.env.NODE_ENV === "development";
 
 export async function GET(
   request: NextRequest,
@@ -45,7 +46,7 @@ export async function GET(
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error("[API] GET /orders/stores/[storeId]/by-status error:", error);
+    if (isDev) console.error("[API] GET /orders/stores/[storeId]/by-status error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

@@ -98,6 +98,83 @@ public class UserController {
         }
     }
 
+    // ==================== PROFILE ENDPOINTS ====================
+
+    @GetMapping("/profile")
+    public ResponseEntity<?> getProfile(HttpServletRequest request) {
+        try {
+            Long userId = jwtService.getUserIdFromToken(request);
+            UserDto userDto = userService.getUser(userId);
+            return ResponseEntity.ok(userDto);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Invalid token"));
+        }
+    }
+
+    @PutMapping("/profile")
+    public ResponseEntity<?> updateProfile(
+            @RequestBody UpdateUserRequest updateRequest,
+            HttpServletRequest request) {
+        try {
+            Long userId = jwtService.getUserIdFromToken(request);
+            UserDto updated = userService.updateUser(userId, updateRequest);
+            return ResponseEntity.ok(updated);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Invalid token"));
+        }
+    }
+
+    // ==================== PASSWORD ENDPOINT ====================
+
+    @PutMapping("/password")
+    public ResponseEntity<?> changePasswordWithToken(
+            @RequestBody ChangePasswordRequest changeRequest,
+            HttpServletRequest request) {
+        try {
+            Long userId = jwtService.getUserIdFromToken(request);
+            userService.changePassword(userId, changeRequest);
+            return ResponseEntity.ok(Map.of("success", true, "message", "Password changed successfully"));
+        } catch (AccessDeniedException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "Current password is incorrect"));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Invalid token"));
+        }
+    }
+
+    // ==================== PREFERENCES ENDPOINTS ====================
+
+    @GetMapping("/preferences")
+    public ResponseEntity<?> getPreferences(HttpServletRequest request) {
+        try {
+            Long userId = jwtService.getUserIdFromToken(request);
+            UserPreferences preferences = userService.getPreferences(userId);
+            return ResponseEntity.ok(preferences);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Invalid token"));
+        }
+    }
+
+    @PutMapping("/preferences")
+    public ResponseEntity<?> updatePreferences(
+            @RequestBody UpdatePreferencesRequest updateRequest,
+            HttpServletRequest request) {
+        try {
+            Long userId = jwtService.getUserIdFromToken(request);
+            UserPreferences updated = userService.updatePreferences(userId, updateRequest);
+            return ResponseEntity.ok(updated);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Invalid token"));
+        }
+    }
+
+    // ==================== SELECTED STORE ENDPOINTS ====================
+
     @PostMapping("/selected-store")
     public ResponseEntity<?> setSelectedStore(@RequestBody Map<String, String> request, HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
         try {

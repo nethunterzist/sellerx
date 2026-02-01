@@ -17,14 +17,22 @@ public interface StoreExpenseMapper {
     @Mapping(target = "expenseCategory", ignore = true)
     @Mapping(target = "store", ignore = true)
     @Mapping(target = "product", ignore = true)
+    @Mapping(target = "vatRate", ignore = true)
+    @Mapping(target = "vatAmount", ignore = true)
+    @Mapping(target = "isVatDeductible", ignore = true)
+    @Mapping(target = "netAmount", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     StoreExpense toEntity(CreateStoreExpenseRequest request);
-    
+
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "expenseCategory", ignore = true)
     @Mapping(target = "store", ignore = true)
     @Mapping(target = "product", ignore = true)
+    @Mapping(target = "vatRate", ignore = true)
+    @Mapping(target = "vatAmount", ignore = true)
+    @Mapping(target = "isVatDeductible", ignore = true)
+    @Mapping(target = "netAmount", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     void update(UpdateStoreExpenseRequest request, @MappingTarget StoreExpense storeExpense);

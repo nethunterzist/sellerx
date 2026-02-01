@@ -30,10 +30,17 @@ public interface TrendyolProductRepository extends JpaRepository<TrendyolProduct
                                                 Pageable pageable);
     
     Optional<TrendyolProduct> findByStoreIdAndProductId(UUID storeId, String productId);
-    
+
+    @Query("SELECT tp FROM TrendyolProduct tp WHERE tp.store.id = :storeId AND tp.id = :id")
+    Optional<TrendyolProduct> findByStoreIdAndId(@Param("storeId") UUID storeId, @Param("id") UUID id);
+
     @Query("SELECT tp FROM TrendyolProduct tp WHERE tp.store.id = :storeId AND tp.barcode = :barcode")
     Optional<TrendyolProduct> findByStoreIdAndBarcode(@Param("storeId") UUID storeId, @Param("barcode") String barcode);
-    
+
+    // Batch query for multiple barcodes - fixes N+1 query problem
+    @Query("SELECT tp FROM TrendyolProduct tp WHERE tp.store.id = :storeId AND tp.barcode IN :barcodes")
+    List<TrendyolProduct> findByStoreIdAndBarcodeIn(@Param("storeId") UUID storeId, @Param("barcodes") List<String> barcodes);
+
     boolean existsByStoreIdAndProductId(UUID storeId, String productId);
     
     long countByStoreId(UUID storeId);

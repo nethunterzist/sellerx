@@ -8,6 +8,7 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 @ConfigurationProperties(prefix = "app.cookie")
 public class CookieConfig {
-    private boolean secure = false;
+    private boolean secure = true;
     private boolean httpOnly = true;
+    private String sameSite = "Lax";
 }

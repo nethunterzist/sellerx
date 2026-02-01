@@ -36,20 +36,24 @@ public class TrendyolWebhookManagementService {
     private boolean webhookEnabled;
     
     /**
-     * Create webhook for a store when it's created
+     * Create webhook for a store when it's created.
+     * Returns a result object with webhookId, success status, and error message.
+     *
+     * @param credentials Trendyol credentials
+     * @return WebhookResult containing webhookId, success flag, and error message
      */
-    public String createWebhookForStore(TrendyolCredentials credentials) {
+    public WebhookResult createWebhookForStore(TrendyolCredentials credentials) {
         if (!webhookEnabled) {
             log.info("Webhook is disabled - skipping webhook creation for seller: {}", credentials.getSellerId());
-            return null;
+            return WebhookResult.disabled();
         }
-        
+
         try {
             log.info("Creating webhook for seller: {}", credentials.getSellerId());
-            
+
             // Build webhook URL for this seller
             String webhookUrl = webhookBaseUrl + "/api/webhook/trendyol/" + credentials.getSellerId();
-            
+
             // Create webhook request
             WebhookCreateRequest request = WebhookCreateRequest.builder()
                     .url(webhookUrl)
@@ -57,41 +61,54 @@ public class TrendyolWebhookManagementService {
                     .apiKey(webhookApiKey)
                     .subscribedStatuses(ALL_STATUSES) // Subscribe to all statuses
                     .build();
-            
+
             // Send request to Trendyol
             String webhookId = sendCreateWebhookRequest(credentials, request);
-            
+
             if (webhookId != null) {
                 log.info("Successfully created webhook with ID: {} for seller: {}", webhookId, credentials.getSellerId());
-                return webhookId;
+                return WebhookResult.success(webhookId);
             } else {
-                log.error("Failed to create webhook for seller: {}", credentials.getSellerId());
-                return null;
+                String errorMsg = "Failed to create webhook - no ID returned from Trendyol";
+                log.error("{} for seller: {}", errorMsg, credentials.getSellerId());
+                return WebhookResult.failure(errorMsg);
             }
-            
+
         } catch (Exception e) {
+            String errorMsg = "Error creating webhook: " + e.getMessage();
             log.error("Error creating webhook for seller {}: {}", credentials.getSellerId(), e.getMessage(), e);
-            return null;
+            return WebhookResult.failure(errorMsg);
         }
     }
     
     /**
-     * Delete webhook for a store when it's deleted
+     * Delete webhook for a store when it's deleted.
+     * Returns a result object with success status and error message.
+     *
+     * @param credentials Trendyol credentials
+     * @param webhookId The webhook ID to delete
+     * @return WebhookResult with success status and optional error message
      */
-    public boolean deleteWebhookForStore(TrendyolCredentials credentials, String webhookId) {
+    public WebhookResult deleteWebhookForStore(TrendyolCredentials credentials, String webhookId) {
         if (!webhookEnabled) {
             log.info("Webhook is disabled - skipping webhook deletion for seller: {}", credentials.getSellerId());
-            return true;
+            return WebhookResult.disabled();
         }
-        
+
         try {
             log.info("Deleting webhook {} for seller: {}", webhookId, credentials.getSellerId());
-            
-            return sendDeleteWebhookRequest(credentials, webhookId);
-            
+
+            boolean deleted = sendDeleteWebhookRequest(credentials, webhookId);
+            if (deleted) {
+                return WebhookResult.success(null);
+            } else {
+                return WebhookResult.failure("Failed to delete webhook from Trendyol");
+            }
+
         } catch (Exception e) {
+            String errorMsg = "Error deleting webhook: " + e.getMessage();
             log.error("Error deleting webhook {} for seller {}: {}", webhookId, credentials.getSellerId(), e.getMessage(), e);
-            return false;
+            return WebhookResult.failure(errorMsg);
         }
     }
     
@@ -161,9 +178,46 @@ public class TrendyolWebhookManagementService {
         private String apiKey;
         private List<String> subscribedStatuses;
     }
-    
+
     @lombok.Data
     public static class WebhookCreateResponse {
         private String id;
+    }
+
+    /**
+     * Result object for webhook operations.
+     * Contains webhookId, success status, and optional error message.
+     */
+    @lombok.Data
+    @lombok.Builder
+    @lombok.AllArgsConstructor
+    public static class WebhookResult {
+        private String webhookId;
+        private boolean success;
+        private boolean disabled; // true if webhook is disabled globally
+        private String errorMessage;
+
+        public static WebhookResult success(String webhookId) {
+            return WebhookResult.builder()
+                    .webhookId(webhookId)
+                    .success(true)
+                    .disabled(false)
+                    .build();
+        }
+
+        public static WebhookResult failure(String errorMessage) {
+            return WebhookResult.builder()
+                    .success(false)
+                    .disabled(false)
+                    .errorMessage(errorMessage)
+                    .build();
+        }
+
+        public static WebhookResult disabled() {
+            return WebhookResult.builder()
+                    .success(true) // Consider disabled as "success" since it's intentional
+                    .disabled(true)
+                    .build();
+        }
     }
 }

@@ -26,5 +26,7 @@ public record CreateStoreExpenseRequest(
     
     @NotNull(message = "Amount is required")
     @DecimalMin(value = "0.01", message = "Amount must be greater than 0")
-    BigDecimal amount
+    BigDecimal amount,
+
+    Integer vatRate // nullable → null = faturasız işlem (no invoice)
 ) {}

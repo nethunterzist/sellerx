@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { logger } from "@/lib/logger";
 
 const API_BASE_URL = process.env.API_BASE_URL;
 
@@ -29,7 +30,7 @@ export async function GET() {
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error("[API] /products error:", error);
+    logger.error("GET /products error", { endpoint: "/products", error });
     return NextResponse.json(
       { error: "internal server error" },
       { status: 500 },
@@ -67,7 +68,7 @@ export async function POST(request: NextRequest) {
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error("[API] /products POST error:", error);
+    logger.error("POST /products error", { endpoint: "/products", method: "POST", error });
     return NextResponse.json(
       { error: "internal server error" },
       { status: 500 },

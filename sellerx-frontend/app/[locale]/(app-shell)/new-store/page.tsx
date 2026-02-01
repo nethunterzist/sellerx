@@ -1,16 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   useCreateStore,
   useMyStores,
   useSetSelectedStore,
   useDeleteStore,
+  useStore,
+  storeKeys,
 } from "@/hooks/queries/use-stores";
-import { useSyncProducts } from "@/hooks/queries/use-products";
-import { useSyncOrders } from "@/hooks/queries/use-orders";
 import { storeApi } from "@/lib/api/client";
+import { SyncStatusDisplay } from "@/components/stores/sync-status-display";
+import { Store as StoreType, isSyncInProgress } from "@/types/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -60,15 +63,37 @@ export default function NewStorePage() {
   const [showApiSecret, setShowApiSecret] = useState(false);
   const [testResult, setTestResult] = useState<TestResult | null>(null);
   const [isTesting, setIsTesting] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [syncStatus, setSyncStatus] = useState<string>("");
+  const [createdStoreId, setCreatedStoreId] = useState<string | null>(null);
 
+  const queryClient = useQueryClient();
   const { data: myStores, isLoading: storesLoading } = useMyStores();
+  const { data: createdStore } = useStore(createdStoreId || "");
   const createStoreMutation = useCreateStore();
   const setSelectedStoreMutation = useSetSelectedStore();
   const deleteStoreMutation = useDeleteStore();
-  const syncProductsMutation = useSyncProducts();
-  const syncOrdersMutation = useSyncOrders();
+
+  // Poll for store updates while sync is in progress
+  useEffect(() => {
+    if (!createdStoreId || !createdStore) return;
+
+    const isInProgress = isSyncInProgress(createdStore.syncStatus);
+
+    if (isInProgress) {
+      const interval = setInterval(() => {
+        queryClient.invalidateQueries({ queryKey: storeKeys.detail(createdStoreId) });
+      }, 3000); // Poll every 3 seconds
+
+      return () => clearInterval(interval);
+    }
+  }, [createdStoreId, createdStore, queryClient]);
+
+  // Handle sync completion
+  const handleSyncComplete = useCallback(() => {
+    // Small delay to show completion message
+    setTimeout(() => {
+      router.push("/dashboard");
+    }, 1500);
+  }, [router]);
 
   const handleTestConnection = async () => {
     if (!sellerId || !apiKey || !apiSecret) {
@@ -126,36 +151,13 @@ export default function NewStorePage() {
         },
       },
       {
-        onSuccess: async (data) => {
-          // Set as selected store and start sync process
+        onSuccess: (data) => {
+          // Set as selected store - backend automatically starts sync via StoreOnboardingService
           if (data?.id) {
             setSelectedStoreMutation.mutate(data.id, {
-              onSuccess: async () => {
-                // Start automatic sync process
-                setIsSyncing(true);
-                setSyncStatus("Ürünler senkronize ediliyor...");
-
-                try {
-                  // Sync products first
-                  await syncProductsMutation.mutateAsync(data.id);
-                  setSyncStatus("Siparişler senkronize ediliyor...");
-
-                  // Then sync orders
-                  await syncOrdersMutation.mutateAsync(data.id);
-                  setSyncStatus("Senkronizasyon tamamlandı!");
-
-                  // Small delay to show completion message
-                  setTimeout(() => {
-                    router.push("/dashboard");
-                  }, 1000);
-                } catch (error) {
-                  console.error("Senkronizasyon hatası:", error);
-                  // Even if sync fails, redirect to dashboard
-                  setSyncStatus("Senkronizasyon tamamlanamadı, dashboard'a yönlendiriliyorsunuz...");
-                  setTimeout(() => {
-                    router.push("/dashboard");
-                  }, 2000);
-                }
+              onSuccess: () => {
+                // Store the created store ID to trigger sync status display
+                setCreatedStoreId(data.id);
               },
             });
           } else {
@@ -183,71 +185,38 @@ export default function NewStorePage() {
 
   const isFormValid = storeName && sellerId && apiKey && apiSecret;
 
-  // Show sync overlay when syncing
-  if (isSyncing) {
-    const isCompleted = syncStatus.includes("tamamlandı");
-    const isError = syncStatus.includes("tamamlanamadı");
-
+  // Show sync overlay when a store is being synced
+  if (createdStoreId && createdStore) {
     return (
-      <div className="fixed inset-0 bg-white/90 z-50 flex items-center justify-center">
-        <div className="text-center max-w-md mx-auto p-8">
-          <div className="relative mb-6">
-            <div className={cn(
-              "h-20 w-20 mx-auto rounded-full flex items-center justify-center",
-              isCompleted ? "bg-green-100" : isError ? "bg-red-100" : "bg-[#F27A1A]/10"
-            )}>
-              {isCompleted ? (
-                <CheckCircle2 className="h-10 w-10 text-green-600" />
-              ) : isError ? (
-                <XCircle className="h-10 w-10 text-red-600" />
-              ) : (
-                <Loader2 className="h-10 w-10 text-[#F27A1A] animate-spin" />
-              )}
-            </div>
-          </div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">
-            {isCompleted ? "Senkronizasyon Tamamlandı!" : isError ? "Senkronizasyon Başarısız" : "Verileriniz Senkronize Ediliyor"}
-          </h2>
-          <p className={cn(
-            "mb-4",
-            isCompleted ? "text-green-600" : isError ? "text-red-600" : "text-gray-600"
-          )}>
-            {syncStatus}
-          </p>
-          <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
-            <div
-              className={cn(
-                "h-2 rounded-full transition-all duration-500",
-                isCompleted ? "bg-green-500" : isError ? "bg-red-500" : "bg-[#F27A1A]"
-              )}
-              style={{
-                width: syncStatus.includes("Ürünler") ? "33%" :
-                       syncStatus.includes("Siparişler") ? "66%" :
-                       isCompleted || isError ? "100%" : "10%"
-              }}
-            />
-          </div>
-          {!isCompleted && !isError && (
-            <p className="text-sm text-gray-500">
-              Bu işlem birkaç dakika sürebilir. Lütfen bekleyin...
-            </p>
-          )}
-          {isCompleted && (
-            <p className="text-sm text-green-600">
-              Dashboard&apos;a yönlendiriliyorsunuz...
-            </p>
-          )}
+      <div className="fixed inset-0 bg-background/90 z-50 flex items-center justify-center">
+        <div className="max-w-md mx-auto p-8 w-full">
+          <Card>
+            <CardHeader className="text-center">
+              <CardTitle>Mağaza Senkronizasyonu</CardTitle>
+              <CardDescription>
+                {createdStore.storeName} mağazanız için veriler senkronize ediliyor
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <SyncStatusDisplay
+                store={createdStore as StoreType}
+                onComplete={handleSyncComplete}
+              />
+              <p className="text-sm text-muted-foreground text-center mt-4">
+                Bu işlem birkaç dakika sürebilir. Lütfen bekleyin...
+              </p>
+            </CardContent>
+          </Card>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8 max-w-4xl mx-auto">
+    <div className="space-y-8 max-w-6xl mx-auto px-4">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Mağaza Yönetimi</h1>
-        <p className="text-sm text-gray-500 mt-1">
+        <p className="text-sm text-muted-foreground">
           Satışlarınızı ve kârlarınızı takip etmek için pazaryeri mağazalarınızı bağlayın
         </p>
       </div>
@@ -275,7 +244,7 @@ export default function NewStorePage() {
                   value={storeName}
                   onChange={(e) => setStoreName(e.target.value)}
                 />
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-muted-foreground">
                   Mağazanızı tanımlamak için bir isim
                 </p>
               </div>
@@ -354,7 +323,7 @@ export default function NewStorePage() {
                     <button
                       type="button"
                       onClick={() => setShowApiKey(!showApiKey)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                     >
                       {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
@@ -375,7 +344,7 @@ export default function NewStorePage() {
                     <button
                       type="button"
                       onClick={() => setShowApiSecret(!showApiSecret)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                     >
                       {showApiSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
@@ -389,20 +358,20 @@ export default function NewStorePage() {
                   className={cn(
                     "p-4 rounded-lg flex items-start gap-3",
                     testResult.connected
-                      ? "bg-green-50 border border-green-200"
-                      : "bg-red-50 border border-red-200"
+                      ? "bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800"
+                      : "bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800"
                   )}
                 >
                   {testResult.connected ? (
-                    <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+                    <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
                   ) : (
-                    <XCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                    <XCircle className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
                   )}
                   <div>
                     <p
                       className={cn(
                         "font-medium text-sm",
-                        testResult.connected ? "text-green-800" : "text-red-800"
+                        testResult.connected ? "text-green-800 dark:text-green-200" : "text-red-800 dark:text-red-200"
                       )}
                     >
                       {testResult.connected ? "Bağlantı Başarılı" : "Bağlantı Başarısız"}
@@ -410,13 +379,13 @@ export default function NewStorePage() {
                     <p
                       className={cn(
                         "text-sm mt-0.5",
-                        testResult.connected ? "text-green-700" : "text-red-700"
+                        testResult.connected ? "text-green-700 dark:text-green-300" : "text-red-700 dark:text-red-300"
                       )}
                     >
                       {testResult.message}
                     </p>
                     {testResult.storeName && (
-                      <p className="text-sm text-green-600 mt-1">
+                      <p className="text-sm text-green-600 dark:text-green-400 mt-1">
                         Mağaza: {testResult.storeName}
                       </p>
                     )}
@@ -486,7 +455,7 @@ export default function NewStorePage() {
           <CardContent>
             {storesLoading ? (
               <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
             ) : myStores && myStores.length > 0 ? (
               <div className="space-y-3">
@@ -494,7 +463,7 @@ export default function NewStorePage() {
                   <div
                     key={store.id}
                     onClick={() => handleSelectStore(store.id)}
-                    className="group flex items-center justify-between p-4 rounded-lg border border-gray-200 hover:border-[#F27A1A] hover:bg-orange-50/50 cursor-pointer transition-all"
+                    className="group flex items-center justify-between p-4 rounded-lg border border-border hover:border-[#F27A1A] hover:bg-orange-50/50 dark:hover:bg-orange-900/10 cursor-pointer transition-all"
                   >
                     <div className="flex items-center gap-3">
                       <div
@@ -508,10 +477,10 @@ export default function NewStorePage() {
                         {store.marketplace === "trendyol" ? "T" : "H"}
                       </div>
                       <div>
-                        <p className="font-medium text-gray-900">
+                        <p className="font-medium text-foreground">
                           {store.storeName || store.store_name}
                         </p>
-                        <p className="text-sm text-gray-500 capitalize">
+                        <p className="text-sm text-muted-foreground capitalize">
                           {store.marketplace}
                         </p>
                       </div>
@@ -538,9 +507,9 @@ export default function NewStorePage() {
               </div>
             ) : (
               <div className="text-center py-8">
-                <Store className="h-12 w-12 mx-auto text-gray-300 mb-3" />
-                <p className="text-gray-500 mb-1">Henüz mağaza yok</p>
-                <p className="text-sm text-gray-400">
+                <Store className="h-12 w-12 mx-auto text-muted-foreground opacity-50 mb-3" />
+                <p className="text-muted-foreground mb-1">Henüz mağaza yok</p>
+                <p className="text-sm text-muted-foreground/70">
                   Formu kullanarak ilk mağazanızı ekleyin
                 </p>
               </div>
@@ -550,19 +519,19 @@ export default function NewStorePage() {
       </div>
 
       {/* Help Section */}
-      <Card className="bg-blue-50 border-blue-200">
+      <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
         <CardContent className="pt-6">
           <div className="flex gap-4">
             <div className="flex-shrink-0">
-              <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                <ExternalLink className="h-5 w-5 text-blue-600" />
+              <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                <ExternalLink className="h-5 w-5 text-blue-600 dark:text-blue-400" />
               </div>
             </div>
             <div>
-              <h3 className="font-medium text-blue-900">
+              <h3 className="font-medium text-blue-900 dark:text-blue-100">
                 API bilgilerini nereden alabilirsiniz?
               </h3>
-              <p className="text-sm text-blue-700 mt-1">
+              <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
                 Trendyol için:{" "}
                 <a
                   href="https://partner.trendyol.com/account/api-integration"
@@ -574,7 +543,7 @@ export default function NewStorePage() {
                 </a>
                 {" "}sayfasına gidin. Yeni bir API kullanıcısı oluşturun veya mevcut bilgilerinizi kullanın.
               </p>
-              <p className="text-sm text-blue-700 mt-2">
+              <p className="text-sm text-blue-700 dark:text-blue-300 mt-2">
                 Hepsiburada için: Satıcı Paneli → Ayarlar → API Entegrasyonu sayfasına gidin
               </p>
             </div>

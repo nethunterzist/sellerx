@@ -1,0 +1,45 @@
+import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
+
+const API_BASE_URL = process.env.API_BASE_URL;
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ trackedProductId: string }> }
+) {
+  try {
+    const { trackedProductId } = await params;
+    const cookieStore = await cookies();
+    const accessToken = cookieStore.get("access_token")?.value;
+
+    if (!accessToken) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const response = await fetch(
+      `${API_BASE_URL}/buybox/products/${trackedProductId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    return NextResponse.json(data);
+  } catch (error: any) {
+    console.error("Buybox product detail error:", error.message);
+    return NextResponse.json(
+      { message: error.message || "Ürün detayı alınamadı" },
+      { status: 500 }
+    );
+  }
+}

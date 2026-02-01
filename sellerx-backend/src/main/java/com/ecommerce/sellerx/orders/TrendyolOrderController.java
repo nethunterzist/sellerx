@@ -7,6 +7,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -20,10 +21,12 @@ public class TrendyolOrderController {
 
     private final TrendyolOrderService orderService;
     private final TrendyolOrderScheduledService scheduledService;
+    private final OrderCommissionRecalculationService commissionRecalculationService;
 
     /**
      * Fetch and save orders from Trendyol API for a specific store
      */
+    @PreAuthorize("@userSecurityRules.canAccessStore(authentication, #storeId)")
     @PostMapping("/stores/{storeId}/sync")
     public ResponseEntity<String> syncOrdersForStore(@PathVariable UUID storeId) {
         try {
@@ -54,6 +57,7 @@ public class TrendyolOrderController {
     /**
      * Get orders for a store with pagination
      */
+    @PreAuthorize("@userSecurityRules.canAccessStore(authentication, #storeId)")
     @GetMapping("/stores/{storeId}")
     public ResponseEntity<Page<TrendyolOrderDto>> getOrdersForStore(
             @PathVariable UUID storeId,
@@ -61,6 +65,7 @@ public class TrendyolOrderController {
             @RequestParam(defaultValue = "20") int size) {
         
         try {
+            size = Math.min(size, 100);
             Pageable pageable = PageRequest.of(page, size);
             Page<TrendyolOrderDto> orders = orderService.getOrdersForStore(storeId, pageable);
             return ResponseEntity.ok(orders);
@@ -73,6 +78,7 @@ public class TrendyolOrderController {
     /**
      * Get orders for store by date range
      */
+    @PreAuthorize("@userSecurityRules.canAccessStore(authentication, #storeId)")
     @GetMapping("/stores/{storeId}/by-date-range")
     public ResponseEntity<Page<TrendyolOrderDto>> getOrdersByDateRange(
             @PathVariable UUID storeId,
@@ -82,6 +88,7 @@ public class TrendyolOrderController {
             @RequestParam(defaultValue = "20") int size) {
         
         try {
+            size = Math.min(size, 100);
             Pageable pageable = PageRequest.of(page, size);
             Page<TrendyolOrderDto> orders = orderService.getOrdersForStoreByDateRange(
                     storeId, startDate, endDate, pageable);
@@ -95,6 +102,7 @@ public class TrendyolOrderController {
     /**
      * Get orders by status
      */
+    @PreAuthorize("@userSecurityRules.canAccessStore(authentication, #storeId)")
     @GetMapping("/stores/{storeId}/by-status")
     public ResponseEntity<Page<TrendyolOrderDto>> getOrdersByStatus(
             @PathVariable UUID storeId,
@@ -103,6 +111,7 @@ public class TrendyolOrderController {
             @RequestParam(defaultValue = "20") int size) {
         
         try {
+            size = Math.min(size, 100);
             Pageable pageable = PageRequest.of(page, size);
             Page<TrendyolOrderDto> orders = orderService.getOrdersByStatus(storeId, status, pageable);
             return ResponseEntity.ok(orders);
@@ -115,6 +124,7 @@ public class TrendyolOrderController {
     /**
      * Get order statistics for a store
      */
+    @PreAuthorize("@userSecurityRules.canAccessStore(authentication, #storeId)")
     @GetMapping("/stores/{storeId}/statistics")
     public ResponseEntity<OrderStatistics> getOrderStatistics(@PathVariable UUID storeId) {
         try {
@@ -125,4 +135,35 @@ public class TrendyolOrderController {
             return ResponseEntity.badRequest().build();
         }
     }
+
+    /**
+     * Recalculate estimated commissions for orders.
+     * This should be called after financial sync to update orders with commission rates
+     * that weren't available during initial order sync.
+     */
+    @PreAuthorize("@userSecurityRules.canAccessStore(authentication, #storeId)")
+    @PostMapping("/stores/{storeId}/recalculate-commissions")
+    public ResponseEntity<CommissionRecalculationResponse> recalculateCommissions(@PathVariable UUID storeId) {
+        try {
+            log.info("Starting commission recalculation for store: {}", storeId);
+            int updatedOrders = commissionRecalculationService.recalculateEstimatedCommissions(storeId);
+            return ResponseEntity.ok(new CommissionRecalculationResponse(
+                    storeId,
+                    updatedOrders,
+                    "Commission recalculation completed successfully"
+            ));
+        } catch (Exception e) {
+            log.error("Error recalculating commissions for store {}: {}", storeId, e.getMessage(), e);
+            return ResponseEntity.badRequest().body(new CommissionRecalculationResponse(
+                    storeId,
+                    0,
+                    "Error: " + e.getMessage()
+            ));
+        }
+    }
+
+    /**
+     * Response DTO for commission recalculation endpoint
+     */
+    public record CommissionRecalculationResponse(UUID storeId, int updatedOrders, String message) {}
 }

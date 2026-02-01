@@ -30,8 +30,9 @@ public class TrendyolFinancialSettlementMapper {
                 .commissionInvoiceSerialNumber(apiItem.getCommissionInvoiceSerialNumber())
                 .sellerRevenue(apiItem.getSellerRevenue())
                 .paymentOrderId(apiItem.getPaymentOrderId())
-                .country(apiItem.getCountry())
                 .shipmentPackageId(apiItem.getShipmentPackageId())
+                .transactionDate(apiItem.getTransactionDate())
+                .paymentDate(apiItem.getPaymentDate())
                 .build();
     }
     

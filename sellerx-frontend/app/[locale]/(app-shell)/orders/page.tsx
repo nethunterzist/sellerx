@@ -39,13 +39,13 @@ import {
 import { cn } from "@/lib/utils";
 import type { TrendyolOrder, OrderItem, OrderStatus } from "@/types/order";
 import { orderStatusLabels } from "@/types/order";
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat("tr-TR", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
-}
+import { useCurrency } from "@/lib/contexts/currency-context";
+import {
+  StatCardSkeleton,
+  FilterBarSkeleton,
+  TableSkeleton,
+  PaginationSkeleton,
+} from "@/components/ui/skeleton-blocks";
 
 function formatDate(dateString: string): string {
   return new Date(dateString).toLocaleDateString("tr-TR", {
@@ -60,42 +60,43 @@ function formatDate(dateString: string): string {
 function getStatusColor(status: string): string {
   switch (status?.toLowerCase()) {
     case "delivered":
-      return "bg-green-100 text-green-800";
+      return "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300";
     case "shipped":
-      return "bg-blue-100 text-blue-800";
+      return "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300";
     case "created":
     case "picking":
-      return "bg-yellow-100 text-yellow-800";
+      return "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300";
     case "cancelled":
     case "returned":
-      return "bg-red-100 text-red-800";
+      return "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300";
     default:
-      return "bg-gray-100 text-gray-800";
+      return "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300";
   }
 }
 
 function OrderItemsRow({ items }: { items: OrderItem[] }) {
+  const { formatCurrency } = useCurrency();
   return (
-    <div className="bg-gray-50 p-4 rounded-lg mt-2 space-y-2">
-      <p className="text-xs font-medium text-gray-500 uppercase">
-        Sipariş Kalemleri
+    <div className="bg-muted p-4 rounded-lg mt-2 space-y-2">
+      <p className="text-xs font-medium text-muted-foreground uppercase">
+        Siparis Kalemleri
       </p>
       {items.map((item, idx) => (
         <div
           key={idx}
-          className="flex items-center justify-between text-sm border-b border-gray-200 pb-2 last:border-0"
+          className="flex items-center justify-between text-sm border-b border-border pb-2 last:border-0"
         >
           <div className="flex-1">
-            <p className="font-medium text-gray-900">{item.productName}</p>
-            <p className="text-xs text-gray-500">Barkod: {item.barcode}</p>
+            <p className="font-medium text-foreground">{item.productName}</p>
+            <p className="text-xs text-muted-foreground">Barkod: {item.barcode}</p>
           </div>
           <div className="text-right">
             <p className="font-medium">
-              {item.quantity} x {formatCurrency(item.price)} TL
+              {item.quantity} x {formatCurrency(item.price)}
             </p>
-            <p className="text-xs text-gray-500">
-              Maliyet: {formatCurrency(item.cost)} TL | Komisyon:{" "}
-              {formatCurrency(item.unitEstimatedCommission)} TL
+            <p className="text-xs text-muted-foreground">
+              Maliyet: {formatCurrency(item.cost)} | Komisyon:{" "}
+              {formatCurrency(item.unitEstimatedCommission)}
             </p>
           </div>
         </div>
@@ -115,7 +116,23 @@ const ORDER_STATUSES: OrderStatus[] = [
   "Returned",
 ];
 
+function OrdersPageSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <StatCardSkeleton key={i} />
+        ))}
+      </div>
+      <FilterBarSkeleton showSearch={true} buttonCount={3} />
+      <TableSkeleton columns={8} rows={10} />
+      <PaginationSkeleton />
+    </div>
+  );
+}
+
 export default function OrdersPage() {
+  const { formatCurrency } = useCurrency();
   const [page, setPage] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
@@ -192,19 +209,19 @@ export default function OrdersPage() {
   if (!storeId && !storeLoading) {
     return (
       <div className="p-8">
-        <h1 className="text-2xl font-bold mb-4">Siparişler</h1>
         <p className="text-muted-foreground">Lütfen önce bir mağaza seçin.</p>
       </div>
     );
   }
+
+  if (isLoading) return <OrdersPageSkeleton />;
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Siparişler</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-muted-foreground">
             {data?.totalElements
               ? `${statusFilter ? orderStatusLabels[statusFilter] + " - " : ""}${data.totalElements} sipariş`
               : "Siparişler yükleniyor..."}
@@ -231,8 +248,8 @@ export default function OrdersPage() {
 
       {/* Sync Result */}
       {syncMutation.isSuccess && (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-          <p className="text-green-800 text-sm">
+        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+          <p className="text-green-800 dark:text-green-200 text-sm">
             Senkronizasyon tamamlandı! Çekilen: {syncMutation.data.totalFetched}
             , Kaydedilen: {syncMutation.data.totalSaved}, Güncellenen:{" "}
             {syncMutation.data.totalUpdated}
@@ -241,8 +258,8 @@ export default function OrdersPage() {
       )}
 
       {syncMutation.isError && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-800 text-sm">
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+          <p className="text-red-800 dark:text-red-200 text-sm">
             Senkronizasyon başarısız: {syncMutation.error.message}
           </p>
         </div>
@@ -250,17 +267,17 @@ export default function OrdersPage() {
 
       {/* Error State */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-800 text-sm">
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+          <p className="text-red-800 dark:text-red-200 text-sm">
             Siparişler yüklenirken hata: {error.message}
           </p>
         </div>
       )}
 
       {/* Filters */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4">
+      <div className="bg-card rounded-lg border border-border p-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-          <div className="flex items-center gap-2 text-sm text-gray-500">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Filter className="h-4 w-4" />
             <span>Filtreler</span>
           </div>
@@ -268,7 +285,7 @@ export default function OrdersPage() {
           <div className="flex flex-wrap items-center gap-3 flex-1">
             {/* Search Input */}
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 type="search"
                 placeholder="Sipariş veya ürün ara..."
@@ -302,7 +319,7 @@ export default function OrdersPage() {
                 variant="ghost"
                 size="sm"
                 onClick={clearFilters}
-                className="h-9 px-3 text-gray-500 hover:text-gray-700"
+                className="h-9 px-3 text-muted-foreground hover:text-foreground"
               >
                 <X className="h-4 w-4 mr-1" />
                 Filtreleri Temizle
@@ -313,7 +330,7 @@ export default function OrdersPage() {
       </div>
 
       {/* Orders Table */}
-      <div className="bg-white rounded-lg border border-gray-200">
+      <div className="bg-card rounded-lg border border-border">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -329,20 +346,13 @@ export default function OrdersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={8} className="h-24 text-center">
-                    <RefreshCw className="h-5 w-5 animate-spin mx-auto mb-2" />
-                    Siparişler yükleniyor...
-                  </TableCell>
-                </TableRow>
-              ) : filteredOrders.length === 0 ? (
+              {filteredOrders.length === 0 ? (
                 <TableRow>
                   <TableCell
                     colSpan={8}
-                    className="h-24 text-center text-gray-500"
+                    className="h-24 text-center text-muted-foreground"
                   >
-                    <Package className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                    <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
                     {hasActiveFilters
                       ? "Filtrelere uygun sipariş bulunamadı"
                       : "Sipariş bulunamadı"}
@@ -352,7 +362,7 @@ export default function OrdersPage() {
                 filteredOrders.map((order: TrendyolOrder) => (
                   <React.Fragment key={order.id}>
                     <TableRow
-                      className="hover:bg-gray-50 cursor-pointer"
+                      className="hover:bg-muted cursor-pointer"
                       onClick={() => toggleOrderExpand(order.id)}
                     >
                       <TableCell>
@@ -369,7 +379,7 @@ export default function OrdersPage() {
                           <p className="font-medium text-sm">
                             {order.tyOrderNumber}
                           </p>
-                          <p className="text-xs text-gray-500">
+                          <p className="text-xs text-muted-foreground">
                             Paket: {order.packageNo}
                           </p>
                         </div>
@@ -379,20 +389,20 @@ export default function OrdersPage() {
                       </TableCell>
                       <TableCell className="text-right">
                         <span className="font-medium">
-                          {formatCurrency(order.totalPrice)} TL
+                          {formatCurrency(order.totalPrice)}
                         </span>
-                        <p className="text-xs text-gray-500">
-                          Brüt: {formatCurrency(order.grossAmount)} TL
+                        <p className="text-xs text-muted-foreground">
+                          Brüt: {formatCurrency(order.grossAmount)}
                         </p>
                       </TableCell>
                       <TableCell className="text-right">
                         <span className="text-sm text-orange-600">
-                          {formatCurrency(order.estimatedCommission)} TL
+                          {formatCurrency(order.estimatedCommission)}
                         </span>
                       </TableCell>
                       <TableCell className="text-right">
                         <span className="text-sm text-red-600">
-                          {formatCurrency(order.stoppage)} TL
+                          {formatCurrency(order.stoppage)}
                         </span>
                       </TableCell>
                       <TableCell className="text-center">
@@ -407,7 +417,7 @@ export default function OrdersPage() {
                         </span>
                       </TableCell>
                       <TableCell className="text-center">
-                        <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 text-xs font-medium">
+                        <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-muted text-xs font-medium">
                           {order.orderItems.length}
                         </span>
                       </TableCell>
@@ -430,8 +440,8 @@ export default function OrdersPage() {
 
         {/* Pagination */}
         {data && data.totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200">
-            <p className="text-sm text-gray-500">
+          <div className="flex items-center justify-between px-4 py-3 border-t border-border">
+            <p className="text-sm text-muted-foreground">
               Sayfa {data.number + 1} / {data.totalPages} ({data.totalElements}{" "}
               sipariş)
             </p>

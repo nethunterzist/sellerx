@@ -51,7 +51,21 @@ public class StoreExpense {
     
     @Column(name = "amount", nullable = false, precision = 10, scale = 2)
     private BigDecimal amount;
-    
+
+    // VAT fields for KDV Mahsuplasmasi
+    @Column(name = "vat_rate")
+    private Integer vatRate; // 0, 1, 10, or 20 percent
+
+    @Column(name = "vat_amount", precision = 10, scale = 2)
+    private BigDecimal vatAmount;
+
+    @Column(name = "is_vat_deductible")
+    @Builder.Default
+    private Boolean isVatDeductible = true;
+
+    @Column(name = "net_amount", precision = 10, scale = 2)
+    private BigDecimal netAmount; // amount - vatAmount
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
     
@@ -68,5 +82,23 @@ public class StoreExpense {
     @PreUpdate
     void preUpdate() {
         updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * Calculate VAT amount based on amount and vatRate
+     * Amount is VAT-EXCLUSIVE (KDV hariç) - user enters net amount
+     * VAT = Amount * vatRate / 100
+     */
+    public void calculateVatFields() {
+        if (this.amount != null && this.vatRate != null && this.vatRate > 0) {
+            // VAT Amount = Amount * vatRate / 100 for VAT-exclusive amounts
+            this.vatAmount = this.amount.multiply(BigDecimal.valueOf(this.vatRate))
+                    .divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
+            // netAmount = amount (since amount is already VAT-exclusive)
+            this.netAmount = this.amount;
+        } else {
+            this.vatAmount = BigDecimal.ZERO;
+            this.netAmount = this.amount;
+        }
     }
 }

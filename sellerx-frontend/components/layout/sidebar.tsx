@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { useSidebar } from "@/lib/contexts/sidebar-context";
 import {
   LayoutDashboard,
   Package,
@@ -11,32 +11,53 @@ import {
   ChevronLeft,
   ChevronRight,
   Store,
-  TrendingUp,
-  BarChart3,
   ShoppingCart,
-  Receipt,
+  Wallet,
+  RotateCcw,
+  Sparkles,
+  Megaphone,
+  Truck,
+  Compass,
+  FileText,
+  Calculator,
+  LifeBuoy,
+  Bell,
+  TrendingUp,
+  Trophy,
+  Activity,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 interface SidebarItem {
   icon: React.ElementType;
   label: string;
   href: string;
+  badge?: string;
 }
 
 const menuItems: SidebarItem[] = [
   { icon: LayoutDashboard, label: "Kontrol Paneli", href: "/dashboard" },
   { icon: Package, label: "Ürünler", href: "/products" },
+  { icon: Trophy, label: "Buybox Takip", href: "/buybox" },
+  { icon: Activity, label: "Stok Takip", href: "/stock-tracking" },
   { icon: ShoppingCart, label: "Siparişler", href: "/orders" },
-  { icon: Receipt, label: "Giderler", href: "/expenses" },
-  { icon: TrendingUp, label: "Kârlılık", href: "/profit" },
-  { icon: BarChart3, label: "Analitik", href: "/analytics" },
+  { icon: Wallet, label: "Giderler", href: "/expenses" },
+  { icon: TrendingUp, label: "Kâr Analizi", href: "/profit" },
+  { icon: FileText, label: "Faturalar", href: "/financial/invoices" },
+  { icon: Calculator, label: "KDV", href: "/kdv" },
+  { icon: Compass, label: "Dümen", href: "/dumen" },
+  { icon: Truck, label: "Satın Alma", href: "/purchasing" },
+  { icon: RotateCcw, label: "İadeler", href: "/returns" },
+  { icon: Sparkles, label: "Müşteri Soruları", href: "/qa", badge: "AI" },
+  { icon: Bell, label: "Uyarılar", href: "/alerts" },
   { icon: Store, label: "Mağazalar", href: "/new-store" },
+  { icon: LifeBuoy, label: "Destek", href: "/support" },
   { icon: Settings, label: "Ayarlar", href: "/settings" },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
-  const [collapsed, setCollapsed] = useState(false);
+  const { collapsed, toggleCollapsed } = useSidebar();
 
   // Extract locale-independent path for comparison
   const currentPath = pathname.replace(/^\/(tr|en)/, "") || "/dashboard";
@@ -44,20 +65,20 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        "fixed left-0 top-0 z-40 h-screen bg-[#333333] transition-all duration-300",
+        "fixed left-0 top-0 z-40 h-screen bg-sidebar transition-all duration-300",
         collapsed ? "w-[60px]" : "w-[220px]"
       )}
     >
       {/* Logo Area */}
-      <div className="flex h-14 items-center justify-between border-b border-[#444444] px-4">
+      <div className="flex h-14 items-center justify-between border-b border-sidebar-border px-4">
         {!collapsed && (
           <Link href="/dashboard" className="flex items-center gap-2">
-            <span className="text-lg font-semibold text-white">sellerx</span>
+            <span className="text-lg font-semibold text-sidebar-foreground">sellerx</span>
           </Link>
         )}
         <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="flex h-8 w-8 items-center justify-center rounded bg-white/10 text-white hover:bg-white/20 transition-colors"
+          onClick={toggleCollapsed}
+          className="flex h-8 w-8 items-center justify-center rounded bg-sidebar-accent text-sidebar-foreground hover:bg-sidebar-accent/80 transition-colors"
           aria-label={collapsed ? "Kenar çubuğunu genişlet" : "Kenar çubuğunu daralt"}
         >
           {collapsed ? (
@@ -81,45 +102,26 @@ export function Sidebar() {
               className={cn(
                 "flex items-center gap-3 rounded px-3 py-2.5 text-sm font-medium transition-colors",
                 isActive
-                  ? "bg-white/10 text-white"
-                  : "text-white/70 hover:bg-white/5 hover:text-white"
+                  ? "bg-sidebar-accent text-sidebar-foreground"
+                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
               )}
             >
               <Icon className="h-5 w-5 flex-shrink-0" />
-              {!collapsed && <span>{item.label}</span>}
+              {!collapsed && (
+                <span className="flex items-center gap-2">
+                  {item.label}
+                  {item.badge && (
+                    <Badge variant="default" className="bg-gradient-to-r from-violet-500 to-purple-600 text-[10px] px-1.5 py-0 h-4 font-medium">
+                      {item.badge}
+                    </Badge>
+                  )}
+                </span>
+              )}
             </Link>
           );
         })}
       </nav>
 
-      {/* Bottom Section - Marketplace Links */}
-      <div className="absolute bottom-4 left-0 right-0 px-2">
-        <div className="border-t border-[#444444] pt-4">
-          {!collapsed && (
-            <div className="px-3 mb-2">
-              <span className="text-xs text-white/50 uppercase">Pazaryerleri</span>
-            </div>
-          )}
-          <Link
-            href="/trendyol"
-            className="flex items-center gap-3 rounded px-3 py-2 text-sm text-white/70 hover:bg-white/5 hover:text-white transition-colors"
-          >
-            <div className="h-5 w-5 rounded bg-[#F27A1A] flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0">
-              T
-            </div>
-            {!collapsed && <span>Trendyol</span>}
-          </Link>
-          <Link
-            href="/hepsiburada"
-            className="flex items-center gap-3 rounded px-3 py-2 text-sm text-white/70 hover:bg-white/5 hover:text-white transition-colors"
-          >
-            <div className="h-5 w-5 rounded bg-[#FF6000] flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0">
-              H
-            </div>
-            {!collapsed && <span>Hepsiburada</span>}
-          </Link>
-        </div>
-      </div>
     </aside>
   );
 }

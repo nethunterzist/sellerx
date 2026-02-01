@@ -31,6 +31,8 @@ import { Button } from "@/components/ui/button";
 import { useUpdateProductCostAndStock } from "@/hooks/queries/use-products";
 import type { TrendyolProduct, CostAndStockInfo } from "@/types/product";
 import { Loader2, Package, TrendingUp } from "lucide-react";
+import { CostHistoryTimeline } from "./cost-history-timeline";
+import { useCurrency } from "@/lib/contexts/currency-context";
 
 const formSchema = z.object({
   quantity: z.coerce.number().min(1, "Miktar en az 1 olmalıdır"),
@@ -47,18 +49,12 @@ interface CostEditModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat("tr-TR", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
-}
-
 function formatDate(dateString: string): string {
   return new Date(dateString).toLocaleDateString("tr-TR");
 }
 
 export function CostEditModal({ product, open, onOpenChange }: CostEditModalProps) {
+  const { formatCurrency } = useCurrency();
   const [error, setError] = useState<string | null>(null);
   const { mutate, isPending } = useUpdateProductCostAndStock();
 
@@ -103,16 +99,8 @@ export function CostEditModal({ product, open, onOpenChange }: CostEditModalProp
     );
   };
 
-  // Calculate totals from cost history
+  // Get cost history from product
   const costHistory = product.costAndStockInfo || [];
-  const totalQuantity = costHistory.reduce((sum, item) => sum + item.quantity, 0);
-  const totalUsed = costHistory.reduce((sum, item) => sum + (item.usedQuantity || 0), 0);
-  const remainingStock = totalQuantity - totalUsed;
-
-  // Get latest cost entry
-  const latestCost = costHistory.length > 0
-    ? costHistory.sort((a, b) => new Date(b.stockDate).getTime() - new Date(a.stockDate).getTime())[0]
-    : null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -128,75 +116,41 @@ export function CostEditModal({ product, open, onOpenChange }: CostEditModalProp
         </DialogHeader>
 
         {/* Product Info Summary */}
-        <div className="grid grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
+        <div className="grid grid-cols-3 gap-4 p-4 bg-muted rounded-lg">
           <div className="text-center">
-            <p className="text-xs text-gray-500">Satış Fiyatı</p>
-            <p className="font-semibold text-lg">{formatCurrency(product.salePrice)} TL</p>
+            <p className="text-xs text-muted-foreground">Satış Fiyatı</p>
+            <p className="font-semibold text-lg text-foreground">{formatCurrency(product.salePrice)}</p>
           </div>
           <div className="text-center">
-            <p className="text-xs text-gray-500">Trendyol Stok</p>
-            <p className="font-semibold text-lg">{product.trendyolQuantity}</p>
+            <p className="text-xs text-muted-foreground">Trendyol Stok</p>
+            <p className="font-semibold text-lg text-foreground">{product.trendyolQuantity}</p>
           </div>
           <div className="text-center">
-            <p className="text-xs text-gray-500">Komisyon</p>
-            <p className="font-semibold text-lg">%{product.commissionRate}</p>
+            <p className="text-xs text-muted-foreground">Komisyon</p>
+            <p className="font-semibold text-lg text-foreground">%{product.commissionRate}</p>
           </div>
         </div>
 
-        {/* Cost History */}
-        {costHistory.length > 0 && (
-          <div className="space-y-3">
-            <h4 className="font-medium text-sm flex items-center gap-2">
-              <TrendingUp className="h-4 w-4" />
-              Maliyet Geçmişi
-            </h4>
-            <div className="border rounded-lg overflow-hidden">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="text-left p-2 font-medium">Tarih</th>
-                    <th className="text-right p-2 font-medium">Adet</th>
-                    <th className="text-right p-2 font-medium">Kalan</th>
-                    <th className="text-right p-2 font-medium">Birim Maliyet</th>
-                    <th className="text-right p-2 font-medium">KDV</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {costHistory
-                    .sort((a, b) => new Date(b.stockDate).getTime() - new Date(a.stockDate).getTime())
-                    .map((entry, index) => (
-                      <tr key={index} className="border-t">
-                        <td className="p-2">{formatDate(entry.stockDate)}</td>
-                        <td className="p-2 text-right">{entry.quantity}</td>
-                        <td className="p-2 text-right">
-                          {entry.quantity - (entry.usedQuantity || 0)}
-                        </td>
-                        <td className="p-2 text-right">{formatCurrency(entry.unitCost)} TL</td>
-                        <td className="p-2 text-right">%{entry.costVatRate}</td>
-                      </tr>
-                    ))}
-                </tbody>
-                <tfoot className="bg-gray-50 font-medium">
-                  <tr className="border-t">
-                    <td className="p-2">Toplam</td>
-                    <td className="p-2 text-right">{totalQuantity}</td>
-                    <td className="p-2 text-right">{remainingStock}</td>
-                    <td className="p-2 text-right">-</td>
-                    <td className="p-2 text-right">-</td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-          </div>
-        )}
+        {/* Cost History Timeline */}
+        <div className="space-y-3">
+          <h4 className="font-medium text-sm flex items-center gap-2">
+            <TrendingUp className="h-4 w-4" />
+            Maliyet Geçmişi & Analiz
+          </h4>
+          <CostHistoryTimeline
+            costHistory={costHistory}
+            salePrice={product.salePrice}
+            vatRate={product.vatRate}
+          />
+        </div>
 
         {/* Add New Cost Form */}
         <div className="space-y-4 pt-4 border-t">
           <h4 className="font-medium text-sm">Yeni Maliyet Ekle</h4>
 
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-              <p className="text-red-800 text-sm">{error}</p>
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
+              <p className="text-red-800 dark:text-red-200 text-sm">{error}</p>
             </div>
           )}
 
@@ -290,11 +244,11 @@ export function CostEditModal({ product, open, onOpenChange }: CostEditModalProp
 
               {/* Cost Preview */}
               {form.watch("quantity") > 0 && form.watch("unitCost") > 0 && (
-                <div className="p-3 bg-blue-50 rounded-lg">
-                  <p className="text-sm text-blue-800">
+                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                  <p className="text-sm text-blue-800 dark:text-blue-200">
                     <span className="font-medium">Toplam Maliyet:</span>{" "}
-                    {formatCurrency(form.watch("quantity") * form.watch("unitCost"))} TL
-                    {" "}({form.watch("quantity")} adet × {formatCurrency(form.watch("unitCost"))} TL)
+                    {formatCurrency(form.watch("quantity") * form.watch("unitCost"))}
+                    {" "}({form.watch("quantity")} adet × {formatCurrency(form.watch("unitCost"))})
                   </p>
                 </div>
               )}

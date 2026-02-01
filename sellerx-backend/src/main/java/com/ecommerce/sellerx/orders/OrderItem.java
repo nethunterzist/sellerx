@@ -36,7 +36,14 @@ public class OrderItem {
     
     @JsonProperty("vatBaseAmount")
     private BigDecimal vatBaseAmount;
-    
+
+    // VAT fields for KDV Mahsuplasmasi
+    @JsonProperty("saleVatRate")
+    private Integer saleVatRate; // VAT rate from product (e.g., 1, 10, 20)
+
+    @JsonProperty("saleVatAmount")
+    private BigDecimal saleVatAmount; // Calculated: price * vatRate / (100 + vatRate)
+
     @JsonProperty("price")
     private BigDecimal price; // This is the actual price after discounts
     

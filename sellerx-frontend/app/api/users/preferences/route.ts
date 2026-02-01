@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
 const API_BASE_URL = process.env.API_BASE_URL;
+const isDev = process.env.NODE_ENV === "development";
 
 // GET user preferences
 export async function GET() {
@@ -45,7 +46,7 @@ export async function GET() {
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error("[API] /users/preferences GET error:", error);
+    if (isDev) console.error("[API] /users/preferences GET error:", error);
     // Return defaults on error
     return NextResponse.json({
       language: "tr",
@@ -97,7 +98,7 @@ export async function PUT(request: NextRequest) {
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error("[API] /users/preferences PUT error:", error);
+    if (isDev) console.error("[API] /users/preferences PUT error:", error);
     return NextResponse.json(
       { error: "Sunucu hatası" },
       { status: 500 },

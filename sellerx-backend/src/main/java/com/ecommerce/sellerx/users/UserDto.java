@@ -16,6 +16,7 @@ public class UserDto {
     private String email;
     @JsonInclude(JsonInclude.Include.NON_NULL) //alt satırdaki değer null değilse gönder
     private String phoneNumber;
+    private Role role;
     //@JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     //private LocalDateTime createdAt;
 }

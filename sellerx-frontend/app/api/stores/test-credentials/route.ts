@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
 const API_BASE_URL = process.env.API_BASE_URL;
+const isDev = process.env.NODE_ENV === "development";
 
 export async function POST(request: NextRequest) {
   try {
@@ -58,7 +59,7 @@ export async function POST(request: NextRequest) {
       ...data
     });
   } catch (error) {
-    console.error("Test credentials error:", error);
+    if (isDev) console.error("Test credentials error:", error);
     return NextResponse.json(
       {
         connected: false,

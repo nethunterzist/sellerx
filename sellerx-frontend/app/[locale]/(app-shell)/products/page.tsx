@@ -4,11 +4,15 @@ import { useState } from "react";
 import { useSelectedStore } from "@/hooks/queries/use-stores";
 import {
   useProductsByStorePaginatedFull,
-  useSyncProducts,
+  useBulkUpdateCosts,
 } from "@/hooks/queries/use-products";
-import { useSyncStockOrders } from "@/hooks/queries/use-stock-sync";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   Table,
   TableBody,
@@ -17,19 +21,50 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { RefreshCw, Search, ChevronLeft, ChevronRight, ExternalLink, Coins, Package } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, Coins, Download, Upload, FileSpreadsheet, ExternalLink } from "lucide-react";
+import ExcelJS from "exceljs";
+import { saveAs } from "file-saver";
 import { cn } from "@/lib/utils";
 import type { TrendyolProduct } from "@/types/product";
 import { CostEditModal } from "@/components/products/cost-edit-modal";
+import { useCurrency } from "@/lib/contexts/currency-context";
+import {
+  FilterBarSkeleton,
+  TableSkeleton,
+  PaginationSkeleton,
+} from "@/components/ui/skeleton-blocks";
 
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat("tr-TR", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
+// Get the latest (most recent) cost from costAndStockInfo array
+function getLatestCost(product: TrendyolProduct): number | null {
+  if (!product.costAndStockInfo || product.costAndStockInfo.length === 0) {
+    return null;
+  }
+  // Sort by date descending and get the first one
+  const sorted = [...product.costAndStockInfo].sort((a, b) =>
+    new Date(b.stockDate).getTime() - new Date(a.stockDate).getTime()
+  );
+  return sorted[0].unitCost;
+}
+
+const PRODUCT_NAME_LIMIT = 40;
+
+function truncateText(text: string, limit: number): string {
+  if (text.length <= limit) return text;
+  return text.slice(0, limit) + "...";
+}
+
+function ProductsPageSkeleton() {
+  return (
+    <div className="space-y-6">
+      <FilterBarSkeleton showSearch={true} buttonCount={3} />
+      <TableSkeleton columns={8} rows={10} showImage={true} />
+      <PaginationSkeleton />
+    </div>
+  );
 }
 
 export default function ProductsPage() {
+  const { formatCurrency } = useCurrency();
   const [page, setPage] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [costModalOpen, setCostModalOpen] = useState(false);
@@ -44,24 +79,149 @@ export default function ProductsPage() {
     sortDirection: "desc",
   });
 
-  const syncMutation = useSyncProducts();
-  const stockSyncMutation = useSyncStockOrders();
-
-  const handleSync = () => {
-    if (storeId) {
-      syncMutation.mutate(storeId);
-    }
-  };
-
-  const handleStockSync = () => {
-    if (storeId) {
-      stockSyncMutation.mutate(storeId);
-    }
-  };
+  const bulkCostMutation = useBulkUpdateCosts();
 
   const handleOpenCostModal = (product: TrendyolProduct) => {
     setSelectedProduct(product);
     setCostModalOpen(true);
+  };
+
+  // Excel Export - Download cost template with current data
+  const handleExportExcel = async () => {
+    if (!data?.products || data.products.length === 0) return;
+
+    const todayStr = new Date().toISOString().split("T")[0];
+    const exportData = data.products.map((product: TrendyolProduct) => {
+      const latestCost = getLatestCost(product);
+      return {
+        "Barkod": product.barcode,
+        "Ürün Adı": product.title,
+        "Marka": product.brand,
+        "Satış Fiyatı (TL)": product.salePrice,
+        "Stok": product.trendyolQuantity,
+        "Mevcut Maliyet (TL)": latestCost ?? "",
+        "Yeni Maliyet (TL)": "",
+        "Stok Tarihi (YYYY-MM-DD)": todayStr,
+        "KDV Oranı (%)": latestCost ? (product.costAndStockInfo?.[0]?.costVatRate ?? 18) : 18,
+        "Stok Adedi": "",
+      };
+    });
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Ürün Maliyetleri");
+
+    // Add header row
+    const headers = Object.keys(exportData[0]);
+    worksheet.addRow(headers);
+
+    // Add data rows
+    exportData.forEach((row) => {
+      worksheet.addRow(Object.values(row));
+    });
+
+    // Set column widths
+    const colWidths = [18, 50, 15, 15, 10, 18, 18, 22, 12, 12];
+    worksheet.columns.forEach((col, i) => {
+      col.width = colWidths[i] || 15;
+    });
+
+    // Write to buffer and save
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    saveAs(blob, `urun-maliyetleri-${todayStr}.xlsx`);
+  };
+
+  // Excel Import - Read and process uploaded file
+  const handleImportExcel = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !storeId) return;
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const arrayBuffer = e.target?.result as ArrayBuffer;
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.load(arrayBuffer);
+        const worksheet = workbook.worksheets[0];
+
+        if (!worksheet) {
+          alert("Excel dosyasında sayfa bulunamadı.");
+          return;
+        }
+
+        // Get headers from first row
+        const headerRow = worksheet.getRow(1);
+        const headers: string[] = [];
+        headerRow.eachCell((cell, colNumber) => {
+          headers[colNumber] = cell.value?.toString() || "";
+        });
+
+        // Process data rows
+        const todayStr = new Date().toISOString().split("T")[0];
+        const updates: Array<{
+          barcode: string;
+          unitCost: number;
+          costVatRate: number;
+          quantity: number;
+          stockDate: string;
+        }> = [];
+
+        worksheet.eachRow((row, rowNumber) => {
+          if (rowNumber === 1) return; // Skip header
+
+          const rowData: Record<string, any> = {};
+          row.eachCell((cell, colNumber) => {
+            const header = headers[colNumber];
+            if (header) {
+              rowData[header] = cell.value;
+            }
+          });
+
+          const barcode = rowData["Barkod"]?.toString();
+          const newCost = parseFloat(rowData["Yeni Maliyet (TL)"]);
+          const vatRate = parseFloat(rowData["KDV Oranı (%)"]) || 18;
+          const quantity = parseInt(rowData["Stok Adedi"]) || 1;
+
+          let stockDate = rowData["Stok Tarihi (YYYY-MM-DD)"]?.toString() || todayStr;
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(stockDate)) {
+            stockDate = todayStr;
+          }
+
+          if (barcode && !isNaN(newCost) && newCost > 0) {
+            updates.push({ barcode, unitCost: newCost, costVatRate: vatRate, quantity, stockDate });
+          }
+        });
+
+        if (updates.length === 0) {
+          alert("Güncellenecek maliyet bulunamadı. 'Yeni Maliyet (TL)' sütununu doldurun.");
+          return;
+        }
+
+        // Call bulk update API
+        bulkCostMutation.mutate(
+          { storeId, items: updates },
+          {
+            onSuccess: (result) => {
+              let message = `${result.successCount} ürün maliyeti başarıyla güncellendi.`;
+              if (result.failureCount > 0) {
+                message += ` ${result.failureCount} ürün güncellenemedi.`;
+              }
+              alert(message);
+            },
+            onError: (error) => {
+              alert(`Maliyet güncellemesi başarısız: ${error.message}`);
+            },
+          }
+        );
+
+      } catch (error) {
+        console.error("Excel okuma hatası:", error);
+        alert("Excel dosyası okunamadı. Lütfen geçerli bir Excel dosyası yükleyin.");
+      }
+    };
+
+    reader.readAsArrayBuffer(file);
+    event.target.value = "";
   };
 
   // Filter products by search query
@@ -74,114 +234,97 @@ export default function ProductsPage() {
   if (!storeId && !storeLoading) {
     return (
       <div className="p-8">
-        <h1 className="text-2xl font-bold mb-4">Ürünler</h1>
         <p className="text-muted-foreground">Lütfen önce bir mağaza seçin.</p>
       </div>
     );
   }
 
+  if (isLoading) return <ProductsPageSkeleton />;
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Ürünler</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            {data?.totalElements
-              ? `Mağazanızda ${data.totalElements} ürün var`
-              : "Ürünler yükleniyor..."}
-          </p>
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            type="search"
+            placeholder="Ürün ara..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="h-9 w-full pl-9 text-sm bg-gray-200 dark:bg-gray-800 border-0 rounded-md"
+          />
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-            <Input
-              type="search"
-              placeholder="Ürün ara..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-9 w-64 pl-9 text-sm"
-            />
-          </div>
-
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Excel Export */}
           <Button
-            onClick={handleStockSync}
-            disabled={stockSyncMutation.isPending || !storeId}
+            onClick={handleExportExcel}
+            disabled={!data?.products?.length}
             variant="outline"
-            className="gap-2"
+            className="gap-2 border-gray-300 dark:border-gray-600 dark:bg-gray-800/50 dark:hover:bg-gray-700/50"
           >
-            <Package
-              className={cn("h-4 w-4", stockSyncMutation.isPending && "animate-spin")}
-            />
-            {stockSyncMutation.isPending ? "Stok güncelleniyor..." : "Stok Senkronize Et"}
+            <Download className="h-4 w-4" />
+            Excel İndir
           </Button>
 
-          <Button
-            onClick={handleSync}
-            disabled={syncMutation.isPending || !storeId}
-            variant="outline"
-            className="gap-2"
-          >
-            <RefreshCw
-              className={cn("h-4 w-4", syncMutation.isPending && "animate-spin")}
+          {/* Excel Import */}
+          <label>
+            <input
+              type="file"
+              accept=".xlsx,.xls"
+              onChange={handleImportExcel}
+              className="hidden"
+              disabled={!storeId || bulkCostMutation.isPending}
             />
-            {syncMutation.isPending ? "Senkronize ediliyor..." : "Trendyol'dan Senkronize Et"}
-          </Button>
+            <Button
+              variant="outline"
+              className="gap-2 cursor-pointer border-gray-300 dark:border-gray-600 dark:bg-gray-800/50 dark:hover:bg-gray-700/50"
+              disabled={!storeId || bulkCostMutation.isPending}
+              asChild
+            >
+              <span>
+                <Upload className={cn("h-4 w-4", bulkCostMutation.isPending && "animate-spin")} />
+                {bulkCostMutation.isPending ? "Yükleniyor..." : "Excel Yükle"}
+              </span>
+            </Button>
+          </label>
         </div>
       </div>
 
-      {/* Sync Result */}
-      {syncMutation.isSuccess && (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-          <p className="text-green-800 text-sm">
-            Senkronizasyon tamamlandı! Çekilen: {syncMutation.data.totalFetched}, Kaydedilen:{" "}
-            {syncMutation.data.totalSaved}, Güncellenen: {syncMutation.data.totalUpdated}
-          </p>
-        </div>
-      )}
 
-      {syncMutation.isError && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-800 text-sm">
-            Senkronizasyon başarısız: {syncMutation.error.message}
-          </p>
-        </div>
-      )}
-
-      {/* Stock Sync Result */}
-      {stockSyncMutation.isSuccess && (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-          <p className="text-green-800 text-sm flex items-center gap-2">
-            <Package className="h-4 w-4" />
-            Stok senkronizasyonu tamamlandı!{" "}
-            {stockSyncMutation.data.productsProcessed > 0 && (
-              <span>
-                ({stockSyncMutation.data.productsProcessed} ürün işlendi,{" "}
-                {stockSyncMutation.data.productsUpdated} ürün güncellendi)
+      {/* Bulk Cost Update Result */}
+      {bulkCostMutation.isSuccess && (
+        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+          <p className="text-green-800 dark:text-green-200 text-sm flex items-center gap-2">
+            <FileSpreadsheet className="h-4 w-4" />
+            Maliyet güncellemesi tamamlandı! {bulkCostMutation.data.successCount} ürün güncellendi.
+            {bulkCostMutation.data.failureCount > 0 && (
+              <span className="text-yellow-700">
+                ({bulkCostMutation.data.failureCount} ürün güncellenemedi)
               </span>
             )}
           </p>
         </div>
       )}
 
-      {stockSyncMutation.isError && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-800 text-sm">
-            Stok senkronizasyonu başarısız: {stockSyncMutation.error.message}
+      {bulkCostMutation.isError && (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+          <p className="text-red-800 dark:text-red-200 text-sm">
+            Maliyet güncellemesi başarısız: {bulkCostMutation.error.message}
           </p>
         </div>
       )}
 
       {/* Error State */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-800 text-sm">Ürünler yüklenirken hata: {error.message}</p>
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+          <p className="text-red-800 dark:text-red-200 text-sm">Ürünler yüklenirken hata: {error.message}</p>
         </div>
       )}
 
       {/* Products Table */}
-      <div className="bg-white rounded-lg border border-gray-200">
+      <div className="bg-card rounded-lg border border-border">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -189,6 +332,7 @@ export default function ProductsPage() {
                 <TableHead className="w-[80px]">Görsel</TableHead>
                 <TableHead className="min-w-[300px]">Ürün</TableHead>
                 <TableHead className="text-right">Fiyat</TableHead>
+                <TableHead className="text-right">Maliyet</TableHead>
                 <TableHead className="text-right">Stok</TableHead>
                 <TableHead className="text-right">Komisyon</TableHead>
                 <TableHead className="text-center">Durum</TableHead>
@@ -196,55 +340,122 @@ export default function ProductsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading ? (
+              {filteredProducts.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-24 text-center">
-                    <RefreshCw className="h-5 w-5 animate-spin mx-auto mb-2" />
-                    Ürünler yükleniyor...
-                  </TableCell>
-                </TableRow>
-              ) : filteredProducts.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="h-24 text-center text-gray-500">
+                  <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
                     Ürün bulunamadı
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredProducts.map((product: TrendyolProduct) => (
-                  <TableRow key={product.id} className="hover:bg-gray-50">
+                  <TableRow key={product.id} className="hover:bg-muted/50">
                     <TableCell>
-                      {product.image ? (
+                      {/* Product Image - Trendyol Link */}
+                      {product.productUrl ? (
+                        <a
+                          href={product.productUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-shrink-0 group relative"
+                        >
+                          {product.image ? (
+                            <img
+                              src={product.image}
+                              alt={product.title}
+                              className="h-12 w-12 rounded object-cover border border-border group-hover:border-[#F27A1A] transition-colors"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = "https://via.placeholder.com/48?text=No+Image";
+                              }}
+                            />
+                          ) : (
+                            <div className="h-12 w-12 rounded flex items-center justify-center text-xs font-bold text-white group-hover:ring-2 ring-[#F27A1A] transition-all bg-[#F27A1A]">
+                              T
+                            </div>
+                          )}
+                          <div className="absolute -top-1 -right-1 bg-[#F27A1A] rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <ExternalLink className="h-2.5 w-2.5 text-white" />
+                          </div>
+                        </a>
+                      ) : product.image ? (
                         <img
                           src={product.image}
                           alt={product.title}
-                          className="w-12 h-12 object-cover rounded"
+                          className="h-12 w-12 rounded object-cover flex-shrink-0 border border-border"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = "https://via.placeholder.com/48?text=No+Image";
+                          }}
                         />
                       ) : (
-                        <div className="w-12 h-12 bg-gray-100 rounded flex items-center justify-center text-gray-400 text-xs">
-                          Yok
+                        <div className="h-12 w-12 rounded flex items-center justify-center text-xs font-bold text-white flex-shrink-0 bg-[#F27A1A]">
+                          T
                         </div>
                       )}
                     </TableCell>
                     <TableCell>
                       <div className="min-w-0">
-                        <p className="font-medium text-sm text-gray-900 line-clamp-2">
-                          {product.title}
-                        </p>
-                        <p className="text-xs text-gray-500 mt-1">
+                        {product.title.length > PRODUCT_NAME_LIMIT ? (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              {product.productUrl ? (
+                                <a
+                                  href={product.productUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="font-medium text-sm text-foreground hover:text-[#F27A1A] hover:underline cursor-pointer"
+                                >
+                                  {truncateText(product.title, PRODUCT_NAME_LIMIT)}
+                                </a>
+                              ) : (
+                                <p className="font-medium text-sm text-foreground cursor-default">
+                                  {truncateText(product.title, PRODUCT_NAME_LIMIT)}
+                                </p>
+                              )}
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="max-w-[300px]">
+                              <p>{product.title}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        ) : product.productUrl ? (
+                          <a
+                            href={product.productUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-medium text-sm text-foreground hover:text-[#F27A1A] hover:underline cursor-pointer"
+                          >
+                            {product.title}
+                          </a>
+                        ) : (
+                          <p className="font-medium text-sm text-foreground">
+                            {product.title}
+                          </p>
+                        )}
+                        <p className="text-xs text-muted-foreground mt-1">
                           Barkod: {product.barcode}
                         </p>
-                        <p className="text-xs text-gray-400">
+                        <p className="text-xs text-muted-foreground/70">
                           {product.brand} • {product.categoryName}
                         </p>
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
-                      <span className="font-medium">
-                        {formatCurrency(product.salePrice)} TL
+                      <span className="font-medium text-foreground">
+                        {formatCurrency(product.salePrice)}
                       </span>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-muted-foreground">
                         KDV: %{product.vatRate}
                       </p>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {(() => {
+                        const cost = getLatestCost(product);
+                        return cost !== null ? (
+                          <span className="font-medium text-foreground">
+                            {formatCurrency(cost)}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">-</span>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell className="text-right">
                       <span
@@ -261,61 +472,72 @@ export default function ProductsPage() {
                       </span>
                     </TableCell>
                     <TableCell className="text-right">
-                      <span className="text-sm">%{product.commissionRate}</span>
+                      <span className="font-medium text-foreground">
+                        %{product.commissionRate}
+                      </span>
                     </TableCell>
                     <TableCell className="text-center">
                       <div className="flex flex-wrap gap-1 justify-center">
                         {product.onSale && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
-                            Satışta
-                          </span>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 cursor-help">
+                                Satışta
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="max-w-[200px]">
+                              Ürün şu anda Trendyol'da satışa açık
+                            </TooltipContent>
+                          </Tooltip>
                         )}
                         {product.approved && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                            Onaylı
-                          </span>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 cursor-help">
+                                Onaylı
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="max-w-[220px]">
+                              Trendyol içerik ekibi tarafından incelenip onaylanmış
+                            </TooltipContent>
+                          </Tooltip>
                         )}
                         {product.archived && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
-                            Arşivli
-                          </span>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-muted text-muted-foreground cursor-help">
+                                Arşivli
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="max-w-[200px]">
+                              Ürün arşive taşınmış, satışa kapalı
+                            </TooltipContent>
+                          </Tooltip>
                         )}
                         {product.rejected && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
-                            Reddedildi
-                          </span>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 cursor-help">
+                                Reddedildi
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="max-w-[220px]">
+                              Trendyol tarafından reddedildi (kural ihlali veya eksik bilgi)
+                            </TooltipContent>
+                          </Tooltip>
                         )}
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleOpenCostModal(product)}
-                          className="h-8 text-orange-600 hover:text-orange-800"
-                        >
-                          <Coins className="h-4 w-4 mr-1" />
-                          Maliyet
-                        </Button>
-                        {product.productUrl && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            asChild
-                            className="h-8 text-blue-600 hover:text-blue-800"
-                          >
-                            <a
-                              href={product.productUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              <ExternalLink className="h-4 w-4 mr-1" />
-                              Görüntüle
-                            </a>
-                          </Button>
-                        )}
-                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleOpenCostModal(product)}
+                        className="h-8 text-foreground dark:bg-gray-700/50 dark:hover:bg-gray-600/50 border dark:border-gray-600"
+                      >
+                        <Coins className="h-4 w-4 mr-1" />
+                        Maliyet
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))
@@ -326,27 +548,85 @@ export default function ProductsPage() {
 
         {/* Pagination */}
         {data && data.totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200">
-            <p className="text-sm text-gray-500">
+          <div className="flex items-center justify-between px-4 py-3 border-t border-border">
+            <p className="text-sm text-muted-foreground">
               Sayfa {data.currentPage + 1} / {data.totalPages} ({data.totalElements} ürün)
             </p>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
+              {/* Previous Button */}
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setPage((p) => Math.max(0, p - 1))}
                 disabled={data.isFirst}
+                className="h-8 w-8 p-0"
               >
                 <ChevronLeft className="h-4 w-4" />
-                Önceki
               </Button>
+
+              {/* Page Numbers */}
+              {(() => {
+                const totalPages = data.totalPages;
+                const currentPage = data.currentPage;
+                const pages: (number | string)[] = [];
+
+                if (totalPages <= 7) {
+                  // Show all pages if 7 or fewer
+                  for (let i = 0; i < totalPages; i++) pages.push(i);
+                } else {
+                  // Always show first page
+                  pages.push(0);
+
+                  if (currentPage > 3) {
+                    pages.push("...");
+                  }
+
+                  // Show pages around current
+                  const start = Math.max(1, currentPage - 1);
+                  const end = Math.min(totalPages - 2, currentPage + 1);
+
+                  for (let i = start; i <= end; i++) {
+                    if (!pages.includes(i)) pages.push(i);
+                  }
+
+                  if (currentPage < totalPages - 4) {
+                    pages.push("...");
+                  }
+
+                  // Always show last page
+                  if (!pages.includes(totalPages - 1)) {
+                    pages.push(totalPages - 1);
+                  }
+                }
+
+                return pages.map((p, idx) =>
+                  p === "..." ? (
+                    <span key={`ellipsis-${idx}`} className="px-2 text-muted-foreground">...</span>
+                  ) : (
+                    <Button
+                      key={p}
+                      variant={currentPage === p ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setPage(p as number)}
+                      className={cn(
+                        "h-8 w-8 p-0",
+                        currentPage === p && "bg-primary text-primary-foreground"
+                      )}
+                    >
+                      {(p as number) + 1}
+                    </Button>
+                  )
+                );
+              })()}
+
+              {/* Next Button */}
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setPage((p) => p + 1)}
                 disabled={data.isLast}
+                className="h-8 w-8 p-0"
               >
-                Sonraki
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>

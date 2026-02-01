@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import createMiddleware from "next-intl/middleware";
 import { routing } from "./i18n/routing";
-import { checkAuthentication } from "@/lib/auth/middleware-auth";
 
 // next-intl middleware'ini oluştur
 const handleI18nRouting = createMiddleware(routing);
@@ -53,17 +52,33 @@ function redirectToDashboard(request: NextRequest, pathname: string) {
   return NextResponse.redirect(new URL(`${pathname}/dashboard`, request.url));
 }
 
-export default async function middleware(request: NextRequest) {
+// Basit cookie-based auth kontrolü (backend'e istek atmadan)
+function hasAuthCookie(request: NextRequest): boolean {
+  const accessToken = request.cookies.get("access_token")?.value;
+  const refreshToken = request.cookies.get("refreshToken")?.value;
+  const hasAuth = !!(accessToken || refreshToken);
+
+  // Development logging
+  if (process.env.NODE_ENV === "development") {
+    const pathname = request.nextUrl.pathname;
+    if (!hasAuth) {
+      console.log(`[MIDDLEWARE] No auth cookie for: ${pathname}`);
+    }
+  }
+
+  return hasAuth;
+}
+
+export default function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Auth kontrolü - sadece cookie varlığına bak
   if (!isPublicRoute(pathname)) {
-    const authResult = await checkAuthentication(request);
-    if (!authResult.isAuthenticated) {
+    if (!hasAuthCookie(request)) {
+      if (process.env.NODE_ENV === "development") {
+        console.log(`[MIDDLEWARE] Redirecting to sign-in: ${pathname}`);
+      }
       return redirectToSignIn(request, pathname);
-    }
-
-    if (authResult.response) {
-      return authResult.response;
     }
   }
 

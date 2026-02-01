@@ -1,5 +1,6 @@
 package com.ecommerce.sellerx.auth;
 
+import com.ecommerce.sellerx.common.exception.JwtAuthenticationException;
 import com.ecommerce.sellerx.users.User;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
@@ -54,15 +55,15 @@ public class JwtService {
     }    public Long getUserIdFromToken(HttpServletRequest request) {
         String authHeader = request.getHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            throw new RuntimeException("JWT token not found");
+            throw JwtAuthenticationException.tokenNotFound();
         }
-        
+
         String token = authHeader.substring(7);
         Jwt jwt = parseToken(token);
         if (jwt == null) {
-            throw new RuntimeException("Invalid JWT token");
+            throw JwtAuthenticationException.invalidToken();
         }
-        
+
         return jwt.getUserId();
     }
 }

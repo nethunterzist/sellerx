@@ -105,3 +105,33 @@ export function useSetSelectedStore() {
     },
   });
 }
+
+// Cancel sync mutation
+export function useCancelSync() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: storeApi.cancelSync,
+    onSuccess: (_, storeId) => {
+      // Invalidate store queries to refresh status
+      queryClient.invalidateQueries({ queryKey: storeKeys.detail(storeId) });
+      queryClient.invalidateQueries({ queryKey: storeKeys.my() });
+      queryClient.invalidateQueries({ queryKey: storeKeys.selected() });
+    },
+  });
+}
+
+// Retry sync mutation
+export function useRetrySync() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: storeApi.retrySync,
+    onSuccess: (_, storeId) => {
+      // Invalidate store queries to refresh status
+      queryClient.invalidateQueries({ queryKey: storeKeys.detail(storeId) });
+      queryClient.invalidateQueries({ queryKey: storeKeys.my() });
+      queryClient.invalidateQueries({ queryKey: storeKeys.selected() });
+    },
+  });
+}

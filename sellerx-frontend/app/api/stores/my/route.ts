@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { logger } from "@/lib/logger";
 
 const API_BASE_URL = process.env.API_BASE_URL;
 
@@ -29,7 +30,7 @@ export async function GET() {
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error("[API] /stores/my error:", error);
+    logger.error("GET /stores/my error", { endpoint: "/stores/my", error });
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },

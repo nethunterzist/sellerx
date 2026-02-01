@@ -1,0 +1,62 @@
+# Test Configuration for SellerX Backend
+# Uses TestContainers for PostgreSQL integration tests
+# Note: Datasource is auto-configured by @ServiceConnection in BaseIntegrationTest
+
+spring:
+  # Hibernate settings for tests
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  # HikariCP settings for TestContainers - prevents connection timeout issues
+  datasource:
+    hikari:
+      minimum-idle: 1
+      maximum-pool-size: 5
+      connection-timeout: 60000
+      idle-timeout: 30000
+      max-lifetime: 60000
+      validation-timeout: 5000
+      connection-test-query: SELECT 1
+
+  # Disable Flyway in tests - use Hibernate ddl-auto instead
+  flyway:
+    enabled: false
+
+  # Disable scheduled tasks in tests
+  task:
+    scheduling:
+      pool:
+        size: 1
+
+  # JWT Configuration for tests (must be 32+ characters for HMAC-SHA256)
+  jwt:
+    secret: test-jwt-secret-key-for-integration-tests-minimum-256-bits-required
+    accessTokenExpiration: 3600
+    refreshTokenExpiration: 604800
+
+# Trendyol API - disabled/mocked in tests
+trendyol:
+  api:
+    base-url: https://api.trendyol.com/sapigw
+    rate-limit: 100
+
+# Webhook configuration for tests
+webhook:
+  base-url: http://localhost:8080
+  signature:
+    secret: test-webhook-signature-secret
+
+# Logging configuration for tests
+logging:
+  level:
+    root: WARN
+    com.ecommerce.sellerx: DEBUG
+    org.springframework.security: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    org.testcontainers: INFO

@@ -1,25 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
-    console.log("Login request to:", `${process.env.API_BASE_URL}/auth/login`);
-
     const backendRes = await fetch(`${process.env.API_BASE_URL}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
+      credentials: "include",
     });
 
-    console.log("Backend response status:", backendRes.status);
-
-    // Backend'den dönen Set-Cookie header'larını al
-    const setCookie = backendRes.headers.get("set-cookie");
+    // Backend'den dönen TÜM Set-Cookie header'larını al
+    const setCookies = backendRes.headers.getSetCookie();
 
     // Response body'sini text olarak al, sonra JSON parse et
     const text = await backendRes.text();
-    console.log("Backend response body:", text);
 
     let data;
     try {
@@ -30,14 +27,16 @@ export async function POST(req: NextRequest) {
 
     const response = NextResponse.json(data, { status: backendRes.status });
 
-    // Cookie'yi Next.js response'una ekle
-    if (setCookie) {
-      response.headers.set("set-cookie", setCookie);
+    // TÜM Cookie'leri Next.js response'una ekle
+    if (setCookies && setCookies.length > 0) {
+      setCookies.forEach((cookie) => {
+        response.headers.append("set-cookie", cookie);
+      });
     }
 
     return response;
   } catch (error) {
-    console.error("Login error:", error);
+    logger.error("Login error", { endpoint: "/auth/login", error });
     return NextResponse.json(
       { error: "Backend connection failed", details: String(error) },
       { status: 500 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
 const API_BASE_URL = process.env.API_BASE_URL;
+const isDev = process.env.NODE_ENV === "development";
 
 // PUT change password
 export async function PUT(request: NextRequest) {
@@ -44,7 +45,7 @@ export async function PUT(request: NextRequest) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        currentPassword: body.currentPassword,
+        oldPassword: body.currentPassword,
         newPassword: body.newPassword,
       }),
     });
@@ -71,7 +72,7 @@ export async function PUT(request: NextRequest) {
       message: "Şifre başarıyla değiştirildi",
     });
   } catch (error) {
-    console.error("[API] /users/password PUT error:", error);
+    if (isDev) console.error("[API] /users/password PUT error:", error);
     return NextResponse.json(
       { error: "Sunucu hatası" },
       { status: 500 },

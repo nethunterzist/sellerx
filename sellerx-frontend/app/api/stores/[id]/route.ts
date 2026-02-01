@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { logger } from "@/lib/logger";
 
 const API_BASE_URL = process.env.API_BASE_URL;
 
@@ -34,7 +35,7 @@ export async function GET(
     return NextResponse.json(data);
   } catch (error) {
     const { id } = await params;
-    console.error(`[API] /stores/${id} GET error:`, error);
+    logger.error(`GET /stores/${id} error`, { endpoint: `/stores/${id}`, storeId: id, error });
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },
@@ -77,7 +78,7 @@ export async function PUT(
     return NextResponse.json(data);
   } catch (error) {
     const { id } = await params;
-    console.error(`[API] /stores/${id} PUT error:`, error);
+    logger.error(`PUT /stores/${id} error`, { endpoint: `/stores/${id}`, method: "PUT", storeId: id, error });
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },
@@ -116,7 +117,7 @@ export async function DELETE(
     return new NextResponse(null, { status: 204 });
   } catch (error) {
     const { id } = await params;
-    console.error(`[API] /stores/${id} DELETE error:`, error);
+    logger.error(`DELETE /stores/${id} error`, { endpoint: `/stores/${id}`, method: "DELETE", storeId: id, error });
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },

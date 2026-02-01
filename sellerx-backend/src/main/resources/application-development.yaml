@@ -1,0 +1,35 @@
+# Development profile - Enhanced logging for monitoring
+# Activated when spring.profiles.active=development (set in application.yaml)
+
+# Enable SQL logging in development
+spring:
+  jpa:
+    show-sql: true
+
+# Development cookie settings - allow HTTP (no HTTPS in local dev)
+app:
+  cookie:
+    secure: false
+    sameSite: Lax
+
+logging:
+  level:
+    # Application packages - DEBUG for detailed tracing
+    com.ecommerce.sellerx: DEBUG
+    com.ecommerce.sellerx.auth: DEBUG
+    com.ecommerce.sellerx.webhook: DEBUG
+    com.ecommerce.sellerx.trendyol: DEBUG
+    com.ecommerce.sellerx.common: DEBUG
+
+    # Hibernate SQL logging
+    org.hibernate.SQL: DEBUG
+    org.hibernate.orm.jdbc.bind: TRACE  # Shows SQL parameter values
+
+    # Spring Security debugging (comment out if too verbose)
+    # org.springframework.security: DEBUG
+
+    # Root logger
+    root: INFO
+
+  pattern:
+    console: "%d{HH:mm:ss.SSS} %clr(%-5level) %clr([%15.15thread]){faint} %clr(%-40.40logger{39}){cyan} : %msg%n"

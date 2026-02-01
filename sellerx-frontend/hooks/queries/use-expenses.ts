@@ -66,7 +66,7 @@ export function useUpdateExpense() {
       data,
     }: {
       storeId: string;
-      expenseId: number;
+      expenseId: string;
       data: UpdateExpenseRequest;
     }) =>
       apiRequest<StoreExpense>(`/expenses/store/${storeId}/${expenseId}`, {
@@ -89,7 +89,7 @@ export function useDeleteExpense() {
       expenseId,
     }: {
       storeId: string;
-      expenseId: number;
+      expenseId: string;
     }) =>
       apiRequest<{ success: boolean }>(
         `/expenses/store/${storeId}/${expenseId}`,

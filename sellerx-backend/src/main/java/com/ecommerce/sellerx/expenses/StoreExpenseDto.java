@@ -19,6 +19,10 @@ public record StoreExpenseDto(
     String frequencyDisplayName,
     String name,
     BigDecimal amount,
+    Integer vatRate,           // null = faturasız işlem
+    BigDecimal vatAmount,
+    Boolean isVatDeductible,
+    BigDecimal netAmount,
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     LocalDateTime createdAt,
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")

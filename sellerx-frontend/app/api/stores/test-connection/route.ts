@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
 const API_BASE_URL = process.env.API_BASE_URL;
+const isDev = process.env.NODE_ENV === "development";
 
 interface TrendyolTestResponse {
   sellerId: string;
@@ -43,7 +44,7 @@ export async function GET() {
     const data: TrendyolTestResponse = await response.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error("Test connection error:", error);
+    if (isDev) console.error("Test connection error:", error);
     return NextResponse.json(
       {
         error: "Failed to test connection",

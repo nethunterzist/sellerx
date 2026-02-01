@@ -29,42 +29,60 @@ public class TrendyolOrderApiResponse {
     
     @Data
     public static class TrendyolOrderContent {
-        
+
         @JsonProperty("orderNumber")
         private String orderNumber;
-        
+
         @JsonProperty("id")
         private Long id; // This is the package number
-        
+
         @JsonProperty("grossAmount")
         private BigDecimal grossAmount;
-        
+
         @JsonProperty("totalDiscount")
         private BigDecimal totalDiscount;
-        
+
         @JsonProperty("totalTyDiscount")
         private BigDecimal totalTyDiscount;
-        
+
         @JsonProperty("totalPrice")
         private BigDecimal totalPrice;
-        
+
         @JsonProperty("lines")
         private List<TrendyolOrderLine> lines;
-        
+
         @JsonProperty("originShipmentDate")
         private Long originShipmentDate; // This will be converted to LocalDateTime
-        
+
         @JsonProperty("shipmentPackageStatus")
         private String shipmentPackageStatus;
-        
+
         @JsonProperty("status")
         private String status;
-        
+
         @JsonProperty("cargoDeci")
         private Integer cargoDeci;
-        
+
         @JsonProperty("cargoTrackingNumber")
         private Long cargoTrackingNumber; // We need this to filter out orders without package numbers
+
+        @JsonProperty("shipmentAddress")
+        private ShipmentAddress shipmentAddress; // Shipment address with city information
+    }
+
+    @Data
+    public static class ShipmentAddress {
+        @JsonProperty("city")
+        private String city;
+
+        @JsonProperty("cityCode")
+        private Integer cityCode;
+
+        @JsonProperty("district")
+        private String district;
+
+        @JsonProperty("districtId")
+        private Integer districtId;
     }
     
     @Data

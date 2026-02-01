@@ -1,4 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
+
+const API_BASE_URL = process.env.API_BASE_URL;
+const isDev = process.env.NODE_ENV === "development";
 
 interface TrendyolTestResponse {
   sellerId: string;
@@ -16,15 +20,21 @@ export async function GET(
 ) {
   try {
     const { id: storeId } = await params;
+    const cookieStore = await cookies();
+    const accessToken = cookieStore.get("access_token")?.value;
+
+    if (!accessToken) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     // Call your backend test endpoint
     const response = await fetch(
-      `${process.env.API_BASE_URL}/trendyol/test-connection`,
+      `${API_BASE_URL}/stores/${storeId}/test-connection`,
       {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          // Add any auth headers if needed
+          Authorization: `Bearer ${accessToken}`,
         },
       },
     );
@@ -37,7 +47,7 @@ export async function GET(
 
     return NextResponse.json(data);
   } catch (error) {
-    console.error("Test connection error:", error);
+    if (isDev) console.error("Test connection error:", error);
     return NextResponse.json(
       {
         error: "Failed to test connection",

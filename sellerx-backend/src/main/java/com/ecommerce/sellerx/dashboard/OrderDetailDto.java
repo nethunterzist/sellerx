@@ -24,4 +24,5 @@ public class OrderDetailDto {
     private BigDecimal grossProfit; // brüt kar
     private BigDecimal stoppage; // stopaj
     private BigDecimal estimatedCommission; // tahmini komisyon
+    private BigDecimal estimatedShippingCost; // tahmini kargo maliyeti
 }

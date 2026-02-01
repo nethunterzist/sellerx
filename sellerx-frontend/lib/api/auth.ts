@@ -16,7 +16,7 @@ export const authApi = {
     return res.json();
   },
 
-  register: async (data: { name: string; email: string; password: string }) => {
+  register: async (data: { name: string; email: string; password: string; referralCode?: string }) => {
     const res = await fetch("/api/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

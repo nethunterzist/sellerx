@@ -1,11 +1,14 @@
 // User Types
 
+export type UserRole = "USER" | "ADMIN";
+
 export interface User {
   id: string;
   email: string;
   name: string;
   phone?: string;
   company?: string;
+  role?: UserRole;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -36,6 +39,8 @@ export interface ChangePasswordResponse {
   message: string;
 }
 
+export type SyncInterval = 0 | 30 | 60 | 120 | 300;
+
 export interface UserPreferences {
   language: "tr" | "en";
   theme: "light" | "dark" | "system";
@@ -47,6 +52,8 @@ export interface UserPreferences {
     stockAlerts: boolean;
     weeklyReport: boolean;
   };
+  /** Auto-refresh interval in seconds. 0 = disabled */
+  syncInterval: SyncInterval;
 }
 
 export interface UpdatePreferencesRequest {
@@ -54,4 +61,6 @@ export interface UpdatePreferencesRequest {
   theme?: "light" | "dark" | "system";
   currency?: "TRY" | "USD" | "EUR";
   notifications?: Partial<UserPreferences["notifications"]>;
+  /** Auto-refresh interval in seconds. 0 = disabled */
+  syncInterval?: SyncInterval;
 }

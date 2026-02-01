@@ -1,6 +1,7 @@
 // app/api/products/store/[id]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { logger } from "@/lib/logger";
 
 const API_BASE_URL = process.env.API_BASE_URL;
 
@@ -16,14 +17,18 @@ export async function GET(
     if (!accessToken) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    console.log("pre");
-    const response = await fetch(`${API_BASE_URL}/products/store/${id}`, {
+
+    // Forward query parameters (page, size, sortBy, sortDirection) to backend
+    const searchParams = request.nextUrl.searchParams;
+    const queryString = searchParams.toString();
+    const url = `${API_BASE_URL}/products/store/${id}${queryString ? `?${queryString}` : ""}`;
+
+    const response = await fetch(url, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
         "Content-Type": "application/json",
       },
     });
-    console.log("post");
 
     if (!response.ok) {
       if (response.status === 401) {
@@ -36,9 +41,9 @@ export async function GET(
     return NextResponse.json(data);
   } catch (error) {
     const { id } = await params;
-    console.error(`[API] /products/store/${id} error:`, error);
+    logger.error(`GET /products/store/${id} error`, { endpoint: `/products/store/${id}`, storeId: id, error });
     return NextResponse.json(
-      { error: "Internal serverrrr error" },
+      { error: "Internal server error" },
       { status: 500 },
     );
   }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { logger } from "@/lib/logger";
 
 const API_BASE_URL = process.env.API_BASE_URL;
 
@@ -29,7 +30,7 @@ export async function GET() {
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error("[API] /stores error:", error);
+    logger.error("GET /stores error", { endpoint: "/stores", error });
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },
@@ -47,6 +48,11 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
+
+    // Inject type into credentials for Jackson polymorphic deserialization
+    if (body.credentials && body.marketplace) {
+      body.credentials.type = body.marketplace;
+    }
 
     const response = await fetch(`${API_BASE_URL}/stores`, {
       method: "POST",
@@ -67,7 +73,7 @@ export async function POST(request: NextRequest) {
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error("[API] /stores POST error:", error);
+    logger.error("POST /stores error", { endpoint: "/stores", method: "POST", error });
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },

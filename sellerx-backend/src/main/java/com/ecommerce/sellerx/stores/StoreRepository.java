@@ -28,4 +28,7 @@ public interface StoreRepository extends JpaRepository<Store, UUID> {
     @Transactional
     @Query("DELETE FROM Store s WHERE s.id = :id AND s.user = :user")
     void deleteByIdAndUser(@Param("id") UUID id, @Param("user") User user);
+
+    // Find all stores that have completed initial sync (ready for scheduled operations)
+    List<Store> findByInitialSyncCompletedTrue();
 }

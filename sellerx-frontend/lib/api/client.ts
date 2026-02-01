@@ -1,5 +1,5 @@
 // Type imports
-import type { DashboardStatsResponse } from "@/types/dashboard";
+import type { DashboardStats, DashboardStatsResponse, MultiPeriodStatsResponse, PLPeriodType } from "@/types/dashboard";
 import type {
   ProductListResponse,
   SyncProductsResponse,
@@ -7,6 +7,18 @@ import type {
 } from "@/types/product";
 import type { TrendyolOrder, SyncOrdersResponse } from "@/types/order";
 import type { PagedResponse } from "@/types/api";
+import type {
+  ReturnAnalyticsResponse,
+  TrendyolClaim,
+  ClaimsPage,
+  ClaimsSyncResponse,
+  ClaimActionResponse,
+  ClaimIssueReason,
+  ClaimsStats,
+  BulkActionResponse,
+} from "@/types/returns";
+
+import { logger } from "@/lib/logger";
 
 // Auth token refresh function with better error handling
 let isRefreshing = false;
@@ -23,12 +35,14 @@ function onRefreshed(success: boolean) {
 
 async function refreshAuthToken(): Promise<boolean> {
   if (isRefreshing) {
+    logger.debug("Token refresh already in progress, waiting", { endpoint: "/api/auth/refresh" });
     return new Promise((resolve) => {
       subscribeTokenRefresh(resolve);
     });
   }
 
   isRefreshing = true;
+  logger.info("Starting token refresh", { endpoint: "/api/auth/refresh" });
 
   try {
     const response = await fetch("/api/auth/refresh", {
@@ -38,9 +52,14 @@ async function refreshAuthToken(): Promise<boolean> {
     });
 
     const success = response.ok;
+    logger.info(`Token refresh ${success ? "successful" : "failed"}`, {
+      endpoint: "/api/auth/refresh",
+      status: response.status,
+    });
     onRefreshed(success);
     return success;
-  } catch {
+  } catch (error) {
+    logger.error("Token refresh error", { endpoint: "/api/auth/refresh", error });
     onRefreshed(false);
     return false;
   } finally {
@@ -57,7 +76,12 @@ export async function apiRequest<T>(
   const url = `/api${endpoint}`;
 
   const makeRequest = async (retryCount = 0): Promise<T> => {
-    // console.log(`[API Request] ${endpoint}, retryCount: ${retryCount}`);
+    const method = options.method || "GET";
+    logger.debug(`${method} ${endpoint}`, {
+      endpoint,
+      method,
+      ...(retryCount > 0 ? { retry: retryCount } : {}),
+    });
 
     const config: RequestInit = {
       headers: {
@@ -69,11 +93,19 @@ export async function apiRequest<T>(
     };
 
     const response = await fetch(url, config);
-    // console.log(`[API Response] ${endpoint}, status: ${response.status}`);
+    logger.debug(`${method} ${endpoint} responded`, {
+      endpoint,
+      method,
+      status: response.status,
+    });
 
     // 401 Unauthorized - Token expired
     if (response.status === 401 && retryCount === 0) {
-      // console.log(`[API] 401 detected, attempting refresh for ${endpoint}`);
+      logger.warn(`401 Unauthorized, attempting token refresh`, {
+        endpoint,
+        method,
+        status: 401,
+      });
       if (!isRefreshing) {
         isRefreshing = true;
 
@@ -81,14 +113,14 @@ export async function apiRequest<T>(
         isRefreshing = false;
 
         if (refreshSuccess) {
-          // console.log(`[API] Refresh successful, retrying ${endpoint}`);
+          logger.info(`Retrying after successful refresh`, { endpoint, method });
           onRefreshed(true);
           // Retry the original request with new token
           return makeRequest(1);
         } else {
           // Refresh failed, redirect to login
           window.location.href = "/sign-in";
-          throw new Error("Kimlik doğrulama başarısız");
+          throw new Error("Kimlik dogrulama basarisiz");
         }
       } else {
         // Already refreshing, wait for it
@@ -98,7 +130,7 @@ export async function apiRequest<T>(
               makeRequest(1).then(resolve).catch(reject);
             } else {
               window.location.href = "/sign-in";
-              reject(new Error("Kimlik doğrulama başarısız"));
+              reject(new Error("Kimlik dogrulama basarisiz"));
             }
           });
         });
@@ -108,7 +140,7 @@ export async function apiRequest<T>(
     if (!response.ok) {
       const error = await response
         .json()
-        .catch(() => ({ message: "Ağ hatası" }));
+        .catch(() => ({ message: "Ag hatasi" }));
       throw new Error(error.message || `HTTP ${response.status}`);
     }
 
@@ -180,6 +212,27 @@ export const storeApi = {
       method: "POST",
       body: JSON.stringify(credentials),
     }),
+  // Get sync progress for a store
+  getSyncProgress: (id: string) =>
+    apiRequest<{
+      syncStatus: string;
+      currentProcessingDate: string | null;
+      completedChunks: number | null;
+      totalChunks: number | null;
+      percentage: number;
+      checkpointDate: string | null;
+      startDate: string | null;
+    }>(`/stores/${id}/sync-progress`),
+  // Cancel sync for a store
+  cancelSync: (id: string) =>
+    apiRequest<string>(`/stores/${id}/cancel-sync`, {
+      method: "POST",
+    }),
+  // Retry sync for a store
+  retrySync: (id: string) =>
+    apiRequest<string>(`/stores/${id}/retry-sync`, {
+      method: "POST",
+    }),
 };
 
 // User API'leri için - Next.js API routes üzerinden
@@ -215,7 +268,21 @@ export const userApi = {
       method: "PUT",
       body: JSON.stringify(data),
     }),
+  // Activity logs
+  getActivityLogs: (limit = 20) =>
+    apiRequest<ActivityLogEntry[]>(`/users/activity-logs?limit=${limit}`),
 };
+
+// Activity Log types
+export interface ActivityLogEntry {
+  id: number;
+  action: string;
+  device: string;
+  browser: string;
+  ipAddress: string;
+  success: boolean;
+  createdAt: string;
+}
 
 // Products API'leri için - Next.js API routes üzerinden
 export const productApi = {
@@ -264,6 +331,42 @@ export const productApi = {
 export const dashboardApi = {
   getStats: (storeId: string) =>
     apiRequest<DashboardStatsResponse>(`/dashboard/stats/${storeId}`),
+
+  getStatsByRange: (
+    storeId: string,
+    startDate: string,
+    endDate: string,
+    periodLabel?: string,
+  ) => {
+    const params = new URLSearchParams({
+      startDate,
+      endDate,
+    });
+    if (periodLabel) {
+      params.append("periodLabel", periodLabel);
+    }
+    return apiRequest<DashboardStats>(
+      `/dashboard/stats/${storeId}/range?${params.toString()}`,
+    );
+  },
+
+  getMultiPeriodStats: (
+    storeId: string,
+    periodType: PLPeriodType = "monthly",
+    periodCount: number = 12,
+    productBarcode?: string,
+  ) => {
+    const params = new URLSearchParams({
+      periodType,
+      periodCount: periodCount.toString(),
+    });
+    if (productBarcode) {
+      params.append("productBarcode", productBarcode);
+    }
+    return apiRequest<MultiPeriodStatsResponse>(
+      `/dashboard/stats/${storeId}/multi-period?${params.toString()}`,
+    );
+  },
 };
 
 // Products API - extended with sync
@@ -299,6 +402,19 @@ export const productApiExtended = {
       method: "PUT",
       body: JSON.stringify(data),
     }),
+  bulkUpdateCosts: (
+    storeId: string,
+    items: Array<{ barcode: string; unitCost: number; costVatRate: number; quantity: number; stockDate: string }>,
+  ) =>
+    apiRequest<{
+      totalProcessed: number;
+      successCount: number;
+      failureCount: number;
+      failedItems: Array<{ barcode: string; reason: string }>;
+    }>(`/products/store/${storeId}/bulk-cost-update`, {
+      method: "POST",
+      body: JSON.stringify({ items }),
+    }),
 };
 
 // Orders API
@@ -326,4 +442,615 @@ export const ordersApi = {
 // Legacy stat API for backwards compatibility
 export const statApi = {
   getAll: () => apiRequest<any[]>("/dashboard/stats"),
+};
+
+// Financial API
+export interface FinancialStats {
+  totalOrders: number;
+  settledOrders: number;
+  notSettledOrders: number;
+  settlementRate: number;
+  transactionStats: {
+    totalSaleTransactions: number;
+    totalReturnTransactions: number;
+    totalSaleRevenue: number;
+    totalReturnAmount: number;
+    netRevenue: number;
+  };
+}
+
+export interface FinancialSyncResponse {
+  message: string;
+  storeId: string;
+}
+
+export const financialApi = {
+  getStats: (storeId: string) =>
+    apiRequest<FinancialStats>(`/financial/stores/${storeId}/stats`),
+
+  sync: (storeId: string) =>
+    apiRequest<FinancialSyncResponse>(`/financial/stores/${storeId}/sync`, {
+      method: "POST",
+    }),
+};
+
+// Webhook API
+export interface WebhookStatus {
+  storeId: string;
+  webhookId: string | null;
+  enabled: boolean;
+  webhookUrl?: string;
+  eventStats: Record<string, number>;
+  totalEvents: number;
+}
+
+export interface WebhookEvent {
+  id: string;
+  eventId: string;
+  storeId: string;
+  sellerId: string;
+  eventType: string;
+  orderNumber: string | null;
+  status: string | null;
+  payload: string | null;
+  processingStatus: "RECEIVED" | "PROCESSING" | "COMPLETED" | "FAILED" | "DUPLICATE";
+  errorMessage: string | null;
+  processingTimeMs: number | null;
+  createdAt: string;
+  processedAt: string | null;
+}
+
+export interface WebhookEventsResponse {
+  content: WebhookEvent[];
+  totalElements: number;
+  totalPages: number;
+  size: number;
+  number: number;
+}
+
+export const webhookApi = {
+  getStatus: (storeId: string) =>
+    apiRequest<WebhookStatus>(`/stores/${storeId}/webhooks/status`),
+
+  enable: (storeId: string) =>
+    apiRequest<{ success: boolean; webhookId?: string; message: string }>(
+      `/stores/${storeId}/webhooks/enable`,
+      { method: "POST" }
+    ),
+
+  disable: (storeId: string) =>
+    apiRequest<{ success: boolean; message: string }>(
+      `/stores/${storeId}/webhooks/disable`,
+      { method: "POST" }
+    ),
+
+  getEvents: (storeId: string, page = 0, size = 20, eventType?: string) => {
+    let url = `/stores/${storeId}/webhooks/events?page=${page}&size=${size}`;
+    if (eventType) {
+      url += `&eventType=${encodeURIComponent(eventType)}`;
+    }
+    return apiRequest<WebhookEventsResponse>(url);
+  },
+
+  test: (storeId: string) =>
+    apiRequest<{ success: boolean; message: string; eventId: string }>(
+      `/stores/${storeId}/webhooks/test`,
+      { method: "POST" }
+    ),
+};
+
+// Returns API
+export const returnsApi = {
+  getAnalytics: (storeId: string, startDate: string, endDate: string) =>
+    apiRequest<ReturnAnalyticsResponse>(
+      `/returns/stores/${storeId}/analytics?startDate=${startDate}&endDate=${endDate}`
+    ),
+
+  getCurrentMonthAnalytics: (storeId: string) =>
+    apiRequest<ReturnAnalyticsResponse>(
+      `/returns/stores/${storeId}/analytics/current-month`
+    ),
+
+  getLast30DaysAnalytics: (storeId: string) =>
+    apiRequest<ReturnAnalyticsResponse>(
+      `/returns/stores/${storeId}/analytics/last-30-days`
+    ),
+};
+
+// Claims API (Trendyol Returns Management)
+export const claimsApi = {
+  // Get claims with pagination and optional filter
+  getClaims: (storeId: string, filter?: string, page = 0, size = 20) => {
+    let url = `/returns/stores/${storeId}/claims?page=${page}&size=${size}`;
+    if (filter) {
+      url += `&status=${filter}`;
+    }
+    return apiRequest<ClaimsPage>(url);
+  },
+
+  // Get single claim detail
+  getClaim: (storeId: string, claimId: string) =>
+    apiRequest<TrendyolClaim>(`/returns/stores/${storeId}/claims/${claimId}`),
+
+  // Sync claims from Trendyol
+  syncClaims: (storeId: string) =>
+    apiRequest<ClaimsSyncResponse>(`/returns/stores/${storeId}/claims/sync`, {
+      method: "POST",
+    }),
+
+  // Approve claim
+  approveClaim: (storeId: string, claimId: string, claimLineItemIds: string[]) =>
+    apiRequest<ClaimActionResponse>(
+      `/returns/stores/${storeId}/claims/${claimId}/approve`,
+      {
+        method: "PUT",
+        body: JSON.stringify({ claimLineItemIds }),
+      }
+    ),
+
+  // Reject claim (create issue)
+  rejectClaim: (
+    storeId: string,
+    claimId: string,
+    reasonId: number,
+    claimItemIds: string[],
+    description?: string
+  ) =>
+    apiRequest<ClaimActionResponse>(
+      `/returns/stores/${storeId}/claims/${claimId}/reject`,
+      {
+        method: "POST",
+        body: JSON.stringify({ reasonId, claimItemIds, description }),
+      }
+    ),
+
+  // Bulk approve claims
+  bulkApproveClaims: (
+    storeId: string,
+    claims: { claimId: string; claimLineItemIds: string[] }[]
+  ) =>
+    apiRequest<BulkActionResponse>(
+      `/returns/stores/${storeId}/claims/bulk-approve`,
+      {
+        method: "POST",
+        body: JSON.stringify({ claims }),
+      }
+    ),
+
+  // Get claims statistics
+  getStats: (storeId: string) =>
+    apiRequest<ClaimsStats>(`/returns/stores/${storeId}/stats`),
+
+  // Get claim issue reasons
+  getIssueReasons: () =>
+    apiRequest<ClaimIssueReason[]>(`/returns/claim-issue-reasons`),
+};
+
+// AI Types
+import type {
+  AiSettings,
+  KnowledgeBaseItem,
+  CreateKnowledgeRequest,
+  AiGenerateResponse,
+  AiApproveRequest,
+} from "@/types/ai";
+
+// Q&A API
+export interface Question {
+  id: string;
+  storeId: string;
+  questionId: string;
+  productId: string;
+  barcode: string;
+  productTitle: string;
+  customerQuestion: string;
+  questionDate: string;
+  status: string;
+  isPublic: boolean;
+  createdAt: string;
+  updatedAt: string;
+  answers?: Answer[];
+}
+
+export interface Answer {
+  id: string;
+  questionId: string;
+  answerText: string;
+  isSubmitted: boolean;
+  submittedAt: string | null;
+  trendyolAnswerId: string | null;
+  createdAt: string;
+}
+
+export interface QaStats {
+  totalQuestions: number;
+  pendingQuestions: number;
+  answeredQuestions: number;
+  todayQuestions: number;
+  averageResponseTimeHours: number;
+}
+
+export interface QaSyncResponse {
+  message: string;
+  synced: number;
+  total: number;
+}
+
+export const qaApi = {
+  getQuestions: (storeId: string, page = 0, size = 20, status?: string) => {
+    let url = `/qa/stores/${storeId}/questions?page=${page}&size=${size}`;
+    if (status) {
+      url += `&status=${status}`;
+    }
+    return apiRequest<PagedResponse<Question>>(url);
+  },
+
+  getQuestion: (questionId: string) =>
+    apiRequest<Question>(`/qa/questions/${questionId}`),
+
+  syncQuestions: (storeId: string) =>
+    apiRequest<QaSyncResponse>(`/qa/stores/${storeId}/questions/sync`, {
+      method: "POST",
+    }),
+
+  getStats: (storeId: string) =>
+    apiRequest<QaStats>(`/qa/stores/${storeId}/stats`),
+
+  // AI endpoints
+  generateAiAnswer: (questionId: string) =>
+    apiRequest<AiGenerateResponse>(`/qa/questions/${questionId}/ai-generate`, {
+      method: "POST",
+    }),
+
+  approveAiAnswer: (questionId: string, data: AiApproveRequest) =>
+    apiRequest<Answer>(`/qa/questions/${questionId}/ai-approve`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+};
+
+// AI Settings API
+export const aiSettingsApi = {
+  get: (storeId: string) =>
+    apiRequest<AiSettings>(`/ai-settings/stores/${storeId}`),
+
+  update: (storeId: string, data: Partial<AiSettings>) =>
+    apiRequest<AiSettings>(`/ai-settings/stores/${storeId}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+};
+
+// Knowledge Base API
+export const knowledgeApi = {
+  getAll: (storeId: string) =>
+    apiRequest<KnowledgeBaseItem[]>(`/knowledge/stores/${storeId}`),
+
+  create: (storeId: string, data: CreateKnowledgeRequest) =>
+    apiRequest<KnowledgeBaseItem>(`/knowledge/stores/${storeId}`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  update: (id: string, data: CreateKnowledgeRequest) =>
+    apiRequest<KnowledgeBaseItem>(`/knowledge/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  delete: (id: string) =>
+    apiRequest<void>(`/knowledge/${id}`, {
+      method: "DELETE",
+    }),
+
+  toggle: (id: string, active: boolean) =>
+    apiRequest<void>(`/knowledge/${id}/toggle?active=${active}`, {
+      method: "PATCH",
+    }),
+};
+
+// Supplier API
+import type {
+  Supplier,
+  CreateSupplierRequest,
+  UpdateSupplierRequest,
+} from "@/types/supplier";
+
+export const supplierApi = {
+  getAll: (storeId: string) =>
+    apiRequest<Supplier[]>(`/suppliers/store/${storeId}`),
+
+  getById: (storeId: string, supplierId: number) =>
+    apiRequest<Supplier>(`/suppliers/store/${storeId}/${supplierId}`),
+
+  create: (storeId: string, data: CreateSupplierRequest) =>
+    apiRequest<Supplier>(`/suppliers/store/${storeId}`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  update: (storeId: string, supplierId: number, data: UpdateSupplierRequest) =>
+    apiRequest<Supplier>(`/suppliers/store/${storeId}/${supplierId}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  delete: (storeId: string, supplierId: number) =>
+    apiRequest<void>(`/suppliers/store/${storeId}/${supplierId}`, {
+      method: "DELETE",
+    }),
+};
+
+// Purchasing API
+import type {
+  PurchaseOrder,
+  PurchaseOrderSummary,
+  PurchaseOrderStats,
+  CreatePurchaseOrderRequest,
+  UpdatePurchaseOrderRequest,
+  AddPurchaseOrderItemRequest,
+  PurchaseOrderStatus,
+  Attachment,
+  ProductCostHistoryResponse,
+  FifoAnalysisResponse,
+  StockValuationResponse,
+  ProfitabilityResponse,
+  PurchaseSummaryResponse,
+} from "@/types/purchasing";
+
+export const purchasingApi = {
+  // List purchase orders (with optional search, supplierId filters)
+  getOrders: (storeId: string, status?: PurchaseOrderStatus, search?: string, supplierId?: number) => {
+    const params = new URLSearchParams();
+    if (status) params.set("status", status);
+    if (search) params.set("search", search);
+    if (supplierId) params.set("supplierId", supplierId.toString());
+    const query = params.toString();
+    return apiRequest<PurchaseOrderSummary[]>(`/purchasing/orders/${storeId}${query ? `?${query}` : ""}`);
+  },
+
+  // Get purchase order stats
+  getStats: (storeId: string) =>
+    apiRequest<PurchaseOrderStats>(`/purchasing/orders/${storeId}/stats`),
+
+  // Get single purchase order
+  getOrder: (storeId: string, poId: number) =>
+    apiRequest<PurchaseOrder>(`/purchasing/orders/${storeId}/${poId}`),
+
+  // Create purchase order
+  createOrder: (storeId: string, data: CreatePurchaseOrderRequest) =>
+    apiRequest<PurchaseOrder>(`/purchasing/orders/${storeId}`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  // Update purchase order
+  updateOrder: (storeId: string, poId: number, data: UpdatePurchaseOrderRequest) =>
+    apiRequest<PurchaseOrder>(`/purchasing/orders/${storeId}/${poId}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  // Delete purchase order
+  deleteOrder: (storeId: string, poId: number) =>
+    apiRequest<void>(`/purchasing/orders/${storeId}/${poId}`, {
+      method: "DELETE",
+    }),
+
+  // Update status
+  updateStatus: (storeId: string, poId: number, status: PurchaseOrderStatus) =>
+    apiRequest<PurchaseOrder>(`/purchasing/orders/${storeId}/${poId}/status`, {
+      method: "PUT",
+      body: JSON.stringify({ status }),
+    }),
+
+  // Add item to purchase order
+  addItem: (storeId: string, poId: number, data: AddPurchaseOrderItemRequest) =>
+    apiRequest<PurchaseOrder>(`/purchasing/orders/${storeId}/${poId}/items`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  // Update item
+  updateItem: (storeId: string, poId: number, itemId: number, data: AddPurchaseOrderItemRequest) =>
+    apiRequest<PurchaseOrder>(`/purchasing/orders/${storeId}/${poId}/items/${itemId}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  // Remove item
+  removeItem: (storeId: string, poId: number, itemId: number) =>
+    apiRequest<PurchaseOrder>(`/purchasing/orders/${storeId}/${poId}/items/${itemId}`, {
+      method: "DELETE",
+    }),
+
+  // === Duplicate & Split ===
+
+  duplicateOrder: (storeId: string, poId: number) =>
+    apiRequest<PurchaseOrder>(`/purchasing/orders/${storeId}/${poId}/duplicate`, {
+      method: "POST",
+    }),
+
+  splitOrder: (storeId: string, poId: number, itemIds: number[]) =>
+    apiRequest<PurchaseOrder>(`/purchasing/orders/${storeId}/${poId}/split`, {
+      method: "POST",
+      body: JSON.stringify({ itemIds }),
+    }),
+
+  // === Attachments ===
+
+  getAttachments: (storeId: string, poId: number) =>
+    apiRequest<Attachment[]>(`/purchasing/orders/${storeId}/${poId}/attachments`),
+
+  deleteAttachment: (storeId: string, poId: number, attachmentId: number) =>
+    apiRequest<void>(`/purchasing/orders/${storeId}/${poId}/attachments/${attachmentId}`, {
+      method: "DELETE",
+    }),
+
+  // Upload attachment (uses FormData, not JSON)
+  uploadAttachment: async (storeId: string, poId: number, file: File): Promise<Attachment> => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const response = await fetch(`/api/purchasing/orders/${storeId}/${poId}/attachments`, {
+      method: "POST",
+      credentials: "include",
+      body: formData,
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: "Upload failed" }));
+      throw new Error(error.message || `HTTP ${response.status}`);
+    }
+    return response.json();
+  },
+
+  // Download attachment URL
+  getAttachmentDownloadUrl: (storeId: string, poId: number, attachmentId: number) =>
+    `/api/purchasing/orders/${storeId}/${poId}/attachments/${attachmentId}/download`,
+
+  // === Export/Import ===
+
+  getExportUrl: (storeId: string, poId: number) =>
+    `/api/purchasing/orders/${storeId}/${poId}/export`,
+
+  importItems: async (storeId: string, poId: number, file: File): Promise<PurchaseOrder> => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const response = await fetch(`/api/purchasing/orders/${storeId}/${poId}/import`, {
+      method: "POST",
+      credentials: "include",
+      body: formData,
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: "Import failed" }));
+      throw new Error(error.message || `HTTP ${response.status}`);
+    }
+    return response.json();
+  },
+
+  // === Reports ===
+
+  // Get product cost history
+  getProductCostHistory: (storeId: string, productId: string) =>
+    apiRequest<ProductCostHistoryResponse>(`/purchasing/orders/${storeId}/reports/product/${productId}/cost-history`),
+
+  // Get FIFO analysis
+  getFifoAnalysis: (storeId: string, barcode: string, startDate: string, endDate: string) =>
+    apiRequest<FifoAnalysisResponse>(
+      `/purchasing/orders/${storeId}/reports/fifo-analysis?barcode=${encodeURIComponent(barcode)}&startDate=${startDate}&endDate=${endDate}`
+    ),
+
+  // Get stock valuation
+  getStockValuation: (storeId: string) =>
+    apiRequest<StockValuationResponse>(`/purchasing/orders/${storeId}/reports/stock-valuation`),
+
+  // Get profitability analysis
+  getProfitabilityAnalysis: (storeId: string, startDate: string, endDate: string) =>
+    apiRequest<ProfitabilityResponse>(
+      `/purchasing/orders/${storeId}/reports/profitability?startDate=${startDate}&endDate=${endDate}`
+    ),
+
+  // Get purchase summary
+  getPurchaseSummary: (storeId: string, startDate: string, endDate: string) =>
+    apiRequest<PurchaseSummaryResponse>(
+      `/purchasing/orders/${storeId}/reports/summary?startDate=${startDate}&endDate=${endDate}`
+    ),
+};
+
+// Billing API
+import type {
+  PlanWithPrices,
+  Subscription,
+  PaymentMethod,
+  Invoice,
+  FeatureInfo,
+  FeatureAccessResult,
+  AddPaymentMethodRequest,
+  CheckoutRequest,
+  CheckoutResponse,
+  StartTrialRequest,
+  ChangePlanRequest,
+  CancelSubscriptionRequest,
+  PaginatedResponse,
+} from "@/types/billing";
+
+export const billingApi = {
+  // Plans
+  getPlans: () => apiRequest<PlanWithPrices[]>("/billing/plans"),
+
+  // Subscription
+  getSubscription: () => apiRequest<Subscription>("/billing/subscription"),
+
+  startTrial: (data: StartTrialRequest) =>
+    apiRequest<Subscription>("/billing/subscription/trial", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  activateSubscription: () =>
+    apiRequest<Subscription>("/billing/subscription/activate", {
+      method: "POST",
+    }),
+
+  changePlan: (data: ChangePlanRequest) =>
+    apiRequest<Subscription>("/billing/subscription/plan", {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  cancelSubscription: (data: CancelSubscriptionRequest) =>
+    apiRequest<Subscription>("/billing/subscription/cancel", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  reactivateSubscription: () =>
+    apiRequest<Subscription>("/billing/subscription/reactivate", {
+      method: "POST",
+    }),
+
+  // Payment Methods
+  getPaymentMethods: () => apiRequest<PaymentMethod[]>("/billing/payment-methods"),
+
+  addPaymentMethod: (data: AddPaymentMethodRequest) =>
+    apiRequest<PaymentMethod>("/billing/payment-methods", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  deletePaymentMethod: (id: string) =>
+    apiRequest<void>(`/billing/payment-methods/${id}`, {
+      method: "DELETE",
+    }),
+
+  setDefaultPaymentMethod: (id: string) =>
+    apiRequest<PaymentMethod>(`/billing/payment-methods/${id}/default`, {
+      method: "PUT",
+    }),
+
+  // Invoices
+  getInvoices: (page: number = 0, size: number = 10) =>
+    apiRequest<PaginatedResponse<Invoice>>(`/billing/invoices?page=${page}&size=${size}`),
+
+  getInvoice: (id: string) => apiRequest<Invoice>(`/billing/invoices/${id}`),
+
+  downloadInvoice: (id: string) => `/api/billing/invoices/${id}/pdf`,
+
+  // Checkout
+  startCheckout: (data: CheckoutRequest) =>
+    apiRequest<CheckoutResponse>("/billing/checkout/start", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  complete3DS: (transactionId: string, paymentId: string) =>
+    apiRequest<CheckoutResponse>("/billing/checkout/complete-3ds", {
+      method: "POST",
+      body: JSON.stringify({ transactionId, paymentId }),
+    }),
+
+  // Features
+  getFeatures: () => apiRequest<FeatureInfo[]>("/billing/features"),
+
+  checkFeatureAccess: (code: string) =>
+    apiRequest<FeatureAccessResult>(`/billing/features/${code}`),
 };

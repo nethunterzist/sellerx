@@ -1,5 +1,6 @@
 package com.ecommerce.sellerx.financial;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 
@@ -9,6 +10,7 @@ import java.math.BigDecimal;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class FinancialSettlement {
     
     @JsonProperty("id")
@@ -49,10 +51,13 @@ public class FinancialSettlement {
     
     @JsonProperty("paymentOrderId")
     private Long paymentOrderId; // Payment order ID
-    
-    @JsonProperty("country")
-    private String country; // Country from settlement
-    
+
     @JsonProperty("shipmentPackageId")
     private Long shipmentPackageId; // Shipment package ID - used for matching
+
+    @JsonProperty("transactionDate")
+    private Long transactionDate; // Transaction date timestamp (ms) - İşlem Tarihi
+
+    @JsonProperty("paymentDate")
+    private Long paymentDate; // Payment/due date timestamp (ms) - Vade Tarihi
 }

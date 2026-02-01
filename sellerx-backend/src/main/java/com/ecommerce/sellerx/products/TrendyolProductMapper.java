@@ -32,7 +32,10 @@ public class TrendyolProductMapper {
                 .salePrice(product.getSalePrice())
                 .vatRate(product.getVatRate())
                 .trendyolQuantity(product.getTrendyolQuantity())
-                .commissionRate(product.getCommissionRate())
+                // Prefer lastCommissionRate (from Financial API) over commissionRate (from category)
+                .commissionRate(product.getLastCommissionRate() != null
+                        ? product.getLastCommissionRate()
+                        : product.getCommissionRate())
                 .shippingVolumeWeight(product.getShippingVolumeWeight())
                 .approved(product.getApproved())
                 .archived(product.getArchived())

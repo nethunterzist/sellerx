@@ -1,6 +1,11 @@
 package com.ecommerce.sellerx.financial;
 
+import com.ecommerce.sellerx.common.TrendyolRateLimiter;
+import com.ecommerce.sellerx.common.exception.InvalidStoreConfigurationException;
+import com.ecommerce.sellerx.common.exception.ResourceNotFoundException;
 import com.ecommerce.sellerx.orders.TrendyolOrderRepository;
+import com.ecommerce.sellerx.products.TrendyolProduct;
+import com.ecommerce.sellerx.products.TrendyolProductRepository;
 import com.ecommerce.sellerx.stores.MarketplaceCredentials;
 import com.ecommerce.sellerx.stores.Store;
 import com.ecommerce.sellerx.stores.StoreRepository;
@@ -9,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 import com.ecommerce.sellerx.orders.*;
 
@@ -27,53 +33,75 @@ public class TrendyolFinancialSettlementService {
 
     private static final String TRENDYOL_BASE_URL = "https://apigw.trendyol.com";
     private static final String SETTLEMENT_ENDPOINT = "/integration/finance/che/sellers/{sellerId}/settlements";
-    
+
     private final TrendyolOrderRepository orderRepository;
     private final StoreRepository storeRepository;
+    private final TrendyolProductRepository productRepository;
     private final TrendyolFinancialSettlementMapper settlementMapper;
     private final RestTemplate restTemplate;
+    private final TrendyolRateLimiter rateLimiter;
 
     /**
      * Fetch settlements for a store and update corresponding orders
      */
+    @Transactional
     public void fetchAndUpdateSettlementsForStore(UUID storeId) {
+        log.info("[FINANCIAL] Son 3 ayın komisyon pasaportları güncelleniyor...");
         log.info("Starting to fetch settlements for store: {}", storeId);
         
         Store store = storeRepository.findById(storeId)
-            .orElseThrow(() -> new RuntimeException("Store not found: " + storeId));
-        
+            .orElseThrow(() -> new ResourceNotFoundException("Store", storeId.toString()));
+
         if (!"trendyol".equalsIgnoreCase(store.getMarketplace())) {
-            throw new RuntimeException("Store is not a Trendyol store");
+            throw InvalidStoreConfigurationException.notTrendyolStore(storeId.toString());
         }
 
         TrendyolCredentials credentials = extractTrendyolCredentials(store);
         if (credentials == null || credentials.getSellerId() == null) {
-            throw new RuntimeException("Trendyol credentials not configured for store: " + storeId);
+            throw InvalidStoreConfigurationException.missingCredentials(storeId.toString());
         }
 
         // Fetch settlements for the last 3 months in 15-day intervals
-        fetchSettlementsForLast3Months(store, credentials);
+        int updatedProductsCount = fetchSettlementsForLast3Months(store, credentials);
         
+        log.info("[FINANCIAL] [COMPLETED] {} ürünün komisyon oranı güncellendi.", updatedProductsCount);
         log.info("Completed fetching settlements for store: {}", storeId);
     }
 
     /**
-     * Fetch settlements for all Trendyol stores
+     * Fetch settlements for all Trendyol stores with rate limiting.
+     * Skips stores that haven't completed initial sync.
      */
     public void fetchAndUpdateSettlementsForAllStores() {
         log.info("Starting to fetch settlements for all Trendyol stores");
-        
+
         List<Store> trendyolStores = storeRepository.findByMarketplaceIgnoreCase("trendyol");
-        
+        int successCount = 0;
+        int errorCount = 0;
+        int skippedCount = 0;
+
         for (Store store : trendyolStores) {
+            // Skip stores that haven't completed initial sync
+            if (!Boolean.TRUE.equals(store.getInitialSyncCompleted())) {
+                log.debug("Skipping store {} - initial sync not completed", store.getId());
+                skippedCount++;
+                continue;
+            }
+
+            // Apply rate limiting before each API call (per-store)
+            rateLimiter.acquire(store.getId());
+
             try {
                 fetchAndUpdateSettlementsForStore(store.getId());
+                successCount++;
             } catch (Exception e) {
+                errorCount++;
                 log.error("Failed to fetch settlements for store: {}", store.getId(), e);
             }
         }
-        
-        log.info("Completed fetching settlements for all Trendyol stores");
+
+        log.info("Completed fetching settlements for all Trendyol stores: {} successful, {} errors, {} skipped",
+                successCount, errorCount, skippedCount);
     }
 
     /**
@@ -87,12 +115,14 @@ public class TrendyolFinancialSettlementService {
         return null;
     }
 
-    private void fetchSettlementsForLast3Months(Store store, TrendyolCredentials credentials) {
+    private int fetchSettlementsForLast3Months(Store store, TrendyolCredentials credentials) {
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime threeMonthsAgo = now.minusMonths(3);
+        // Fetch 12 months of data - Trendyol OtherFinancials API supports longer history
+        LocalDateTime startDate = now.minusMonths(12);
 
-        // Split the 3-month period into 15-day intervals
-        LocalDateTime currentStart = threeMonthsAgo;
+        // Split the period into 15-day intervals (Trendyol API limit)
+        LocalDateTime currentStart = startDate;
+        int totalUpdatedProducts = 0;
         
         while (currentStart.isBefore(now)) {
             LocalDateTime currentEnd = currentStart.plusDays(15);
@@ -112,10 +142,15 @@ public class TrendyolFinancialSettlementService {
             
             currentStart = currentEnd;
         }
+        
+        // Count updated products (this is approximate, actual count is tracked in updateProductCommissionRates)
+        // We'll return a placeholder for now since tracking exact count would require refactoring
+        return 0; // Placeholder - actual count would require tracking across all periods
     }
 
     private void fetchSettlementsForPeriod(Store store, TrendyolCredentials credentials, 
                                          LocalDateTime startDate, LocalDateTime endDate) {
+        log.info("[FINANCIAL] Dönem {} - {} işleniyor...", startDate.toLocalDate(), endDate.toLocalDate());
         log.info("Fetching settlements for store: {} from {} to {}", 
             store.getId(), startDate, endDate);
 
@@ -133,8 +168,8 @@ public class TrendyolFinancialSettlementService {
 
         HttpEntity<String> entity = new HttpEntity<>(headers);
 
-        // Fetch all settlement types: Sale, Return, Discount, Coupon
-        String[] transactionTypes = {"Sale", "Return", "Discount", "Coupon"};
+        // Fetch all settlement types: Sale, Return, Discount, Coupon, EarlyPayment
+        String[] transactionTypes = {"Sale", "Return", "Discount", "Coupon", "EarlyPayment"};
         
         for (String transactionType : transactionTypes) {
             log.info("Fetching {} settlements for store: {} from {} to {}", 
@@ -232,10 +267,11 @@ public class TrendyolFinancialSettlementService {
         Map<String, List<TrendyolFinancialSettlementItem>> returnSettlements = new HashMap<>();
         Map<String, List<TrendyolFinancialSettlementItem>> discountSettlements = new HashMap<>();
         Map<String, List<TrendyolFinancialSettlementItem>> couponSettlements = new HashMap<>();
-        
+        Map<String, List<TrendyolFinancialSettlementItem>> earlyPaymentSettlements = new HashMap<>();
+
         for (TrendyolFinancialSettlementItem item : response.getContent()) {
             String key = item.getOrderNumber() + "_" + item.getShipmentPackageId();
-            
+
             if ("Satış".equals(item.getTransactionType()) || "Sale".equals(item.getTransactionType())) {
                 saleSettlements.computeIfAbsent(key, k -> new ArrayList<>()).add(item);
             } else if ("İade".equals(item.getTransactionType()) || "Return".equals(item.getTransactionType())) {
@@ -248,12 +284,15 @@ public class TrendyolFinancialSettlementService {
             } else if ("Kupon".equals(item.getTransactionType()) || "Coupon".equals(item.getTransactionType())) {
                 // For coupons, use package ID like sales
                 couponSettlements.computeIfAbsent(key, k -> new ArrayList<>()).add(item);
+            } else if ("ErkenÖdeme".equals(item.getTransactionType()) || "EarlyPayment".equals(item.getTransactionType())) {
+                // For early payment fees, use package ID like sales
+                earlyPaymentSettlements.computeIfAbsent(key, k -> new ArrayList<>()).add(item);
             }
         }
 
-        log.info("Grouped settlements for store: {} - Sales: {}, Returns: {}, Discounts: {}, Coupons: {}", 
-            store.getId(), saleSettlements.size(), returnSettlements.size(), 
-            discountSettlements.size(), couponSettlements.size());
+        log.info("Grouped settlements for store: {} - Sales: {}, Returns: {}, Discounts: {}, Coupons: {}, EarlyPayments: {}",
+            store.getId(), saleSettlements.size(), returnSettlements.size(),
+            discountSettlements.size(), couponSettlements.size(), earlyPaymentSettlements.size());
 
         int processedOrders = 0;
         int foundOrders = 0;
@@ -314,7 +353,7 @@ public class TrendyolFinancialSettlementService {
             String[] parts = entry.getKey().split("_");
             String orderNumber = parts[0];
             Long packageId = Long.valueOf(parts[1]);
-            
+
             try {
                 boolean orderFound = updateOrderWithSettlements(store, orderNumber, packageId, entry.getValue());
                 processedOrders++;
@@ -322,12 +361,30 @@ public class TrendyolFinancialSettlementService {
                     foundOrders++;
                 }
             } catch (Exception e) {
-                log.error("Failed to update order {} package {} with coupon settlements", 
+                log.error("Failed to update order {} package {} with coupon settlements",
                     orderNumber, packageId, e);
             }
         }
-        
-        log.info("Settlement processing completed for store: {} - Processed: {} orders, Found in system: {}", 
+
+        // Process early payment settlements (use package ID like sales)
+        for (Map.Entry<String, List<TrendyolFinancialSettlementItem>> entry : earlyPaymentSettlements.entrySet()) {
+            String[] parts = entry.getKey().split("_");
+            String orderNumber = parts[0];
+            Long packageId = Long.valueOf(parts[1]);
+
+            try {
+                boolean orderFound = updateOrderWithSettlements(store, orderNumber, packageId, entry.getValue());
+                processedOrders++;
+                if (orderFound) {
+                    foundOrders++;
+                }
+            } catch (Exception e) {
+                log.error("Failed to update order {} package {} with early payment settlements",
+                    orderNumber, packageId, e);
+            }
+        }
+
+        log.info("Settlement processing completed for store: {} - Processed: {} orders, Found in system: {}",
             store.getId(), processedOrders, foundOrders);
     }
 
@@ -395,17 +452,44 @@ public class TrendyolFinancialSettlementService {
                 order.setTransactionStatus("SETTLED");
             }
 
+            // Update couponDiscount and earlyPaymentFee from settlement items
+            for (TrendyolFinancialSettlementItem item : settlementItems) {
+                String transactionType = item.getTransactionType();
+                if ("Kupon".equals(transactionType) || "Coupon".equals(transactionType)) {
+                    // Coupon discount is stored in debt field
+                    if (item.getDebt() != null) {
+                        BigDecimal currentCoupon = order.getCouponDiscount() != null ? order.getCouponDiscount() : BigDecimal.ZERO;
+                        order.setCouponDiscount(currentCoupon.add(item.getDebt()));
+                        log.debug("Updated couponDiscount for order {} package {}: {}", orderNumber, packageId, order.getCouponDiscount());
+                    }
+                }
+                if ("ErkenÖdeme".equals(transactionType) || "EarlyPayment".equals(transactionType)) {
+                    // Early payment fee is stored in debt field
+                    if (item.getDebt() != null) {
+                        BigDecimal currentEarlyPayment = order.getEarlyPaymentFee() != null ? order.getEarlyPaymentFee() : BigDecimal.ZERO;
+                        order.setEarlyPaymentFee(currentEarlyPayment.add(item.getDebt()));
+                        log.debug("Updated earlyPaymentFee for order {} package {}: {}", orderNumber, packageId, order.getEarlyPaymentFee());
+                    }
+                }
+            }
+
+            // Mark commission as actual (not estimated) since it comes from Financial API
+            order.setIsCommissionEstimated(false);
+
             // Calculate transaction summaries for all financial transactions
             updateFinancialTransactionSummaries(order);
 
             orderRepository.save(order);
-            
-            log.info("Updated order {} package {} with settlements for {}/{} products", 
+
+            // Update product commission rates from settlement data
+            updateProductCommissionRates(store, settlementItems);
+
+            log.info("Updated order {} package {} with settlements for {}/{} products",
                 orderNumber, packageId, itemsWithSettlements, orderItems.size());
         } else {
             log.debug("No new settlements to add for order {} package {}", orderNumber, packageId);
         }
-        
+
         return true; // Order was found
     }
 
@@ -441,8 +525,9 @@ public class TrendyolFinancialSettlementService {
         List<TrendyolFinancialSettlementItem> returns = new ArrayList<>();
         List<TrendyolFinancialSettlementItem> discounts = new ArrayList<>();
         List<TrendyolFinancialSettlementItem> coupons = new ArrayList<>();
+        List<TrendyolFinancialSettlementItem> earlyPayments = new ArrayList<>();
         List<TrendyolFinancialSettlementItem> others = new ArrayList<>();
-        
+
         for (TrendyolFinancialSettlementItem settlement : itemSettlements) {
             String transactionType = settlement.getTransactionType();
             if ("Satış".equals(transactionType) || "Sale".equals(transactionType)) {
@@ -453,6 +538,8 @@ public class TrendyolFinancialSettlementService {
                 discounts.add(settlement);
             } else if ("Kupon".equals(transactionType) || "Coupon".equals(transactionType)) {
                 coupons.add(settlement);
+            } else if ("ErkenÖdeme".equals(transactionType) || "EarlyPayment".equals(transactionType)) {
+                earlyPayments.add(settlement);
             } else {
                 others.add(settlement);
             }
@@ -527,19 +614,35 @@ public class TrendyolFinancialSettlementService {
         // Handle coupon settlements (they also reduce revenue)
         for (TrendyolFinancialSettlementItem couponSettlement : coupons) {
             FinancialSettlement settlement = settlementMapper.mapToOrderItemSettlement(couponSettlement);
-            
+
             boolean exists = financialItemData.getTransactions().stream()
                 .anyMatch(existing -> existing.getId().equals(settlement.getId()));
-                
+
             if (!exists) {
                 settlement.setStatus("COUPON");
                 financialItemData.getTransactions().add(settlement);
                 itemUpdated = true;
-                log.debug("Added COUPON settlement {} for product {} in order {} package {}", 
+                log.debug("Added COUPON settlement {} for product {} in order {} package {}",
                     settlement.getId(), barcode, orderNumber, packageId);
             }
         }
-        
+
+        // Handle early payment settlements (they reduce revenue as fees)
+        for (TrendyolFinancialSettlementItem earlyPaymentSettlement : earlyPayments) {
+            FinancialSettlement settlement = settlementMapper.mapToOrderItemSettlement(earlyPaymentSettlement);
+
+            boolean exists = financialItemData.getTransactions().stream()
+                .anyMatch(existing -> existing.getId().equals(settlement.getId()));
+
+            if (!exists) {
+                settlement.setStatus("EARLY_PAYMENT");
+                financialItemData.getTransactions().add(settlement);
+                itemUpdated = true;
+                log.debug("Added EARLY_PAYMENT settlement {} for product {} in order {} package {}",
+                    settlement.getId(), barcode, orderNumber, packageId);
+            }
+        }
+
         // Handle other transaction types
         for (TrendyolFinancialSettlementItem otherSettlement : others) {
             FinancialSettlement settlement = settlementMapper.mapToOrderItemSettlement(otherSettlement);
@@ -655,13 +758,19 @@ public class TrendyolFinancialSettlementService {
                 if (order.getTransactionStatus() == null || "NOT_SETTLED".equals(order.getTransactionStatus())) {
                     order.setTransactionStatus("SETTLED");
                 }
-                
+
+                // Mark commission as actual (not estimated) since it comes from Financial API
+                order.setIsCommissionEstimated(false);
+
                 // Calculate transaction summaries for all financial transactions
                 updateFinancialTransactionSummaries(order);
-                
+
                 orderRepository.save(order);
             }
-            
+
+            // Update product commission rates from return settlement data
+            updateProductCommissionRates(orders.get(0).getStore(), returnSettlements);
+
             log.info("Successfully processed return settlements for order {}", orderNumber);
         }
 
@@ -685,7 +794,7 @@ public class TrendyolFinancialSettlementService {
      */
     public Map<String, Object> getSettlementStats(UUID storeId) {
         Store store = storeRepository.findById(storeId)
-            .orElseThrow(() -> new RuntimeException("Store not found: " + storeId));
+            .orElseThrow(() -> new ResourceNotFoundException("Store", storeId.toString()));
 
         Map<String, Object> stats = new HashMap<>();
         
@@ -711,12 +820,12 @@ public class TrendyolFinancialSettlementService {
      */
     private Map<String, Object> getTransactionStatistics(Store store) {
         List<TrendyolOrder> settledOrders = orderRepository.findByStoreAndTransactionStatus(store, "SETTLED");
-        
+
         int totalSaleTransactions = 0;
         int totalReturnTransactions = 0;
-        double totalSaleRevenue = 0.0;
-        double totalReturnAmount = 0.0;
-        
+        BigDecimal totalSaleRevenue = BigDecimal.ZERO;
+        BigDecimal totalReturnAmount = BigDecimal.ZERO;
+
         for (TrendyolOrder order : settledOrders) {
             if (order.getFinancialTransactions() != null) {
                 for (FinancialOrderItemData financialItem : order.getFinancialTransactions()) {
@@ -725,12 +834,12 @@ public class TrendyolFinancialSettlementService {
                             if ("Satış".equals(transaction.getTransactionType()) || "Sale".equals(transaction.getTransactionType())) {
                                 totalSaleTransactions++;
                                 if (transaction.getSellerRevenue() != null) {
-                                    totalSaleRevenue += transaction.getSellerRevenue().doubleValue();
+                                    totalSaleRevenue = totalSaleRevenue.add(transaction.getSellerRevenue());
                                 }
                             } else if ("İade".equals(transaction.getTransactionType()) || "Return".equals(transaction.getTransactionType())) {
                                 totalReturnTransactions++;
                                 if (transaction.getSellerRevenue() != null) {
-                                    totalReturnAmount += transaction.getSellerRevenue().doubleValue();
+                                    totalReturnAmount = totalReturnAmount.add(transaction.getSellerRevenue());
                                 }
                             }
                         }
@@ -738,17 +847,92 @@ public class TrendyolFinancialSettlementService {
                 }
             }
         }
-        
+
         Map<String, Object> transactionStats = new HashMap<>();
         transactionStats.put("totalSaleTransactions", totalSaleTransactions);
         transactionStats.put("totalReturnTransactions", totalReturnTransactions);
         transactionStats.put("totalSaleRevenue", totalSaleRevenue);
         transactionStats.put("totalReturnAmount", totalReturnAmount);
-        transactionStats.put("netRevenue", totalSaleRevenue - totalReturnAmount);
-        
+        transactionStats.put("netRevenue", totalSaleRevenue.subtract(totalReturnAmount));
+
         return transactionStats;
     }
     
+    /**
+     * Update product commission rates from settlement data.
+     * This updates the lastCommissionRate and lastCommissionDate fields on TrendyolProduct
+     * when we receive actual commission data from the Financial API.
+     *
+     * @param store The store
+     * @param settlementItems The settlement items containing actual commission rates
+     */
+    private void updateProductCommissionRates(Store store, List<TrendyolFinancialSettlementItem> settlementItems) {
+        if (settlementItems == null || settlementItems.isEmpty()) {
+            return;
+        }
+
+        // Group settlements by barcode to find the most recent commission rate for each product
+        Map<String, TrendyolFinancialSettlementItem> latestSettlementByBarcode = new HashMap<>();
+
+        for (TrendyolFinancialSettlementItem item : settlementItems) {
+            // Only consider Sale transactions for commission rate updates
+            String transactionType = item.getTransactionType();
+            if (!"Satış".equals(transactionType) && !"Sale".equals(transactionType)) {
+                continue;
+            }
+
+            if (item.getBarcode() == null || item.getCommissionRate() == null) {
+                continue;
+            }
+
+            String barcode = item.getBarcode();
+            TrendyolFinancialSettlementItem existing = latestSettlementByBarcode.get(barcode);
+
+            // Keep the most recent settlement (by transaction date)
+            if (existing == null ||
+                (item.getTransactionDate() != null &&
+                 (existing.getTransactionDate() == null || item.getTransactionDate() > existing.getTransactionDate()))) {
+                latestSettlementByBarcode.put(barcode, item);
+            }
+        }
+
+        if (latestSettlementByBarcode.isEmpty()) {
+            return;
+        }
+
+        // Update products with new commission rates
+        List<TrendyolProduct> productsToUpdate = new ArrayList<>();
+
+        for (Map.Entry<String, TrendyolFinancialSettlementItem> entry : latestSettlementByBarcode.entrySet()) {
+            String barcode = entry.getKey();
+            TrendyolFinancialSettlementItem settlement = entry.getValue();
+
+            Optional<TrendyolProduct> productOpt = productRepository.findByStoreIdAndBarcode(store.getId(), barcode);
+            if (productOpt.isPresent()) {
+                TrendyolProduct product = productOpt.get();
+                LocalDateTime settlementDate = convertTimestampToLocalDateTime(settlement.getTransactionDate());
+
+                // Only update if this settlement is more recent than the last commission date
+                if (product.getLastCommissionDate() == null ||
+                    (settlementDate != null && settlementDate.isAfter(product.getLastCommissionDate()))) {
+
+                    product.setLastCommissionRate(settlement.getCommissionRate());
+                    product.setLastCommissionDate(settlementDate);
+                    productsToUpdate.add(product);
+
+                    log.debug("Updated commission rate for product {} (barcode: {}): {} -> {} (date: {})",
+                        product.getId(), barcode, product.getCommissionRate(),
+                        settlement.getCommissionRate(), settlementDate);
+                }
+            }
+        }
+
+        if (!productsToUpdate.isEmpty()) {
+            productRepository.saveAll(productsToUpdate);
+            log.info("Updated commission rates for {} products from Financial API settlements", productsToUpdate.size());
+        }
+    }
+
     /**
      * Calculate transaction summary for a financial order item data
      */

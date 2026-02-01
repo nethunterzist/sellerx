@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
 const API_BASE_URL = process.env.API_BASE_URL;
+const isDev = process.env.NODE_ENV === "development";
 
 export async function GET() {
   try {
@@ -38,7 +39,7 @@ export async function GET() {
 
     return nextResponse;
   } catch (error) {
-    console.error("[API] /users/selected-store GET error:", error);
+    if (isDev) console.error("[API] /users/selected-store GET error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },
@@ -85,7 +86,7 @@ export async function POST(request: NextRequest) {
 
     return nextResponse;
   } catch (error) {
-    console.error("[API] /users/selected-store POST error:", error);
+    if (isDev) console.error("[API] /users/selected-store POST error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },

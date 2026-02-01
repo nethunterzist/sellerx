@@ -158,6 +158,28 @@ export function useProductsByStorePaginatedFull(
     queryKey: productKeys.byStorePaginated(storeId!, page, size),
     queryFn: () => productApiExtended.getByStorePaginated(storeId!, options),
     enabled: !!storeId,
-    staleTime: 2 * 60 * 1000, // 2 dakika
+    staleTime: 5 * 60 * 1000, // 5 dakika - cache'i daha uzun tut
+    gcTime: 10 * 60 * 1000, // 10 dakika garbage collection
+  });
+}
+
+// Bulk update product costs
+export function useBulkUpdateCosts() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      storeId,
+      items,
+    }: {
+      storeId: string;
+      items: Array<{ barcode: string; unitCost: number; costVatRate: number; quantity: number; stockDate: string }>;
+    }) => productApiExtended.bulkUpdateCosts(storeId, items),
+    onSuccess: (data, variables) => {
+      // Invalidate products for this store
+      queryClient.invalidateQueries({ queryKey: productKeys.byStore(variables.storeId) });
+      // Invalidate dashboard stats as product data may have changed
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.stats(variables.storeId) });
+    },
   });
 }

@@ -81,7 +81,19 @@ public class TrendyolProduct {
     
     @Column(name = "commission_rate", precision = 5, scale = 2)
     private BigDecimal commissionRate;
-    
+
+    @Column(name = "last_commission_rate", precision = 5, scale = 2)
+    private BigDecimal lastCommissionRate; // Financial API'den gelen son gerçek komisyon oranı
+
+    @Column(name = "last_commission_date")
+    private LocalDateTime lastCommissionDate; // Bu oranın geldiği tarih
+
+    @Column(name = "last_shipping_cost_per_unit", precision = 10, scale = 2)
+    private BigDecimal lastShippingCostPerUnit; // Son kargo faturasından hesaplanan birim kargo maliyeti
+
+    @Column(name = "last_shipping_cost_date")
+    private LocalDateTime lastShippingCostDate; // Bu maliyetin geldiği tarih
+
     @Column(name = "shipping_volume_weight", precision = 5, scale = 2)
     private BigDecimal shippingVolumeWeight;
     

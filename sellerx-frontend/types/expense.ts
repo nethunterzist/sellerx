@@ -4,22 +4,36 @@ export type ExpenseFrequency = "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY" | "ONE_
 
 // Expense category from backend
 export interface ExpenseCategory {
-  id: number;
+  id: string;  // UUID
   name: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
-// Backend: StoreExpense entity
+// Backend: StoreExpenseDto
 export interface StoreExpense {
-  id: number;
+  id: string;  // UUID
   storeId: string;
-  category: ExpenseCategory;
-  amount: number;
+  expenseCategoryId: string;
+  expenseCategoryName: string;
+  productId?: string;
+  productTitle: string;  // "Genel" if productId is null
+  date: string;  // ISO datetime
   frequency: ExpenseFrequency;
+  frequencyDisplayName: string;
+  name: string;
+  amount: number;
+  vatRate?: number | null;       // null = faturasız işlem
+  vatAmount?: number | null;
+  isVatDeductible?: boolean;
+  netAmount?: number | null;
+  createdAt: string;
+  updatedAt: string;
+  // Legacy compatibility - map to expected structure
+  category: ExpenseCategory;
+  startDate: string;
   description?: string;
-  startDate: string; // ISO date string
-  endDate?: string; // ISO date string, optional
-  createdAt: string; // ISO datetime
-  updatedAt: string; // ISO datetime
+  endDate?: string;
 }
 
 // Legacy Expense type (for backward compatibility)
@@ -36,29 +50,33 @@ export interface Expense {
   updatedAt: string;
 }
 
-// Request types
+// Request types - matches backend CreateStoreExpenseRequest
 export interface CreateExpenseRequest {
-  categoryId: number;
+  expenseCategoryId: string;  // UUID
+  name: string;
   amount: number;
   frequency: ExpenseFrequency;
-  description?: string;
-  startDate: string;
-  endDate?: string;
+  date?: string;  // ISO datetime, optional (defaults to now)
+  productId?: string | null;  // UUID, null for general expense
+  vatRate?: number | null;  // null = faturasız işlem
 }
 
+// Request types - matches backend UpdateStoreExpenseRequest
 export interface UpdateExpenseRequest {
-  categoryId: number;
+  expenseCategoryId: string;  // UUID
+  name: string;
   amount: number;
   frequency: ExpenseFrequency;
-  description?: string;
-  startDate: string;
-  endDate?: string;
+  date: string;  // ISO datetime
+  productId?: string | null;  // UUID, null for general expense
+  vatRate?: number | null;  // null = faturasız işlem
 }
 
-// Response types
+// Response types - matches backend StoreExpensesResponse
 export interface StoreExpensesResponse {
   expenses: StoreExpense[];
-  totalMonthlyAmount: number;
+  totalExpense: number;  // Backend returns totalExpense (BigDecimal)
+  totalMonthlyAmount?: number;  // Total monthly amount for dashboard calculations
 }
 
 // Frequency labels for UI

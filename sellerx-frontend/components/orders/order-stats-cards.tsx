@@ -13,16 +13,10 @@ import {
   TrendingUp,
   Receipt,
 } from "lucide-react";
+import { useCurrency } from "@/lib/contexts/currency-context";
 
 interface OrderStatsCardsProps {
   storeId: string | undefined;
-}
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat("tr-TR", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
 }
 
 function StatCard({
@@ -74,6 +68,7 @@ function StatCardSkeleton() {
 }
 
 export function OrderStatsCards({ storeId }: OrderStatsCardsProps) {
+  const { formatCurrency } = useCurrency();
   const { data, isLoading, error } = useOrderStatistics(storeId);
 
   if (error) {
@@ -138,14 +133,12 @@ export function OrderStatsCards({ storeId }: OrderStatsCardsProps) {
         title="Toplam Ciro"
         value={formatCurrency(data.totalRevenue)}
         icon={TrendingUp}
-        valueSuffix=" TL"
         colorClass="text-green-700"
       />
       <StatCard
         title="Ortalama Sipariş"
         value={formatCurrency(data.averageOrderValue)}
         icon={Receipt}
-        valueSuffix=" TL"
         colorClass="text-purple-600"
       />
     </div>

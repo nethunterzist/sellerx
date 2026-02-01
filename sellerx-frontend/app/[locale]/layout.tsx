@@ -5,6 +5,9 @@ import { NextIntlClientProvider, hasLocale } from "next-intl";
 import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
 import { QueryProvider } from "@/components/providers/query-provider";
+import { ThemeProvider } from "@/components/providers/theme-provider";
+import { CurrencyProvider } from "@/lib/contexts/currency-context";
+import { ErrorBoundary } from "@/components/providers/error-boundary";
 import { Open_Sans } from "next/font/google";
 
 const openSans = Open_Sans({
@@ -34,7 +37,13 @@ export default async function RootLayout({
     <html lang={locale} suppressHydrationWarning>
       <body className={`${openSans.variable} font-sans antialiased`}>
         <QueryProvider>
-          <NextIntlClientProvider>{children}</NextIntlClientProvider>
+          <ThemeProvider>
+            <CurrencyProvider>
+              <NextIntlClientProvider>
+                <ErrorBoundary>{children}</ErrorBoundary>
+              </NextIntlClientProvider>
+            </CurrencyProvider>
+          </ThemeProvider>
         </QueryProvider>
         <Toaster position="top-center" richColors={true} />
       </body>

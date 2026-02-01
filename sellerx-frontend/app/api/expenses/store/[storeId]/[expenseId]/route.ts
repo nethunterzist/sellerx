@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { logger } from "@/lib/logger";
 
 const API_BASE_URL = process.env.API_BASE_URL;
 
@@ -42,7 +43,7 @@ export async function PUT(
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error("[API] PUT /expenses/store/[storeId]/[expenseId] error:", error);
+    logger.error("PUT /expenses/store/[storeId]/[expenseId] error", { endpoint: "/expenses/store/[storeId]/[expenseId]", method: "PUT", error });
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Internal server error" },
       { status: 500 }
@@ -84,7 +85,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("[API] DELETE /expenses/store/[storeId]/[expenseId] error:", error);
+    logger.error("DELETE /expenses/store/[storeId]/[expenseId] error", { endpoint: "/expenses/store/[storeId]/[expenseId]", method: "DELETE", error });
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Internal server error" },
       { status: 500 }

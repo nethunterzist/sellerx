@@ -32,6 +32,7 @@ public class TrendyolProductController {
             @RequestParam(defaultValue = "onSale") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDirection) {
         
+        size = Math.min(size, 100);
         ProductListResponse<TrendyolProductDto> products = trendyolProductService.getProductsByStoreWithPagination(
                 storeId, page, size, search, sortBy, sortDirection);
         return ResponseEntity.ok(products);
@@ -79,5 +80,14 @@ public class TrendyolProductController {
             @PathVariable LocalDate stockDate) {
         TrendyolProductDto updatedProduct = trendyolProductService.deleteStockInfoByDate(productId, stockDate);
         return ResponseEntity.ok(updatedProduct);
+    }
+
+    @PostMapping("/store/{storeId}/bulk-cost-update")
+    @PreAuthorize("@userSecurityRules.canAccessStore(authentication, #storeId)")
+    public ResponseEntity<BulkCostUpdateResponse> bulkUpdateCosts(
+            @PathVariable UUID storeId,
+            @RequestBody BulkCostUpdateRequest request) {
+        BulkCostUpdateResponse response = trendyolProductService.bulkUpdateCosts(storeId, request);
+        return ResponseEntity.ok(response);
     }
 }
