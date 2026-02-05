@@ -41,6 +41,7 @@ public class TrendyolProductDto {
     private Boolean rejected;
     private Boolean onSale;
     private List<CostAndStockInfo> costAndStockInfo;
+    private Boolean hasAutoDetectedCost;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

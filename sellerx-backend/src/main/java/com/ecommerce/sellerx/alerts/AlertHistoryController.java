@@ -124,6 +124,26 @@ public class AlertHistoryController {
     }
 
     /**
+     * Approve a pending stock alert — creates cost entry and triggers FIFO.
+     */
+    @PutMapping("/{id}/approve")
+    public ResponseEntity<AlertHistoryDto> approveStockAlert(@PathVariable UUID id) {
+        log.debug("PUT /api/alerts/{}/approve", id);
+        AlertHistoryDto alert = alertHistoryService.approveStockAlert(id);
+        return ResponseEntity.ok(alert);
+    }
+
+    /**
+     * Dismiss a pending stock alert — no cost entry created.
+     */
+    @PutMapping("/{id}/dismiss")
+    public ResponseEntity<AlertHistoryDto> dismissStockAlert(@PathVariable UUID id) {
+        log.debug("PUT /api/alerts/{}/dismiss", id);
+        AlertHistoryDto alert = alertHistoryService.dismissStockAlert(id);
+        return ResponseEntity.ok(alert);
+    }
+
+    /**
      * Get alert statistics.
      */
     @GetMapping("/stats")

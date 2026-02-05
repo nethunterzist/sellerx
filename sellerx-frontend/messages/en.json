@@ -158,7 +158,6 @@
     "main_page": "Main Page",
     "dashboard": "Dashboard",
     "products": "Products",
-    "buybox": "Buybox Tracking",
     "orders": "Orders",
     "purchasing": "Purchasing",
     "expenses": "Expenses",
@@ -182,6 +181,11 @@
     "poNumber": "PO Number",
     "poDate": "Order Date",
     "estimatedArrival": "Estimated Arrival",
+    "stockEntryDate": "Stock Entry Date",
+    "stockEntryDateHint": "The date items physically entered inventory. If empty, order date is used.",
+    "stockDepleted": "Stock Depleted",
+    "stockDepletedWarning": "This product's FIFO stock is depleted, using last known cost.",
+    "costEstimated": "Estimated Cost",
     "supplierName": "Supplier",
     "supplierNotSet": "Supplier not specified",
     "carrier": "Carrier",
@@ -2192,54 +2196,6 @@
       "saveError": "Failed to save settings"
     }
   },
-  "Buybox": {
-    "title": "Buybox Tracking",
-    "description": "Track the buybox status of your products",
-    "mockModeEnabled": "Mock mode active - Showing sample data",
-    "addProduct": "Add Product",
-    "refresh": "Refresh",
-    "noStore": "Select a store to track buybox",
-    "trackedProducts": "Tracked Products",
-    "trackedProductsDesc": "{count}/{max} products tracked",
-    "dashboard": {
-      "totalTracked": "Total Tracked",
-      "won": "Won",
-      "lost": "Lost",
-      "risk": "At Risk",
-      "noCompetition": "No Competition",
-      "unreadAlerts": "Unread Alerts"
-    },
-    "status": {
-      "WON": "Won",
-      "LOST": "Lost",
-      "RISK": "At Risk",
-      "NO_COMPETITION": "No Competition"
-    },
-    "table": {
-      "image": "Image",
-      "product": "Product",
-      "myPrice": "My Price",
-      "winnerPrice": "Winner Price",
-      "difference": "Difference",
-      "position": "Position",
-      "status": "Status",
-      "lastChecked": "Last Checked"
-    },
-    "alerts": {
-      "title": "Buybox Alerts",
-      "empty": "No alerts yet",
-      "noAlerts": "No alerts yet",
-      "noAlertsDesc": "You'll receive notifications when buybox status changes",
-      "markAsRead": "Mark as Read",
-      "markAllRead": "Mark All as Read",
-      "types": {
-        "BUYBOX_LOST": "Buybox Lost",
-        "BUYBOX_WON": "Buybox Won",
-        "NEW_COMPETITOR": "New Competitor",
-        "PRICE_RISK": "Price Risk"
-      }
-    }
-  },
   "referral": {
     "title": "Invite a Friend",
     "subtitle": "Share your invite code with friends to invite them to SellerX. You earn +15 days on your subscription for each successful referral!",
@@ -2278,5 +2234,110 @@
     "upgradeRequired": "Paid Plan Required",
     "upgradeDescription": "You need to upgrade to a paid plan to invite friends. Your invite code will be automatically generated when you upgrade.",
     "upgradeCta": "View Plans"
+  },
+  "impersonation": {
+    "banner": "Viewing {name}'s account",
+    "readOnly": "Read Only",
+    "stop": "Stop",
+    "loginAs": "Login As",
+    "loginAsConfirm": "View this user's account in a new tab (read-only)?",
+    "openingTab": "Opening new tab...",
+    "error": "Failed to access account"
+  },
+  "CustomerAnalytics": {
+    "title": "Customer Analytics",
+    "subtitle": "Repeat customers, segmentation and cross-sell analysis",
+    "tabs": {
+      "overview": "Overview",
+      "productRepeat": "Product Repeat",
+      "customers": "Customers",
+      "crossSell": "Cross-Sell"
+    },
+    "summary": {
+      "totalCustomers": "Total Customers",
+      "repeatRate": "Repeat Rate",
+      "avgOrders": "Avg. Orders",
+      "repeatRevenueShare": "Repeat Revenue Share",
+      "uniqueBuyers": "Unique buyers",
+      "repeatCustomers": "repeat customers",
+      "perCustomer": "Orders per customer"
+    },
+    "segmentation": {
+      "title": "Customer Segmentation",
+      "subtitle": "Customer distribution by order count"
+    },
+    "monthlyTrend": {
+      "title": "Monthly New vs Repeat Customers",
+      "subtitle": "Customer acquisition trend over last 12 months",
+      "new": "New",
+      "repeat": "Repeat"
+    },
+    "cityAnalysis": {
+      "title": "City-Based Repeat Analysis",
+      "subtitle": "Repeat purchase rate in cities with most customers",
+      "city": "City",
+      "totalCustomers": "Total Customers",
+      "repeatCustomers": "Repeat Customers",
+      "repeatRate": "Repeat Rate",
+      "totalRevenue": "Total Revenue"
+    },
+    "productRepeat": {
+      "title": "Product Repeat Analysis",
+      "subtitle": "Which products are repeatedly purchased? Average days between repurchase?",
+      "product": "Product",
+      "totalBuyers": "Total Buyers",
+      "repeatBuyers": "Repeat Buyers",
+      "repeatRate": "Repeat Rate",
+      "avgDays": "Avg. Days",
+      "quantitySold": "Qty Sold"
+    },
+    "customerList": {
+      "title": "Customer List",
+      "subtitle": "Customer list segmented by RFM (Recency-Frequency-Monetary) score",
+      "customer": "Customer",
+      "city": "City",
+      "orders": "Orders",
+      "totalSpend": "Total Spend",
+      "avgOrder": "Avg. Order",
+      "rfmSegment": "RFM Segment",
+      "score": "Score",
+      "totalCustomers": "Total {count} customers"
+    },
+    "crossSell": {
+      "title": "Cross-Sell Analysis",
+      "subtitle": "Product pairs purchased together",
+      "sourceProduct": "Source Product",
+      "targetProduct": "Target Product",
+      "coOccurrence": "Co-Occurrence",
+      "confidence": "Confidence %"
+    },
+    "backfill": {
+      "title": "Customer Data Incomplete",
+      "description": "Customer data is available for {percent}% of orders ({with}/{total}). You can start a data update for more accurate analysis.",
+      "button": "Start Data Update",
+      "updating": "Updating...",
+      "coverage": "Coverage"
+    },
+    "repeatInterval": {
+      "title": "Average Repeat Interval",
+      "description": "Your customers repurchase on average after {days} days."
+    },
+    "info": {
+      "title": "About Customer Analytics",
+      "description": "Customer data is derived from order information obtained via the Trendyol API. Customer identities are encrypted, and matching is performed through unique email addresses. The Trendyol API provides access to the last 90 days of order data."
+    },
+    "segments": {
+      "champions": "Champions",
+      "loyal": "Loyal Customers",
+      "new": "New Customers",
+      "potentialLoyal": "Potential Loyal",
+      "atRisk": "At Risk",
+      "aboutToLose": "About to Lose",
+      "lost": "Lost",
+      "other": "Other"
+    },
+    "noData": "No data found",
+    "noStore": "No Store Selected",
+    "noStoreDesc": "Please select a store to view customer analytics."
   }
 }

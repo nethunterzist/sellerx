@@ -1,0 +1,23 @@
+[   15380ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/api/buybox/products/dc873a2d-f7d5-4026-8d3f-6183c719af59/check:0
+[  542355ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/api/dashboard/stats/0824e453-3761-4cdf-96c9-3215a7770618:0
+[  543605ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/api/dashboard/stats/0824e453-3761-4cdf-96c9-3215a7770618:0
+[  545757ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/api/dashboard/stats/0824e453-3761-4cdf-96c9-3215a7770618:0
+[  554814ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/api/alerts/unread:0
+[  554953ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/api/alerts/unread-count:0
+[  555893ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/api/alerts/unread:0
+[  555990ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/api/alerts/unread-count:0
+[  558000ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/api/alerts/unread:0
+[  558028ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/api/alerts/unread-count:0
+[  562012ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/api/alerts/unread:0
+[  562032ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/api/alerts/unread-count:0
+[  592055ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/api/alerts/unread:0
+[  592056ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/api/alerts/unread-count:0
+[  593072ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/api/alerts/unread:0
+[  593079ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/api/alerts/unread-count:0
+[  595078ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/api/alerts/unread:0
+[  595087ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/api/alerts/unread-count:0
+[  599091ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/api/alerts/unread:0
+[  599092ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/api/alerts/unread-count:0
+[  600828ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/api/dashboard/stats/0824e453-3761-4cdf-96c9-3215a7770618:0
+[  601834ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/api/dashboard/stats/0824e453-3761-4cdf-96c9-3215a7770618:0
+[  603846ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/api/dashboard/stats/0824e453-3761-4cdf-96c9-3215a7770618:0

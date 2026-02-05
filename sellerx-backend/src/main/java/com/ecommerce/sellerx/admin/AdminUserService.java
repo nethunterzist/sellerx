@@ -2,12 +2,14 @@ package com.ecommerce.sellerx.admin;
 
 import com.ecommerce.sellerx.admin.dto.AdminUserDto;
 import com.ecommerce.sellerx.admin.dto.AdminUserListDto;
+import com.ecommerce.sellerx.auth.JwtService;
 import com.ecommerce.sellerx.stores.Store;
 import com.ecommerce.sellerx.stores.StoreRepository;
 import com.ecommerce.sellerx.users.Role;
 import com.ecommerce.sellerx.users.User;
 import com.ecommerce.sellerx.users.UserNotFoundException;
 import com.ecommerce.sellerx.users.UserRepository;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -25,6 +27,8 @@ public class AdminUserService {
 
     private final UserRepository userRepository;
     private final StoreRepository storeRepository;
+    private final JwtService jwtService;
+    private final ImpersonationLogRepository impersonationLogRepository;
 
     /**
      * Get paginated list of all users with basic info
@@ -85,6 +89,36 @@ public class AdminUserService {
         return userRepository.findAll().stream()
                 .map(this::toListDto)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Generate impersonation token for viewing target user's account
+     */
+    @Transactional
+    public String generateImpersonationToken(Long targetUserId, Long adminUserId, HttpServletRequest request) {
+        User targetUser = userRepository.findById(targetUserId)
+                .orElseThrow(() -> new UserNotFoundException("User not found with id: " + targetUserId));
+
+        log.info("Admin {} starting impersonation of user {} ({})", adminUserId, targetUserId, targetUser.getEmail());
+
+        ImpersonationLog auditLog = ImpersonationLog.builder()
+                .adminUserId(adminUserId)
+                .targetUserId(targetUserId)
+                .action("START")
+                .ipAddress(getClientIp(request))
+                .userAgent(request.getHeader("User-Agent"))
+                .build();
+        impersonationLogRepository.save(auditLog);
+
+        return jwtService.generateImpersonationToken(targetUser, adminUserId).toString();
+    }
+
+    private String getClientIp(HttpServletRequest request) {
+        String xff = request.getHeader("X-Forwarded-For");
+        if (xff != null && !xff.isEmpty()) {
+            return xff.split(",")[0].trim();
+        }
+        return request.getRemoteAddr();
     }
 
     private AdminUserListDto toListDto(User user) {

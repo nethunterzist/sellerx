@@ -1,6 +1,10 @@
 package com.ecommerce.sellerx.alerts;
 
 import com.ecommerce.sellerx.auth.AuthService;
+import com.ecommerce.sellerx.orders.StockOrderSynchronizationService;
+import com.ecommerce.sellerx.products.CostAndStockInfo;
+import com.ecommerce.sellerx.products.TrendyolProduct;
+import com.ecommerce.sellerx.products.TrendyolProductRepository;
 import com.ecommerce.sellerx.users.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -9,8 +13,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -25,6 +32,8 @@ public class AlertHistoryService {
 
     private final AlertHistoryRepository alertHistoryRepository;
     private final AuthService authService;
+    private final TrendyolProductRepository productRepository;
+    private final StockOrderSynchronizationService stockSyncService;
 
     /**
      * Get paginated alert history for the current user.
@@ -165,6 +174,86 @@ public class AlertHistoryService {
     }
 
     /**
+     * Approve a PENDING_APPROVAL stock alert — creates CostAndStockInfo entry and triggers FIFO.
+     */
+    @Transactional
+    public AlertHistoryDto approveStockAlert(UUID alertId) {
+        User user = authService.getCurrentUser();
+        AlertHistory alert = alertHistoryRepository.findByIdAndUserId(alertId, user.getId())
+                .orElseThrow(() -> new AlertNotFoundException("Alert not found: " + alertId));
+
+        if (!"PENDING_APPROVAL".equals(alert.getStatus())) {
+            throw new IllegalStateException("Alert is not pending approval. Current status: " + alert.getStatus());
+        }
+
+        Map<String, Object> data = alert.getData();
+        UUID productId = UUID.fromString((String) data.get("productId"));
+        int delta = ((Number) data.get("delta")).intValue();
+
+        TrendyolProduct product = productRepository.findById(productId)
+                .orElseThrow(() -> new AlertNotFoundException("Product not found: " + productId));
+
+        // Create cost entry only if cost info is available
+        if (Boolean.TRUE.equals(data.get("hasCostInfo"))) {
+            Double unitCost = ((Number) data.get("unitCost")).doubleValue();
+            Integer costVatRate = data.get("costVatRate") != null
+                    ? ((Number) data.get("costVatRate")).intValue() : 0;
+
+            CostAndStockInfo entry = CostAndStockInfo.builder()
+                    .quantity(delta)
+                    .unitCost(unitCost)
+                    .costVatRate(costVatRate)
+                    .stockDate(LocalDate.now())
+                    .usedQuantity(0)
+                    .costSource("AUTO_DETECTED")
+                    .build();
+
+            List<CostAndStockInfo> costList = product.getCostAndStockInfo();
+            if (costList == null) costList = new ArrayList<>();
+            costList.add(entry);
+            product.setCostAndStockInfo(costList);
+            productRepository.save(product);
+
+            // Trigger FIFO redistribution
+            stockSyncService.synchronizeOrdersAfterStockChange(product.getStore().getId(), LocalDate.now());
+
+            log.info("[STOCK_APPROVE] Cost entry created for product {} : +{} units, cost={}, vatRate={}",
+                    product.getBarcode(), delta, unitCost, costVatRate);
+        } else {
+            log.info("[STOCK_APPROVE] No cost info — approved without cost entry for product {} : +{} units",
+                    product.getBarcode(), delta);
+        }
+
+        alert.setStatus("APPROVED");
+        alert.markAsRead();
+        AlertHistory saved = alertHistoryRepository.save(alert);
+
+        log.info("[STOCK_APPROVE] Alert {} approved by user {}", alertId, user.getId());
+        return toDto(saved);
+    }
+
+    /**
+     * Dismiss a PENDING_APPROVAL stock alert — no cost entry created.
+     */
+    @Transactional
+    public AlertHistoryDto dismissStockAlert(UUID alertId) {
+        User user = authService.getCurrentUser();
+        AlertHistory alert = alertHistoryRepository.findByIdAndUserId(alertId, user.getId())
+                .orElseThrow(() -> new AlertNotFoundException("Alert not found: " + alertId));
+
+        if (!"PENDING_APPROVAL".equals(alert.getStatus())) {
+            throw new IllegalStateException("Alert is not pending approval. Current status: " + alert.getStatus());
+        }
+
+        alert.setStatus("DISMISSED");
+        alert.markAsRead();
+        AlertHistory saved = alertHistoryRepository.save(alert);
+
+        log.info("[STOCK_DISMISS] Alert {} dismissed by user {}", alertId, user.getId());
+        return toDto(saved);
+    }
+
+    /**
      * Convert entity to DTO.
      */
     private AlertHistoryDto toDto(AlertHistory alert) {
@@ -182,6 +271,7 @@ public class AlertHistoryService {
                 .emailSent(alert.getEmailSent())
                 .pushSent(alert.getPushSent())
                 .inAppSent(alert.getInAppSent())
+                .status(alert.getStatus())
                 .read(alert.isRead())
                 .readAt(alert.getReadAt())
                 .createdAt(alert.getCreatedAt())

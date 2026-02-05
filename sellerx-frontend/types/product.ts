@@ -7,6 +7,7 @@ export interface CostAndStockInfo {
   costVatRate: number;
   stockDate: string; // ISO date string (YYYY-MM-DD)
   usedQuantity: number;
+  costSource?: 'AUTO_DETECTED' | 'MANUAL' | 'PURCHASE_ORDER' | null;
 }
 
 // Backend: TrendyolProductDto
@@ -35,6 +36,7 @@ export interface TrendyolProduct {
   onSale: boolean;
   hasActiveCampaign: boolean;
   costAndStockInfo: CostAndStockInfo[];
+  hasAutoDetectedCost?: boolean;
   createdAt: string; // ISO datetime
   updatedAt: string; // ISO datetime
 }

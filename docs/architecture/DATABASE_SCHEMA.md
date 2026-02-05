@@ -309,6 +309,19 @@ CREATE INDEX IF NOT EXISTS idx_products_store_barcode
 ON trendyol_products(store_id, barcode);
 ```
 
+### Alert Status Migration
+
+```sql
+-- V88__add_alert_status_field.sql
+
+-- Onay bazlı stok algılama sistemi için status alanı
+ALTER TABLE alert_history ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'INFO';
+
+-- Değerler: INFO (default), PENDING_APPROVAL, APPROVED, DISMISSED
+-- Mevcut alertler INFO olarak kalır (backward compatible)
+-- Stok artışı algılama alertleri PENDING_APPROVAL olarak oluşturulur
+```
+
 ### Store Sync Tracking Migration'ları
 
 ```sql

@@ -160,9 +160,137 @@ public class TrendyolOrderService {
     }
 
     /**
+     * Fetch all historical orders from Trendyol API using 14-day chunks with dateQueryType=CREATED_DATE
+     * to maximize customer data coverage for analytics backfill.
+     * Goes back to the earliest order date in the database.
+     */
+    @Transactional
+    public void fetchAllOrdersForCustomerBackfill(UUID storeId) {
+        Store store = storeRepository.findById(storeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Store", storeId.toString()));
+
+        TrendyolCredentials credentials = extractTrendyolCredentials(store);
+        if (credentials == null) {
+            throw InvalidStoreConfigurationException.missingCredentials(storeId.toString());
+        }
+
+        // Find earliest order date in DB
+        Optional<java.time.LocalDate> earliestDateOpt = orderRepository.findEarliestOrderDateByStoreId(storeId);
+        if (earliestDateOpt.isEmpty()) {
+            log.warn("No orders found for store {}, skipping backfill", storeId);
+            return;
+        }
+
+        LocalDateTime chunkStart = earliestDateOpt.get().atStartOfDay();
+        LocalDateTime now = LocalDateTime.now(ZoneId.of("Europe/Istanbul"));
+        long totalChunks = java.time.temporal.ChronoUnit.DAYS.between(chunkStart, now) / 14 + 1;
+
+        log.info("Starting full customer backfill for store {} from {} to {} ({} chunks of 14 days)",
+                storeId, chunkStart, now, totalChunks);
+
+        int totalUpdated = 0;
+        int chunkIndex = 0;
+
+        while (chunkStart.isBefore(now)) {
+            LocalDateTime chunkEnd = chunkStart.plusDays(14);
+            if (chunkEnd.isAfter(now)) {
+                chunkEnd = now;
+            }
+
+            try {
+                long startMs = chunkStart.atZone(ZoneId.of("Europe/Istanbul")).toInstant().toEpochMilli();
+                long endMs = chunkEnd.atZone(ZoneId.of("Europe/Istanbul")).toInstant().toEpochMilli();
+
+                int chunkUpdated = backfillCustomerDataForChunk(credentials, storeId, startMs, endMs);
+                totalUpdated += chunkUpdated;
+
+                if (chunkIndex % 10 == 0 || chunkUpdated > 0) {
+                    log.info("Backfill chunk {}/{}: {} to {} → {} updated (total: {})",
+                            chunkIndex + 1, totalChunks, chunkStart.toLocalDate(), chunkEnd.toLocalDate(),
+                            chunkUpdated, totalUpdated);
+                }
+            } catch (Exception e) {
+                log.warn("Backfill chunk failed ({} to {}), skipping: {}",
+                        chunkStart.toLocalDate(), chunkEnd.toLocalDate(), e.getMessage());
+            }
+
+            chunkStart = chunkEnd;
+            chunkIndex++;
+        }
+
+        log.info("Customer backfill completed for store {}: {} orders updated across {} chunks",
+                storeId, totalUpdated, chunkIndex);
+    }
+
+    /**
+     * Backfill customer data for a single 14-day chunk.
+     * Returns the number of orders updated.
+     */
+    private int backfillCustomerDataForChunk(TrendyolCredentials credentials, UUID storeId,
+                                             long startMs, long endMs) {
+        int updatedCount = 0;
+        int page = 0;
+        boolean hasMorePages = true;
+
+        while (hasMorePages) {
+            TrendyolOrderApiResponse apiResponse = fetchOrdersFromTrendyol(
+                    credentials, page, 200, startMs, endMs, "CREATED_DATE");
+
+            if (apiResponse == null || apiResponse.getContent() == null || apiResponse.getContent().isEmpty()) {
+                break;
+            }
+
+            List<Long> packageNumbers = apiResponse.getContent().stream()
+                    .filter(order -> order.getId() != null)
+                    .map(TrendyolOrderApiResponse.TrendyolOrderContent::getId)
+                    .collect(Collectors.toList());
+
+            // Find existing orders missing customer data
+            Map<Long, TrendyolOrder> existingOrdersMap = new HashMap<>();
+            if (!packageNumbers.isEmpty()) {
+                List<TrendyolOrder> existingOrders = orderRepository.findByStoreIdAndPackageNoIn(storeId, packageNumbers);
+                for (TrendyolOrder order : existingOrders) {
+                    if (order.getCustomerEmail() == null) {
+                        existingOrdersMap.put(order.getPackageNo(), order);
+                    }
+                }
+            }
+
+            List<TrendyolOrder> ordersToUpdate = new ArrayList<>();
+            for (TrendyolOrderApiResponse.TrendyolOrderContent orderContent : apiResponse.getContent()) {
+                TrendyolOrder existing = existingOrdersMap.get(orderContent.getId());
+                if (existing != null && orderContent.getCustomerEmail() != null) {
+                    existing.setCustomerEmail(orderContent.getCustomerEmail());
+                    existing.setCustomerFirstName(orderContent.getCustomerFirstName());
+                    existing.setCustomerLastName(orderContent.getCustomerLastName());
+                    existing.setCustomerId(orderContent.getCustomerId());
+
+                    if (existing.getShipmentCity() == null && orderContent.getShipmentAddress() != null) {
+                        existing.setShipmentCity(orderContent.getShipmentAddress().getCity());
+                        existing.setShipmentCityCode(orderContent.getShipmentAddress().getCityCode());
+                        existing.setShipmentDistrict(orderContent.getShipmentAddress().getDistrict());
+                        existing.setShipmentDistrictId(orderContent.getShipmentAddress().getDistrictId());
+                    }
+                    ordersToUpdate.add(existing);
+                }
+            }
+
+            if (!ordersToUpdate.isEmpty()) {
+                orderRepository.saveAll(ordersToUpdate);
+                updatedCount += ordersToUpdate.size();
+            }
+
+            hasMorePages = apiResponse.getContent().size() == 200;
+            page++;
+        }
+
+        return updatedCount;
+    }
+
+    /**
      * Fetch all orders for a specific date range with pagination
      */
-    private int[] fetchOrdersForDateRange(TrendyolCredentials credentials, UUID storeId, Store store, 
+    private int[] fetchOrdersForDateRange(TrendyolCredentials credentials, UUID storeId, Store store,
                                          long startDate, long endDate, boolean skipCommissionCalculation) {
         int savedCount = 0;
         int skippedCount = 0;
@@ -199,22 +327,23 @@ public class TrendyolOrderService {
                         .map(TrendyolOrderApiResponse.TrendyolOrderContent::getId)
                         .collect(Collectors.toList());
 
-                // Map to track existing orders that need city update
+                // Map to track existing orders that need updates (city or delivery date)
                 Map<Long, TrendyolOrder> existingOrdersMap = new HashMap<>();
                 if (!packageNumbers.isEmpty()) {
                     Set<Long> existingPackageSet = new HashSet<>(orderRepository.findExistingPackageNumbers(storeId, packageNumbers));
                     existingPackages = existingPackageSet.stream().map(String::valueOf).collect(Collectors.toSet());
 
-                    // Find existing orders that need city update
+                    // Find existing orders that need city, delivery date, or customer data update
                     List<TrendyolOrder> existingOrders = orderRepository.findByStoreIdAndPackageNoIn(storeId, packageNumbers);
                     for (TrendyolOrder order : existingOrders) {
-                        if (order.getShipmentCity() == null) {
+                        if (order.getShipmentCity() == null || order.getDeliveryDate() == null
+                                || order.getCustomerEmail() == null || order.getCancelledBy() == null) {
                             existingOrdersMap.put(order.getPackageNo(), order);
                         }
                     }
                 }
 
-                // List to track orders that need city update
+                // List to track orders that need updates
                 List<TrendyolOrder> ordersToUpdate = new ArrayList<>();
 
                 // Process orders in this page
@@ -226,15 +355,47 @@ public class TrendyolOrderService {
                             continue;
                         }
 
-                        // Check if existing order needs city update
+                        // Check if existing order needs city or delivery date update
                         TrendyolOrder existingOrder = existingOrdersMap.get(orderContent.getId());
-                        if (existingOrder != null && orderContent.getShipmentAddress() != null) {
-                            TrendyolOrderApiResponse.ShipmentAddress address = orderContent.getShipmentAddress();
-                            existingOrder.setShipmentCity(address.getCity());
-                            existingOrder.setShipmentCityCode(address.getCityCode());
-                            existingOrder.setShipmentDistrict(address.getDistrict());
-                            existingOrder.setShipmentDistrictId(address.getDistrictId());
-                            ordersToUpdate.add(existingOrder);
+                        if (existingOrder != null) {
+                            boolean needsUpdate = false;
+
+                            // Update city if missing
+                            if (existingOrder.getShipmentCity() == null && orderContent.getShipmentAddress() != null) {
+                                TrendyolOrderApiResponse.ShipmentAddress address = orderContent.getShipmentAddress();
+                                existingOrder.setShipmentCity(address.getCity());
+                                existingOrder.setShipmentCityCode(address.getCityCode());
+                                existingOrder.setShipmentDistrict(address.getDistrict());
+                                existingOrder.setShipmentDistrictId(address.getDistrictId());
+                                needsUpdate = true;
+                            }
+
+                            // Update customer info if missing
+                            if (existingOrder.getCustomerEmail() == null && orderContent.getCustomerEmail() != null) {
+                                existingOrder.setCustomerFirstName(orderContent.getCustomerFirstName());
+                                existingOrder.setCustomerLastName(orderContent.getCustomerLastName());
+                                existingOrder.setCustomerEmail(orderContent.getCustomerEmail());
+                                existingOrder.setCustomerId(orderContent.getCustomerId());
+                                needsUpdate = true;
+                            }
+
+                            // Update delivery date if missing and order is Delivered
+                            if (existingOrder.getDeliveryDate() == null && "Delivered".equals(orderContent.getStatus())) {
+                                extractDeliveryDateFromApiResponse(existingOrder, orderContent);
+                                needsUpdate = true;
+                            }
+
+                            // Update cancellation info if missing
+                            if (existingOrder.getCancelledBy() == null && orderContent.getCancelledBy() != null) {
+                                existingOrder.setCancelledBy(orderContent.getCancelledBy());
+                                existingOrder.setCancelReason(orderContent.getCancelReason());
+                                existingOrder.setCancelReasonCode(orderContent.getCancelReasonCode());
+                                needsUpdate = true;
+                            }
+
+                            if (needsUpdate) {
+                                ordersToUpdate.add(existingOrder);
+                            }
                         }
 
                         // Check if order already exists (from batch check)
@@ -280,7 +441,7 @@ public class TrendyolOrderService {
                 // Batch update existing orders with city information
                 if (!ordersToUpdate.isEmpty()) {
                     orderRepository.saveAll(ordersToUpdate);
-                    log.info("Updated city information for {} existing orders", ordersToUpdate.size());
+                    log.info("Updated {} existing orders (city/delivery date)", ordersToUpdate.size());
                 }
                 
                 // Check if we have more pages
@@ -718,9 +879,21 @@ public class TrendyolOrderService {
             historicalOrder.setCargoDeci(apiOrderContent.getCargoDeci().intValue());
         }
         
+        // Extract delivery date if order is Delivered and we don't have it yet
+        if ("Delivered".equals(apiOrderContent.getStatus()) && historicalOrder.getDeliveryDate() == null) {
+            extractDeliveryDateFromApiResponse(historicalOrder, apiOrderContent);
+        }
+
+        // Update cancellation info if available
+        if (apiOrderContent.getCancelledBy() != null && historicalOrder.getCancelledBy() == null) {
+            historicalOrder.setCancelledBy(apiOrderContent.getCancelledBy());
+            historicalOrder.setCancelReason(apiOrderContent.getCancelReason());
+            historicalOrder.setCancelReasonCode(apiOrderContent.getCancelReasonCode());
+        }
+
         // Data source'u güncelle: Artık hem SETTLEMENT hem ORDER_API'den veri var
         historicalOrder.setDataSource("HYBRID");
-        
+
         log.debug("Enriched order {} with operational data", historicalOrder.getTyOrderNumber());
     }
 
@@ -757,36 +930,44 @@ public class TrendyolOrderService {
                 .build();
     }
     
-    private TrendyolOrderApiResponse fetchOrdersFromTrendyol(TrendyolCredentials credentials, int page, int size, 
+    private TrendyolOrderApiResponse fetchOrdersFromTrendyol(TrendyolCredentials credentials, int page, int size,
                                                            Long startDate, Long endDate) {
+        return fetchOrdersFromTrendyol(credentials, page, size, startDate, endDate, null);
+    }
+
+    private TrendyolOrderApiResponse fetchOrdersFromTrendyol(TrendyolCredentials credentials, int page, int size,
+                                                           Long startDate, Long endDate, String dateQueryType) {
         String auth = credentials.getApiKey() + ":" + credentials.getApiSecret();
         String encodedAuth = Base64.getEncoder().encodeToString(auth.getBytes());
-        
+
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.set("Authorization", "Basic " + encodedAuth);
         headers.set("User-Agent", credentials.getSellerId() + " - SelfIntegration");
-        
+
         HttpEntity<String> entity = new HttpEntity<>(headers);
-        
+
         // Build URL with date parameters
         StringBuilder urlBuilder = new StringBuilder();
-        urlBuilder.append(String.format("%s/integration/order/sellers/%s/orders?page=%d&size=%d", 
+        urlBuilder.append(String.format("%s/integration/order/sellers/%s/orders?page=%d&size=%d",
                 TRENDYOL_BASE_URL, credentials.getSellerId(), page, size));
-        
+
         if (startDate != null) {
             urlBuilder.append("&startDate=").append(startDate);
         }
         if (endDate != null) {
             urlBuilder.append("&endDate=").append(endDate);
         }
-        
+        if (dateQueryType != null) {
+            urlBuilder.append("&dateQueryType=").append(dateQueryType);
+        }
+
         String url = urlBuilder.toString();
         log.debug("Fetching orders from URL: {}", url);
-        
+
         ResponseEntity<TrendyolOrderApiResponse> response = restTemplate.exchange(
                 url, HttpMethod.GET, entity, TrendyolOrderApiResponse.class);
-        
+
         return response.getBody();
     }
     
@@ -851,7 +1032,19 @@ public class TrendyolOrderService {
                 .shipmentCityCode(shipmentCityCode)
                 .shipmentDistrict(shipmentDistrict)
                 .shipmentDistrictId(shipmentDistrictId)
+                .customerFirstName(orderContent.getCustomerFirstName())
+                .customerLastName(orderContent.getCustomerLastName())
+                .customerEmail(orderContent.getCustomerEmail())
+                .customerId(orderContent.getCustomerId())
+                .cancelledBy(orderContent.getCancelledBy())
+                .cancelReason(orderContent.getCancelReason())
+                .cancelReasonCode(orderContent.getCancelReasonCode())
                 .build();
+
+        // Extract delivery date from packageHistories if order is Delivered
+        if ("Delivered".equals(orderContent.getStatus())) {
+            extractDeliveryDateFromApiResponse(order, orderContent);
+        }
 
         // Calculate estimated shipping cost using product references (lastShippingCostPerUnit)
         // Kargo tahmini: ürünün lastShippingCostPerUnit değerini referans alır
@@ -863,7 +1056,37 @@ public class TrendyolOrderService {
 
         return order;
     }
-    
+
+    /**
+     * Extract delivery date from API response packageHistories and set hakediş date.
+     * Looks for "Delivered" status in packageHistories, falls back to lastModifiedDate.
+     */
+    private void extractDeliveryDateFromApiResponse(TrendyolOrder order,
+                                                     TrendyolOrderApiResponse.TrendyolOrderContent content) {
+        LocalDateTime deliveryDate = null;
+
+        if (content.getPackageHistories() != null) {
+            for (TrendyolOrderApiResponse.PackageHistory history : content.getPackageHistories()) {
+                if ("Delivered".equals(history.getStatus()) && history.getCreatedDate() != null) {
+                    deliveryDate = Instant.ofEpochMilli(history.getCreatedDate())
+                            .atZone(ZoneId.of("Europe/Istanbul"))
+                            .toLocalDateTime();
+                    break;
+                }
+            }
+        }
+
+        if (deliveryDate == null && content.getLastModifiedDate() != null) {
+            deliveryDate = Instant.ofEpochMilli(content.getLastModifiedDate())
+                    .atZone(ZoneId.of("Europe/Istanbul"))
+                    .toLocalDateTime();
+        }
+
+        if (deliveryDate != null) {
+            order.setDeliveryDate(deliveryDate);
+        }
+    }
+
     private OrderItem convertLineToOrderItem(TrendyolOrderApiResponse.TrendyolOrderLine line, UUID storeId, LocalDateTime orderDate, Map<String, TrendyolProduct> productCache, boolean skipCommissionCalculation) {
         OrderItem.OrderItemBuilder itemBuilder = OrderItem.builder()
                 .barcode(line.getBarcode())

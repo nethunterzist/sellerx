@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { getBackendHeaders } from "@/lib/api/bff-auth";
 
 const API_BASE_URL = process.env.API_BASE_URL;
 const isDev = process.env.NODE_ENV === 'development';
@@ -7,20 +7,16 @@ const isDev = process.env.NODE_ENV === 'development';
 // GET /api/admin/referrals/stats - Get referral statistics (admin)
 export async function GET(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const accessToken = cookieStore.get('access_token')?.value;
+    const headers = await getBackendHeaders(request);
 
-    if (!accessToken) {
+    if (!headers.Authorization) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const response = await fetch(
       `${API_BASE_URL}/api/admin/referrals/stats`,
       {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
+        headers,
       }
     );
 

@@ -229,6 +229,28 @@ export default function ProfitPage() {
   const vatDifference = currentStats?.vatDifference || 0;
   const stoppage = currentStats?.totalStoppage || 0;
   const productCost = currentStats?.totalProductCosts || 0;
+  const shippingCost = currentStats?.totalShippingCost || 0;
+  const returnCost = currentStats?.returnCost || 0;
+  const invoicedDeductions = currentStats?.invoicedDeductions || 0;
+  const totalExpenseAmount = currentStats?.totalExpenseAmount || 0;
+
+  // Platform ucretleri (stopaj haric - stopaj ayri gosteriliyor)
+  const otherPlatformFees =
+    (currentStats?.internationalServiceFee || 0) +
+    (currentStats?.overseasOperationFee || 0) +
+    (currentStats?.terminDelayFee || 0) +
+    (currentStats?.platformServiceFee || 0) +
+    (currentStats?.invoiceCreditFee || 0) +
+    (currentStats?.unsuppliedFee || 0) +
+    (currentStats?.azOverseasOperationFee || 0) +
+    (currentStats?.azPlatformServiceFee || 0) +
+    (currentStats?.packagingServiceFee || 0) +
+    (currentStats?.warehouseServiceFee || 0) +
+    (currentStats?.callCenterFee || 0) +
+    (currentStats?.photoShootingFee || 0) +
+    (currentStats?.integrationFee || 0) +
+    (currentStats?.storageServiceFee || 0) +
+    (currentStats?.otherPlatformFees || 0);
 
   // Use totalMonthlyAmount from API or calculate from expenses
   const monthlyExpenses = expensesData?.totalMonthlyAmount || expenses.reduce(
@@ -236,34 +258,9 @@ export default function ProfitPage() {
     0
   );
 
-  // Calculate daily expenses based on period
-  const getDailyExpenseDivisor = () => {
-    switch (selectedPeriod) {
-      case "today":
-      case "yesterday":
-        return 1;
-      case "thisMonth":
-        return new Date().getDate(); // Days passed in current month
-      case "lastMonth":
-        return new Date(new Date().getFullYear(), new Date().getMonth(), 0).getDate(); // Days in last month
-      case "custom":
-        if (customDateRange) {
-          const start = new Date(customDateRange.startDate);
-          const end = new Date(customDateRange.endDate);
-          return Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1);
-        }
-        return 1;
-      default:
-        return 30;
-    }
-  };
-
-  const periodDays = getDailyExpenseDivisor();
-  const periodExpenses = (monthlyExpenses / 30) * periodDays;
-
-  // Net profit calculation
-  const totalDeductions = commission + periodExpenses + stoppage;
-  const netProfit = grossProfit - totalDeductions;
+  // Use backend's net profit (correctly calculated with all deductions)
+  const netProfit = currentStats?.netProfit || 0;
+  const totalDeductions = commission + stoppage + otherPlatformFees + shippingCost + returnCost + invoicedDeductions + totalExpenseAmount;
   const netMargin = revenue > 0 ? (netProfit / revenue) * 100 : 0;
   const grossMargin = revenue > 0 ? (grossProfit / revenue) * 100 : 0;
 
@@ -273,13 +270,18 @@ export default function ProfitPage() {
     { label: "KDV Farki (Alim-Satim)", value: vatDifference, color: vatDifference >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400" },
   ];
 
-  // Expense items
-  const expenseItems = [
+  // Expense items (sifir olanlari gizle)
+  const allExpenseItems = [
     { label: "Urun Maliyeti", value: productCost },
     { label: "Tahmini Komisyon", value: commission },
-    { label: `Giderler (${periodDays} gun)`, value: periodExpenses },
-    { label: "Stopaj (%5)", value: stoppage },
+    { label: "Stopaj", value: stoppage },
+    { label: "Platform Ucretleri", value: otherPlatformFees },
+    { label: "Kargo Maliyeti", value: shippingCost },
+    { label: "Iade Maliyeti", value: returnCost },
+    { label: "Kesilen Faturalar", value: invoicedDeductions },
+    { label: "Giderler", value: totalExpenseAmount },
   ];
+  const expenseItems = allExpenseItems.filter((item) => item.value > 0);
 
   // Handle custom date range change
   const handleCustomDateRangeChange = (range: { startDate: string; endDate: string } | null) => {
@@ -513,7 +515,7 @@ export default function ProfitPage() {
                 </span>
               </div>
               <div className="flex justify-between items-center text-sm text-muted-foreground">
-                <span>Gunluk ortama</span>
+                <span>Gunluk ortalama</span>
                 <span>{formatCurrency(monthlyExpenses / 30)}/gun</span>
               </div>
             </div>

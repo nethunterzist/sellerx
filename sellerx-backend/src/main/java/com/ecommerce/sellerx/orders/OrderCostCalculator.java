@@ -46,18 +46,32 @@ public class OrderCostCalculator {
         if (product != null) {
             // Find the first available stock entry using FIFO logic
             CostAndStockInfo appropriateCost = findFirstAvailableStockForOrder(product, orderDate.toLocalDate());
-            
+
             if (appropriateCost != null) {
-                itemBuilder.cost(appropriateCost.getUnitCost() != null ? 
+                itemBuilder.cost(appropriateCost.getUnitCost() != null ?
                                 BigDecimal.valueOf(appropriateCost.getUnitCost()) : null)
                           .costVat(appropriateCost.getCostVatRate())
-                          .stockDate(appropriateCost.getStockDate()); // Set the stock date for tracking
-                
-                log.debug("Found cost {} from stock date {} for product {} on order date {}", 
+                          .stockDate(appropriateCost.getStockDate())
+                          .costSource("FIFO");
+
+                log.debug("Found cost {} from stock date {} for product {} on order date {}",
                         appropriateCost.getUnitCost(), appropriateCost.getStockDate(), barcode, orderDate);
             } else {
-                log.debug("No available stock found for product {} on order date {}", 
-                        barcode, orderDate);
+                // LAST KNOWN COST FALLBACK: use the most recent lot regardless of remaining quantity
+                CostAndStockInfo lastKnown = findLastKnownCost(product, orderDate.toLocalDate());
+                if (lastKnown != null) {
+                    itemBuilder.cost(lastKnown.getUnitCost() != null ?
+                                    BigDecimal.valueOf(lastKnown.getUnitCost()) : null)
+                              .costVat(lastKnown.getCostVatRate())
+                              .stockDate(lastKnown.getStockDate())
+                              .costSource("LAST_KNOWN");
+
+                    log.debug("Using last known cost {} from stock date {} for product {} (stock depleted)",
+                            lastKnown.getUnitCost(), lastKnown.getStockDate(), barcode);
+                } else {
+                    log.debug("No available stock found for product {} on order date {}",
+                            barcode, orderDate);
+                }
             }
             
             // Set commission information from product
@@ -227,6 +241,23 @@ public class OrderCostCalculator {
                 .filter(stock -> !stock.getStockDate().isAfter(orderDate)) // Stock must exist before order
                 .filter(stock -> stock.getRemainingQuantity() > 0) // Must have remaining stock
                 .sorted((s1, s2) -> s1.getStockDate().compareTo(s2.getStockDate())) // FIFO order
+                .findFirst()
+                .orElse(null);
+    }
+
+    /**
+     * Find the last known cost for a product (most recent lot by stockDate, regardless of remaining quantity).
+     * Used as fallback when all FIFO lots are depleted.
+     */
+    private CostAndStockInfo findLastKnownCost(TrendyolProduct product, LocalDate orderDate) {
+        if (product.getCostAndStockInfo() == null || product.getCostAndStockInfo().isEmpty()) {
+            return null;
+        }
+
+        return product.getCostAndStockInfo().stream()
+                .filter(stock -> stock.getStockDate() != null)
+                .filter(stock -> !stock.getStockDate().isAfter(orderDate))
+                .sorted((s1, s2) -> s2.getStockDate().compareTo(s1.getStockDate())) // DESC - most recent first
                 .findFirst()
                 .orElse(null);
     }

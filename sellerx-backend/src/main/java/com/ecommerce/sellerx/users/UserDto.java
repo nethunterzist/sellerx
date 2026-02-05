@@ -3,20 +3,36 @@ package com.ecommerce.sellerx.users;
 //import com.fasterxml.jackson.annotation.JsonIgnore;
 //import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.Setter;
 
-@AllArgsConstructor
 @Getter
 public class UserDto {
-    //@JsonIgnore -> bir alt satırdaki değeri göndermeyi ignore etme
-    //@JsonProperty("user_id") -> bir alt satırdaki değeri düzenleme
     private Long id;
     private String name;
     private String email;
-    @JsonInclude(JsonInclude.Include.NON_NULL) //alt satırdaki değer null değilse gönder
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     private String phoneNumber;
     private Role role;
-    //@JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    //private LocalDateTime createdAt;
+
+    // Impersonation metadata (only set during impersonated sessions)
+    @Setter
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private Boolean isImpersonated;
+
+    @Setter
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private Long impersonatedBy;
+
+    @Setter
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private Boolean readOnly;
+
+    public UserDto(Long id, String name, String email, String phoneNumber, Role role) {
+        this.id = id;
+        this.name = name;
+        this.email = email;
+        this.phoneNumber = phoneNumber;
+        this.role = role;
+    }
 }

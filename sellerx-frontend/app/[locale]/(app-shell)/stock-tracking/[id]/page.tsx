@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { MetricCard } from "@/components/ui/metric-card";
 import {
   ArrowLeft,
   ExternalLink,
@@ -16,6 +16,8 @@ import {
   TrendingUp,
   Activity,
   FlaskConical,
+  Tag,
+  PackageX,
 } from "lucide-react";
 import {
   StockHistoryChart,
@@ -214,126 +216,84 @@ export default function StockTrackingDetailPage({ params }: PageProps) {
       </div>
 
       {/* Current Stock Info */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              {t("detail.currentStock")}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {product.lastStockQuantity ?? "-"} {t("table.unit")}
-            </div>
-            {product.lastCheckedAt && (
-              <p className="text-xs text-muted-foreground mt-1">
-                {formatDistanceToNow(new Date(product.lastCheckedAt), {
-                  addSuffix: true,
-                  locale: locale === "tr" ? tr : enUS,
-                })}
-              </p>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              {t("detail.price")}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {product.lastPrice
-                ? `${product.lastPrice.toLocaleString(locale === "tr" ? "tr-TR" : "en-US")} TL`
-                : "-"}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1">
-              <TrendingDown className="h-4 w-4" />
-              {t("detail.minStock")}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {statistics.minStock} {t("table.unit")}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {t("detail.last30Days")}
+      <div className="flex gap-4 overflow-x-auto pb-2">
+        <MetricCard
+          title={t("detail.currentStock")}
+          icon={Package}
+          headerColor="bg-blue-500"
+          metricValue={product.lastStockQuantity != null ? `${product.lastStockQuantity} ${t("table.unit")}` : "-"}
+        >
+          {product.lastCheckedAt && (
+            <p className="text-xs text-muted-foreground mt-1">
+              {formatDistanceToNow(new Date(product.lastCheckedAt), {
+                addSuffix: true,
+                locale: locale === "tr" ? tr : enUS,
+              })}
             </p>
-          </CardContent>
-        </Card>
+          )}
+        </MetricCard>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1">
-              <TrendingUp className="h-4 w-4" />
-              {t("detail.maxStock")}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {statistics.maxStock} {t("table.unit")}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {t("detail.last30Days")}
-            </p>
-          </CardContent>
-        </Card>
+        <MetricCard
+          title={t("detail.price")}
+          icon={Tag}
+          headerColor="bg-emerald-600"
+          metricValue={
+            product.lastPrice
+              ? `${product.lastPrice.toLocaleString(locale === "tr" ? "tr-TR" : "en-US")} TL`
+              : "-"
+          }
+        />
+
+        <MetricCard
+          title={t("detail.minStock")}
+          subtitle={t("detail.last30Days")}
+          icon={TrendingDown}
+          headerColor="bg-red-500"
+          metricValue={`${statistics.minStock} ${t("table.unit")}`}
+        />
+
+        <MetricCard
+          title={t("detail.maxStock")}
+          subtitle={t("detail.last30Days")}
+          icon={TrendingUp}
+          headerColor="bg-green-500"
+          metricValue={`${statistics.maxStock} ${t("table.unit")}`}
+        />
       </div>
 
       {/* Statistics Row */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1">
-              <Activity className="h-4 w-4" />
-              {t("detail.avgStock")}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl font-bold">
-              {statistics.avgStock.toFixed(1)} {t("table.unit")}
-            </div>
-          </CardContent>
-        </Card>
+      <div className="flex gap-4 overflow-x-auto pb-2">
+        <MetricCard
+          title={t("detail.avgStock")}
+          icon={Activity}
+          headerColor="bg-teal-500"
+          metricValue={`${statistics.avgStock.toFixed(1)} ${t("table.unit")}`}
+        />
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              {t("detail.totalChecks")}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl font-bold">{statistics.totalChecks}</div>
-          </CardContent>
-        </Card>
+        <MetricCard
+          title={t("detail.totalChecks")}
+          icon={RefreshCw}
+          headerColor="bg-indigo-500"
+          metricValue={statistics.totalChecks}
+        />
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              {t("detail.outOfStockCount")}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl font-bold text-red-600">
-              {statistics.outOfStockCount}
-            </div>
-            {statistics.lastOutOfStock && (
-              <p className="text-xs text-muted-foreground">
-                {t("detail.lastOutOfStock")}:{" "}
-                {formatDistanceToNow(new Date(statistics.lastOutOfStock), {
-                  addSuffix: true,
-                  locale: locale === "tr" ? tr : enUS,
-                })}
-              </p>
-            )}
-          </CardContent>
-        </Card>
+        <MetricCard
+          title={t("detail.outOfStockCount")}
+          icon={PackageX}
+          headerColor="bg-red-500"
+          metricValue={statistics.outOfStockCount}
+          metricColor={statistics.outOfStockCount > 0 ? "text-red-600" : undefined}
+        >
+          {statistics.lastOutOfStock && (
+            <p className="text-xs text-muted-foreground mt-1">
+              {t("detail.lastOutOfStock")}:{" "}
+              {formatDistanceToNow(new Date(statistics.lastOutOfStock), {
+                addSuffix: true,
+                locale: locale === "tr" ? tr : enUS,
+              })}
+            </p>
+          )}
+        </MetricCard>
       </div>
 
       {/* Main Content */}

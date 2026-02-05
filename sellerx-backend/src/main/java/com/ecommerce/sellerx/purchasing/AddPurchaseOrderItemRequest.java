@@ -3,6 +3,7 @@ package com.ecommerce.sellerx.purchasing;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.UUID;
 
 @Data
@@ -21,5 +22,6 @@ public class AddPurchaseOrderItemRequest {
     private String hsCode;
     private BigDecimal manufacturingCostSupplierCurrency;
     private String labels;
+    private LocalDate stockEntryDate; // Optional: overrides PO-level stockEntryDate for this item
     private String comment;
 }

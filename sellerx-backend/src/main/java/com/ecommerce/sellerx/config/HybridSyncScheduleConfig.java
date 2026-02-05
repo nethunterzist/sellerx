@@ -24,9 +24,13 @@ import java.util.List;
  *
  * Daily Schedule (Turkey time - Europe/Istanbul):
  * - 07:00: Settlement API sync (fetches last 14 days with real commission)
+ * - 07:15: Cargo Shipping sync (cargo invoice details & shipping costs)
  * - 07:30: Product commission cache update (updates lastCommissionRate from settlements)
  * - 08:00: Reconciliation job (matches ORDER_API orders with Settlement data)
- * - Every hour: Gap fill from Orders API (fetches recent orders with estimated commission)
+ * - 08:15: Deduction invoice sync (fetches last 30 days of deduction & return invoices)
+ * - Every hour @:30: Gap fill from Orders API (fetches recent orders with estimated commission)
+ * - Every hour @:45: Deduction invoice catch-up (fetches last 3 days of deduction & return invoices)
+ * - Every 6 hours: Gap analysis status logging
  *
  * Data Flow:
  * 1. Settlement sync → Real commission data arrives
@@ -228,6 +232,82 @@ public class HybridSyncScheduleConfig {
         }
 
         log.info("=== End of Gap Analysis Status ===");
+    }
+
+    /**
+     * Daily Deduction Invoice sync at 08:15 Turkey time.
+     * Fetches deduction invoices (advertising fees, penalties, international fees, etc.)
+     * and return invoices from Trendyol OtherFinancials API.
+     *
+     * Uses a 30-day lookback window because deduction invoices (especially ad fees
+     * and penalties) can appear days or weeks after the triggering event.
+     */
+    @Scheduled(cron = "0 15 8 * * *", zone = "Europe/Istanbul")
+    @SchedulerLock(name = "dailyDeductionInvoiceSync", lockAtLeastFor = "5m", lockAtMostFor = "60m")
+    public void dailyDeductionInvoiceSync() {
+        log.info("Starting daily Deduction Invoice sync for all stores");
+
+        List<Store> stores = storeRepository.findByInitialSyncCompletedTrue();
+        int successCount = 0;
+        int failCount = 0;
+
+        for (Store store : stores) {
+            if (!"trendyol".equalsIgnoreCase(store.getMarketplace())) {
+                continue;
+            }
+
+            try {
+                java.time.LocalDate endDate = java.time.LocalDate.now();
+                java.time.LocalDate startDate = endDate.minusDays(30);
+
+                int deductionCount = otherFinancialsService.syncDeductionInvoices(store.getId(), startDate, endDate);
+                int returnCount = otherFinancialsService.syncReturnInvoices(store.getId(), startDate, endDate);
+                successCount++;
+                log.debug("Deduction invoice sync completed for store: {} - {} deductions, {} returns synced",
+                        store.getId(), deductionCount, returnCount);
+            } catch (Exception e) {
+                failCount++;
+                log.error("Deduction invoice sync failed for store {}: {}", store.getId(), e.getMessage());
+            }
+        }
+
+        log.info("Daily Deduction Invoice sync completed: {} success, {} failed", successCount, failCount);
+    }
+
+    /**
+     * Hourly Deduction Invoice catch-up at :45 past every hour.
+     * Fetches recent deduction and return invoices with a 3-day lookback window.
+     *
+     * This ensures newly generated invoices (e.g., ad charges, penalties)
+     * are captured promptly without waiting for the daily sync.
+     */
+    @Scheduled(cron = "0 45 * * * *", zone = "Europe/Istanbul")
+    @SchedulerLock(name = "hourlyDeductionInvoiceCatchUp", lockAtLeastFor = "2m", lockAtMostFor = "30m")
+    public void hourlyDeductionInvoiceCatchUp() {
+        log.info("Starting hourly Deduction Invoice catch-up");
+
+        List<Store> stores = storeRepository.findByInitialSyncCompletedTrue();
+        int successCount = 0;
+
+        for (Store store : stores) {
+            if (!"trendyol".equalsIgnoreCase(store.getMarketplace())) {
+                continue;
+            }
+
+            try {
+                java.time.LocalDate endDate = java.time.LocalDate.now();
+                java.time.LocalDate startDate = endDate.minusDays(3);
+
+                otherFinancialsService.syncDeductionInvoices(store.getId(), startDate, endDate);
+                otherFinancialsService.syncReturnInvoices(store.getId(), startDate, endDate);
+                successCount++;
+                log.debug("Deduction invoice catch-up completed for store: {}", store.getId());
+            } catch (Exception e) {
+                log.error("Deduction invoice catch-up failed for store {}: {}", store.getId(), e.getMessage());
+            }
+        }
+
+        log.info("Hourly Deduction Invoice catch-up completed for {} stores", successCount);
     }
 
     /**

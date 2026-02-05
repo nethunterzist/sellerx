@@ -44,4 +44,6 @@ public interface TrendyolProductRepository extends JpaRepository<TrendyolProduct
     boolean existsByStoreIdAndProductId(UUID storeId, String productId);
     
     long countByStoreId(UUID storeId);
+
+    List<TrendyolProduct> findByStoreIdAndStockDepletedTrue(UUID storeId);
 }

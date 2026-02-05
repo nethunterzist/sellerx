@@ -250,6 +250,13 @@ public class StoreOnboardingService {
                 log.info("[Thread A] Historical cargo sync: {} invoices, {} orders updated",
                         cargoResult.getSyncedCargoInvoices(), cargoResult.getUpdatedOrders());
 
+                // Sync deduction invoices (Kesilen Faturalar: ads, penalties, international fees, etc.)
+                // This ensures dashboard shows correct deduction data from day one
+                log.info("[Thread A] Syncing deduction invoices (last 12 months)...");
+                int deductionCount = otherFinancialsService.syncDeductionInvoices(storeId, startDate, endDate);
+                int returnCount = otherFinancialsService.syncReturnInvoices(storeId, startDate, endDate);
+                log.info("[Thread A] Deduction invoices: {} deductions, {} returns synced", deductionCount, returnCount);
+
                 updatePhaseStatus(storeId, PHASE_FINANCIAL, PhaseStatus.completed());
                 log.info("[Thread A] FINANCIAL completed");
             } catch (Exception e) {

@@ -55,6 +55,10 @@ public interface PurchaseOrderRepository extends JpaRepository<PurchaseOrder, Lo
             @Param("supplierId") Long supplierId,
             @Param("status") PurchaseOrderStatus status);
 
+    // Find CLOSED POs with items for VAT calculation (filtered by effective stockEntryDate in service layer)
+    @Query("SELECT DISTINCT po FROM PurchaseOrder po LEFT JOIN FETCH po.items WHERE po.store.id = :storeId AND po.status = 'CLOSED'")
+    List<PurchaseOrder> findClosedWithItemsByStoreId(@Param("storeId") UUID storeId);
+
     // Find child POs (split from parent)
     List<PurchaseOrder> findByStoreIdAndParentPoIdOrderByPoDateDesc(UUID storeId, Long parentPoId);
 

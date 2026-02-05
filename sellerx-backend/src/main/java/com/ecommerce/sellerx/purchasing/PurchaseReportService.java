@@ -296,6 +296,7 @@ public class PurchaseReportService {
                         .oldestStockDate(oldestDate)
                         .daysInStock(daysInStock)
                         .agingCategory(agingCategory)
+                        .stockDepleted(Boolean.TRUE.equals(product.getStockDepleted()))
                         .build());
 
                 totalValue = totalValue.add(productValue);
@@ -379,8 +380,12 @@ public class PurchaseReportService {
                                         .quantitySold(0)
                                         .revenue(BigDecimal.ZERO)
                                         .cost(BigDecimal.ZERO)
-                                        .profit(BigDecimal.ZERO);
+                                        .profit(BigDecimal.ZERO)
+                                        .costEstimated(false);
                             });
+
+                    // Check if this item used LAST_KNOWN cost
+                    boolean hasLastKnown = "LAST_KNOWN".equals(item.getCostSource());
 
                     // Update builder values
                     ProfitabilityResponse.ProductProfitability current = builder.build();
@@ -390,7 +395,8 @@ public class PurchaseReportService {
                             .quantitySold(current.getQuantitySold() + item.getQuantity())
                             .revenue(current.getRevenue().add(itemRevenue))
                             .cost(current.getCost().add(itemCost))
-                            .profit(current.getProfit().add(itemRevenue.subtract(itemCost))));
+                            .profit(current.getProfit().add(itemRevenue.subtract(itemCost)))
+                            .costEstimated(Boolean.TRUE.equals(current.getCostEstimated()) || hasLastKnown));
                 }
             }
         }
@@ -420,6 +426,7 @@ public class PurchaseReportService {
                             .profit(p.getProfit())
                             .margin(margin)
                             .marginCategory(category)
+                            .costEstimated(p.getCostEstimated())
                             .build();
                 })
                 .collect(Collectors.toList());
@@ -606,15 +613,32 @@ public class PurchaseReportService {
                 .build();
     }
 
-    // Helper method to find purchase order items by product
+    /**
+     * Find purchase order items by product, keyed by effective stock entry date.
+     * Uses item-level stockEntryDate → PO-level stockEntryDate → poDate fallback.
+     */
     private Map<LocalDate, PurchaseOrderItem> findPurchaseOrderItemsByProduct(UUID storeId, UUID productId) {
         List<PurchaseOrderItem> items = purchaseOrderItemRepository.findByProductIdAndStoreId(productId, storeId);
         return items.stream()
                 .filter(item -> item.getPurchaseOrder().getStatus() == PurchaseOrderStatus.CLOSED)
                 .collect(Collectors.toMap(
-                        item -> item.getPurchaseOrder().getPoDate(),
+                        this::getEffectiveStockEntryDate,
                         item -> item,
                         (existing, replacement) -> existing // Keep first if duplicate dates
                 ));
+    }
+
+    /**
+     * Get effective stock entry date for a PO item (same logic as PurchaseOrderService).
+     */
+    private LocalDate getEffectiveStockEntryDate(PurchaseOrderItem item) {
+        if (item.getStockEntryDate() != null) {
+            return item.getStockEntryDate();
+        }
+        PurchaseOrder po = item.getPurchaseOrder();
+        if (po.getStockEntryDate() != null) {
+            return po.getStockEntryDate();
+        }
+        return po.getPoDate();
     }
 }

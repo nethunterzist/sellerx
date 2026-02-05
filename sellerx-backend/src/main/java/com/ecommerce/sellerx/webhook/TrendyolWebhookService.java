@@ -111,6 +111,26 @@ public class TrendyolWebhookService {
             existingOrder.setShipmentDistrictId(address.getDistrictId());
         }
 
+        // Update customer info if not already set
+        if (existingOrder.getCustomerEmail() == null && payload.getCustomerEmail() != null) {
+            existingOrder.setCustomerFirstName(payload.getCustomerFirstName());
+            existingOrder.setCustomerLastName(payload.getCustomerLastName());
+            existingOrder.setCustomerEmail(payload.getCustomerEmail());
+            existingOrder.setCustomerId(payload.getCustomerId());
+        }
+
+        // Extract delivery date from packageHistories when status is Delivered
+        if ("Delivered".equals(payload.getStatus()) && existingOrder.getDeliveryDate() == null) {
+            extractAndSetDeliveryDate(existingOrder, payload);
+        }
+
+        // Update cancellation info if provided
+        if (payload.getCancelledBy() != null && existingOrder.getCancelledBy() == null) {
+            existingOrder.setCancelledBy(payload.getCancelledBy());
+            existingOrder.setCancelReason(payload.getCancelReason());
+            existingOrder.setCancelReasonCode(payload.getCancelReasonCode());
+        }
+
         log.debug("Updated order {} from {} to {}", payload.getOrderNumber(),
                  existingOrder.getStatus(), payload.getStatus());
     }
@@ -167,6 +187,13 @@ public class TrendyolWebhookService {
                 .shipmentCityCode(shipmentCityCode)
                 .shipmentDistrict(shipmentDistrict)
                 .shipmentDistrictId(shipmentDistrictId)
+                .customerFirstName(payload.getCustomerFirstName())
+                .customerLastName(payload.getCustomerLastName())
+                .customerEmail(payload.getCustomerEmail())
+                .customerId(payload.getCustomerId())
+                .cancelledBy(payload.getCancelledBy())
+                .cancelReason(payload.getCancelReason())
+                .cancelReasonCode(payload.getCancelReasonCode())
                 .dataSource("ORDER_API") // Mark as webhook/Orders API source (has operational data)
                 .build();
     }
@@ -189,6 +216,39 @@ public class TrendyolWebhookService {
         costCalculator.setCostInfo(itemBuilder, line.getBarcode(), storeId, orderDate);
 
         return itemBuilder.build();
+    }
+
+    /**
+     * Extract delivery date from webhook packageHistories and calculate hakediş date.
+     * Looks for the "Delivered" status entry in packageHistories to get the actual delivery timestamp.
+     * Falls back to lastModifiedDate if packageHistories doesn't contain delivery info.
+     */
+    private void extractAndSetDeliveryDate(TrendyolOrder order, TrendyolWebhookPayload payload) {
+        LocalDateTime deliveryDate = null;
+
+        // Try to extract from packageHistories
+        if (payload.getPackageHistories() != null) {
+            for (TrendyolWebhookPayload.PackageHistory history : payload.getPackageHistories()) {
+                if ("Delivered".equals(history.getStatus()) && history.getCreatedDate() != null) {
+                    deliveryDate = Instant.ofEpochMilli(history.getCreatedDate())
+                            .atZone(ZoneId.of("Europe/Istanbul"))
+                            .toLocalDateTime();
+                    break;
+                }
+            }
+        }
+
+        // Fallback to lastModifiedDate
+        if (deliveryDate == null && payload.getLastModifiedDate() != null) {
+            deliveryDate = Instant.ofEpochMilli(payload.getLastModifiedDate())
+                    .atZone(ZoneId.of("Europe/Istanbul"))
+                    .toLocalDateTime();
+        }
+
+        if (deliveryDate != null) {
+            order.setDeliveryDate(deliveryDate);
+            log.debug("Set delivery date {} for order {}", deliveryDate, order.getTyOrderNumber());
+        }
     }
 
     private void incrementWebhookCounter(String eventType) {

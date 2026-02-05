@@ -32,8 +32,8 @@ public class InvoiceSummaryDto {
     // By category breakdown
     private List<CategorySummaryDto> invoicesByCategory;
 
-    // Cost of Goods Sold (COGS) for KDV page
-    private CostOfGoodsSoldDto costOfGoodsSold;
+    // Purchase VAT (Alış KDV'si) for KDV page — based on stock entry date
+    private PurchaseVatDto purchaseVat;
 
     // Sales VAT (Satış KDV'si) for KDV page
     private SalesVatDto salesVat;

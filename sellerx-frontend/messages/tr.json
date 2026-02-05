@@ -158,7 +158,6 @@
     "main_page": "Ana sayfa",
     "dashboard": "Kontrol Paneli",
     "products": "Ürünler",
-    "buybox": "Buybox Takip",
     "orders": "Siparişler",
     "purchasing": "Satın Alma",
     "expenses": "Giderler",
@@ -182,6 +181,11 @@
     "poNumber": "Sipariş No",
     "poDate": "Sipariş Tarihi",
     "estimatedArrival": "Tahmini Varış",
+    "stockEntryDate": "Stok Giriş Tarihi",
+    "stockEntryDateHint": "Ürünlerin depoya girdiği tarih. Boş bırakılırsa sipariş tarihi kullanılır.",
+    "stockDepleted": "Stok Tükendi",
+    "stockDepletedWarning": "Bu ürünün FIFO stoku tükenmiş, son bilinen maliyet kullanılıyor.",
+    "costEstimated": "Tahmini Maliyet",
     "supplierName": "Tedarikçi",
     "supplierNotSet": "Tedarikçi belirtilmemiş",
     "carrier": "Kargo Firması",
@@ -2085,54 +2089,6 @@
       "saveError": "Ayarlar kaydedilirken hata oluştu"
     }
   },
-  "Buybox": {
-    "title": "Buybox Takip",
-    "description": "Ürünlerinizin buybox durumunu takip edin",
-    "mockModeEnabled": "Mock mod aktif - Örnek veriler gösteriliyor",
-    "addProduct": "Ürün Ekle",
-    "refresh": "Yenile",
-    "noStore": "Buybox takibi için bir mağaza seçin",
-    "trackedProducts": "Takip Edilen Ürünler",
-    "trackedProductsDesc": "{count}/{max} ürün takip ediliyor",
-    "dashboard": {
-      "totalTracked": "Toplam Takip",
-      "won": "Kazanılan",
-      "lost": "Kaybedilen",
-      "risk": "Riskli",
-      "noCompetition": "Rekabet Yok",
-      "unreadAlerts": "Okunmamış Uyarılar"
-    },
-    "status": {
-      "WON": "Kazanıldı",
-      "LOST": "Kaybedildi",
-      "RISK": "Riskli",
-      "NO_COMPETITION": "Rekabet Yok"
-    },
-    "table": {
-      "image": "Görsel",
-      "product": "Ürün",
-      "myPrice": "Benim Fiyatım",
-      "winnerPrice": "Kazanan Fiyat",
-      "difference": "Fark",
-      "position": "Sıralama",
-      "status": "Durum",
-      "lastChecked": "Son Kontrol"
-    },
-    "alerts": {
-      "title": "Buybox Uyarıları",
-      "empty": "Henüz uyarı yok",
-      "noAlerts": "Henüz uyarı yok",
-      "noAlertsDesc": "Buybox durumu değiştiğinde burada bildirim alacaksınız",
-      "markAsRead": "Okundu İşaretle",
-      "markAllRead": "Tümünü Okundu İşaretle",
-      "types": {
-        "BUYBOX_LOST": "Buybox Kaybedildi",
-        "BUYBOX_WON": "Buybox Kazanıldı",
-        "NEW_COMPETITOR": "Yeni Rakip",
-        "PRICE_RISK": "Fiyat Riski"
-      }
-    }
-  },
   "referral": {
     "title": "Arkadaşını Davet Et",
     "subtitle": "Davet kodunuzu paylaşarak arkadaşlarınızı SellerX'e davet edin. Her başarılı davet için aboneliğinize +15 gün eklenir!",
@@ -2171,5 +2127,110 @@
     "upgradeRequired": "Ücretli Plan Gerekli",
     "upgradeDescription": "Arkadaşlarınızı davet edebilmek için ücretli bir plana geçmeniz gerekmektedir. Plan yükselttiğinizde davet kodunuz otomatik olarak oluşturulacaktır.",
     "upgradeCta": "Planları İncele"
+  },
+  "impersonation": {
+    "banner": "{name} hesabını görüntülüyorsunuz",
+    "readOnly": "Salt Okunur",
+    "stop": "Sonlandır",
+    "loginAs": "Hesabına Gir",
+    "loginAsConfirm": "Bu kullanıcının hesabını yeni sekmede salt okunur olarak görüntülemek istiyor musunuz?",
+    "openingTab": "Yeni sekme açılıyor...",
+    "error": "Hesaba giriş başarısız"
+  },
+  "CustomerAnalytics": {
+    "title": "Müşteri Analizi",
+    "subtitle": "Tekrar eden müşteriler, segmentasyon ve çapraz satış analizi",
+    "tabs": {
+      "overview": "Genel Bakış",
+      "productRepeat": "Ürün Tekrar",
+      "customers": "Müşteriler",
+      "crossSell": "Çapraz Satış"
+    },
+    "summary": {
+      "totalCustomers": "Toplam Müşteri",
+      "repeatRate": "Tekrar Oranı",
+      "avgOrders": "Ort. Sipariş",
+      "repeatRevenueShare": "Tekrar Gelir Payı",
+      "uniqueBuyers": "Benzersiz alıcı",
+      "repeatCustomers": "tekrar müşteri",
+      "perCustomer": "Müşteri başına sipariş"
+    },
+    "segmentation": {
+      "title": "Müşteri Segmentasyonu",
+      "subtitle": "Sipariş sayısına göre müşteri dağılımı"
+    },
+    "monthlyTrend": {
+      "title": "Aylık Yeni vs Tekrar Müşteri",
+      "subtitle": "Son 12 ay müşteri kazanım trendi",
+      "new": "Yeni",
+      "repeat": "Tekrar"
+    },
+    "cityAnalysis": {
+      "title": "Şehir Bazlı Tekrar Analizi",
+      "subtitle": "En çok müşteri olan şehirlerde tekrar alış oranı",
+      "city": "Şehir",
+      "totalCustomers": "Toplam Müşteri",
+      "repeatCustomers": "Tekrar Müşteri",
+      "repeatRate": "Tekrar Oranı",
+      "totalRevenue": "Toplam Gelir"
+    },
+    "productRepeat": {
+      "title": "Ürün Bazlı Tekrar Analizi",
+      "subtitle": "Hangi ürünler tekrar tekrar satılıyor? Ortalama kaç günde tekrar alınıyor?",
+      "product": "Ürün",
+      "totalBuyers": "Toplam Alıcı",
+      "repeatBuyers": "Tekrar Alıcı",
+      "repeatRate": "Tekrar Oranı",
+      "avgDays": "Ort. Gün",
+      "quantitySold": "Satılan Adet"
+    },
+    "customerList": {
+      "title": "Müşteri Listesi",
+      "subtitle": "RFM (Recency-Frequency-Monetary) skoruna göre segmentlenmiş müşteri listesi",
+      "customer": "Müşteri",
+      "city": "Şehir",
+      "orders": "Sipariş",
+      "totalSpend": "Toplam Harcama",
+      "avgOrder": "Ort. Sipariş",
+      "rfmSegment": "RFM Segment",
+      "score": "Skor",
+      "totalCustomers": "Toplam {count} müşteri"
+    },
+    "crossSell": {
+      "title": "Çapraz Satış Analizi",
+      "subtitle": "Birlikte satın alınan ürün çiftleri",
+      "sourceProduct": "Kaynak Ürün",
+      "targetProduct": "Hedef Ürün",
+      "coOccurrence": "Birlikte Alım",
+      "confidence": "Güven %"
+    },
+    "backfill": {
+      "title": "Müşteri Verisi Eksik",
+      "description": "Siparişlerin %{percent}'inde müşteri verisi mevcut ({with}/{total}). Daha doğru analiz için veri güncelleme başlatabilirsiniz.",
+      "button": "Veri Güncellemeyi Başlat",
+      "updating": "Güncelleniyor...",
+      "coverage": "Kapsam"
+    },
+    "repeatInterval": {
+      "title": "Ortalama Tekrar Süresi",
+      "description": "Müşterileriniz ortalama {days} gün sonra tekrar alış yapıyor."
+    },
+    "info": {
+      "title": "Müşteri Analizi Hakkında",
+      "description": "Müşteri verileri Trendyol API'sinden alınan sipariş bilgilerinden oluşturulmaktadır. Müşteri kimlikleri şifrelenmiş olup, benzersiz e-posta adresleri üzerinden eşleştirme yapılmaktadır. Trendyol API'si son 90 günlük sipariş verisine erişim sağlar."
+    },
+    "segments": {
+      "champions": "Şampiyonlar",
+      "loyal": "Sadık Müşteriler",
+      "new": "Yeni Müşteriler",
+      "potentialLoyal": "Potansiyel Sadık",
+      "atRisk": "Risk Altında",
+      "aboutToLose": "Kaybedilmek Üzere",
+      "lost": "Kayıp",
+      "other": "Diğer"
+    },
+    "noData": "Veri bulunamadı",
+    "noStore": "Mağaza Seçilmedi",
+    "noStoreDesc": "Müşteri analizini görüntülemek için lütfen bir mağaza seçin."
   }
 }

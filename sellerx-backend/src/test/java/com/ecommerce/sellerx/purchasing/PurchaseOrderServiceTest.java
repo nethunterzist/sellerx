@@ -809,6 +809,194 @@ class PurchaseOrderServiceTest extends BaseUnitTest {
         }
     }
 
+    @Nested
+    @DisplayName("stockEntryDate Propagation")
+    class StockEntryDatePropagation {
+
+        @Test
+        @DisplayName("should use PO-level stockEntryDate when closing PO")
+        void shouldUsePOLevelStockEntryDate() {
+            TrendyolProduct product = TestDataBuilder.product(testStore).build();
+            product.setCostAndStockInfo(new ArrayList<>());
+            product.setVatRate(18);
+
+            PurchaseOrderItem item = PurchaseOrderItem.builder()
+                    .product(product)
+                    .unitsOrdered(50)
+                    .manufacturingCostPerUnit(new BigDecimal("30.00"))
+                    .transportationCostPerUnit(new BigDecimal("5.00"))
+                    .costVatRate(18)
+                    .build();
+
+            PurchaseOrder po = createTestPO("PO-SE-001", PurchaseOrderStatus.SHIPPED);
+            po.setStockEntryDate(LocalDate.of(2025, 3, 10)); // PO-level stockEntryDate
+            po.setItems(new ArrayList<>(List.of(item)));
+
+            when(purchaseOrderRepository.findByStoreIdAndId(storeId, 1L))
+                    .thenReturn(Optional.of(po));
+            when(purchaseOrderRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+            when(productRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            service.updateStatus(storeId, 1L, PurchaseOrderStatus.CLOSED);
+
+            // Verify cost entry uses PO-level stockEntryDate
+            assertThat(product.getCostAndStockInfo()).hasSize(1);
+            assertThat(product.getCostAndStockInfo().get(0).getStockDate())
+                    .isEqualTo(LocalDate.of(2025, 3, 10));
+            assertThat(product.getCostAndStockInfo().get(0).getUnitCost()).isEqualTo(35.0);
+        }
+
+        @Test
+        @DisplayName("should use item-level stockEntryDate override when available")
+        void shouldUseItemLevelStockEntryDateOverride() {
+            TrendyolProduct product = TestDataBuilder.product(testStore).build();
+            product.setCostAndStockInfo(new ArrayList<>());
+            product.setVatRate(18);
+
+            PurchaseOrderItem item = PurchaseOrderItem.builder()
+                    .product(product)
+                    .unitsOrdered(25)
+                    .manufacturingCostPerUnit(new BigDecimal("40.00"))
+                    .transportationCostPerUnit(BigDecimal.ZERO)
+                    .costVatRate(18)
+                    .stockEntryDate(LocalDate.of(2025, 4, 5)) // Item-level override
+                    .build();
+
+            PurchaseOrder po = createTestPO("PO-SE-002", PurchaseOrderStatus.SHIPPED);
+            po.setStockEntryDate(LocalDate.of(2025, 3, 1)); // PO-level (should be overridden)
+            po.setItems(new ArrayList<>(List.of(item)));
+
+            when(purchaseOrderRepository.findByStoreIdAndId(storeId, 1L))
+                    .thenReturn(Optional.of(po));
+            when(purchaseOrderRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+            when(productRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            service.updateStatus(storeId, 1L, PurchaseOrderStatus.CLOSED);
+
+            // Verify item-level date wins over PO-level
+            assertThat(product.getCostAndStockInfo()).hasSize(1);
+            assertThat(product.getCostAndStockInfo().get(0).getStockDate())
+                    .isEqualTo(LocalDate.of(2025, 4, 5));
+        }
+
+        @Test
+        @DisplayName("should fall back to poDate when no stockEntryDate is set")
+        void shouldFallBackToPoDate() {
+            TrendyolProduct product = TestDataBuilder.product(testStore).build();
+            product.setCostAndStockInfo(new ArrayList<>());
+            product.setVatRate(18);
+
+            PurchaseOrderItem item = PurchaseOrderItem.builder()
+                    .product(product)
+                    .unitsOrdered(10)
+                    .manufacturingCostPerUnit(new BigDecimal("20.00"))
+                    .transportationCostPerUnit(BigDecimal.ZERO)
+                    .costVatRate(18)
+                    .build();
+
+            PurchaseOrder po = createTestPO("PO-SE-003", PurchaseOrderStatus.SHIPPED);
+            po.setPoDate(LocalDate.of(2025, 2, 15));
+            // No stockEntryDate set on PO or item
+            po.setItems(new ArrayList<>(List.of(item)));
+
+            when(purchaseOrderRepository.findByStoreIdAndId(storeId, 1L))
+                    .thenReturn(Optional.of(po));
+            when(purchaseOrderRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+            when(productRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            service.updateStatus(storeId, 1L, PurchaseOrderStatus.CLOSED);
+
+            // Verify falls back to poDate
+            assertThat(product.getCostAndStockInfo()).hasSize(1);
+            assertThat(product.getCostAndStockInfo().get(0).getStockDate())
+                    .isEqualTo(LocalDate.of(2025, 2, 15));
+        }
+
+        @Test
+        @DisplayName("should trigger FIFO redistribution with earliest effective date")
+        void shouldTriggerFifoWithEarliestEffectiveDate() {
+            TrendyolProduct product1 = TestDataBuilder.product(testStore).build();
+            product1.setCostAndStockInfo(new ArrayList<>());
+            product1.setVatRate(18);
+
+            TrendyolProduct product2 = TestDataBuilder.product(testStore).build();
+            product2.setCostAndStockInfo(new ArrayList<>());
+            product2.setVatRate(18);
+
+            PurchaseOrderItem item1 = PurchaseOrderItem.builder()
+                    .product(product1)
+                    .unitsOrdered(10)
+                    .manufacturingCostPerUnit(new BigDecimal("10.00"))
+                    .transportationCostPerUnit(BigDecimal.ZERO)
+                    .costVatRate(18)
+                    .stockEntryDate(LocalDate.of(2025, 3, 1)) // Earlier date
+                    .build();
+
+            PurchaseOrderItem item2 = PurchaseOrderItem.builder()
+                    .product(product2)
+                    .unitsOrdered(20)
+                    .manufacturingCostPerUnit(new BigDecimal("15.00"))
+                    .transportationCostPerUnit(BigDecimal.ZERO)
+                    .costVatRate(18)
+                    .stockEntryDate(LocalDate.of(2025, 5, 1)) // Later date
+                    .build();
+
+            PurchaseOrder po = createTestPO("PO-SE-004", PurchaseOrderStatus.SHIPPED);
+            po.setItems(new ArrayList<>(List.of(item1, item2)));
+
+            when(purchaseOrderRepository.findByStoreIdAndId(storeId, 1L))
+                    .thenReturn(Optional.of(po));
+            when(purchaseOrderRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+            when(productRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            service.updateStatus(storeId, 1L, PurchaseOrderStatus.CLOSED);
+
+            // Verify FIFO is triggered with the EARLIEST date (March 1)
+            ArgumentCaptor<LocalDate> dateCaptor = ArgumentCaptor.forClass(LocalDate.class);
+            verify(stockSyncService).redistributeStockFIFO(eq(storeId), dateCaptor.capture());
+            assertThat(dateCaptor.getValue()).isEqualTo(LocalDate.of(2025, 3, 1));
+        }
+
+        @Test
+        @DisplayName("should copy stockEntryDate when duplicating PO")
+        void shouldCopyStockEntryDateOnDuplicate() {
+            TrendyolProduct product = TestDataBuilder.product(testStore).build();
+            PurchaseOrderItem item = PurchaseOrderItem.builder()
+                    .id(1L)
+                    .product(product)
+                    .unitsOrdered(50)
+                    .manufacturingCostPerUnit(new BigDecimal("100.00"))
+                    .transportationCostPerUnit(BigDecimal.ZERO)
+                    .costVatRate(18)
+                    .stockEntryDate(LocalDate.of(2025, 6, 1)) // Item-level date
+                    .build();
+
+            PurchaseOrder original = createTestPO("PO-DUP-001", PurchaseOrderStatus.CLOSED);
+            original.setStockEntryDate(LocalDate.of(2025, 5, 15)); // PO-level date
+            original.setItems(new ArrayList<>(List.of(item)));
+
+            when(purchaseOrderRepository.findByStoreIdAndId(storeId, 1L))
+                    .thenReturn(Optional.of(original));
+            when(purchaseOrderRepository.countByStoreId(storeId)).thenReturn(1L);
+
+            ArgumentCaptor<PurchaseOrder> poCaptor = ArgumentCaptor.forClass(PurchaseOrder.class);
+            when(purchaseOrderRepository.save(poCaptor.capture())).thenAnswer(inv -> inv.getArgument(0));
+
+            ArgumentCaptor<PurchaseOrderItem> itemCaptor = ArgumentCaptor.forClass(PurchaseOrderItem.class);
+            when(purchaseOrderItemRepository.save(itemCaptor.capture())).thenAnswer(inv -> inv.getArgument(0));
+
+            service.duplicatePurchaseOrder(storeId, 1L);
+
+            // Verify PO-level stockEntryDate copied
+            PurchaseOrder duplicatedPO = poCaptor.getAllValues().get(0);
+            assertThat(duplicatedPO.getStockEntryDate()).isEqualTo(LocalDate.of(2025, 5, 15));
+
+            // Verify item-level stockEntryDate copied
+            PurchaseOrderItem duplicatedItem = itemCaptor.getValue();
+            assertThat(duplicatedItem.getStockEntryDate()).isEqualTo(LocalDate.of(2025, 6, 1));
+        }
+    }
+
     // === Helper Methods ===
 
     private PurchaseOrder createTestPO(String poNumber, PurchaseOrderStatus status) {

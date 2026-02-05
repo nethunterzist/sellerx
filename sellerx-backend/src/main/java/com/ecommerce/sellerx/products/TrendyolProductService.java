@@ -49,6 +49,7 @@ public class TrendyolProductService {
     private final TrendyolCategoryRepository trendyolCategoryRepository;
     private final TrendyolRateLimiter rateLimiter;
     private final AlertEngine alertEngine;
+    private final AutoStockDetectionService autoStockDetectionService;
     
     /**
      * Helper method to compare BigDecimal values properly
@@ -204,7 +205,7 @@ public class TrendyolProductService {
     private ProductSyncResult saveOrUpdateProduct(Store store, TrendyolApiProductResponse.TrendyolApiProduct apiProduct) {
         // Check if product already exists
         boolean isNew = !trendyolProductRepository.existsByStoreIdAndProductId(store.getId(), apiProduct.getId());
-        
+
         TrendyolProduct product = trendyolProductRepository
                 .findByStoreIdAndProductId(store.getId(), apiProduct.getId())
                 .orElse(TrendyolProduct.builder()
@@ -212,20 +213,35 @@ public class TrendyolProductService {
                         .productId(apiProduct.getId())
                         .costAndStockInfo(new ArrayList<>())
                         .build());
-        
+
+        // Capture old quantity BEFORE update for auto stock detection
+        int oldQuantity = isNew ? 0 : (product.getTrendyolQuantity() != null ? product.getTrendyolQuantity() : 0);
+        int newQuantity = apiProduct.getQuantity() != null ? apiProduct.getQuantity() : 0;
+
         // Check if any field has changed (only if product exists)
         boolean hasChanges = isNew;
-        
+
         if (!isNew) {
             hasChanges = hasProductChanged(product, apiProduct);
         }
-        
+
         // Only update if there are changes
         if (hasChanges) {
             updateProductFields(product, apiProduct);
+            product.setPreviousTrendyolQuantity(oldQuantity);
             trendyolProductRepository.save(product);
+
+            // Auto stock detection: only for EXISTING products with stock INCREASE
+            if (!isNew && newQuantity > oldQuantity) {
+                try {
+                    autoStockDetectionService.handleStockIncrease(product, oldQuantity, newQuantity);
+                } catch (Exception e) {
+                    log.warn("[AUTO_STOCK] Error processing stock increase for product {}: {}",
+                            product.getBarcode(), e.getMessage());
+                }
+            }
         }
-        
+
         if (isNew) {
             return ProductSyncResult.NEW;
         } else if (hasChanges) {
@@ -466,31 +482,35 @@ public class TrendyolProductService {
                 .unitCost(request.getUnitCost())
                 .costVatRate(request.getCostVatRate())
                 .stockDate(request.getStockDate() != null ? request.getStockDate() : LocalDate.now())
+                .costSource("MANUAL")
                 .build();
-        
+
         // Add to existing list or merge with same date
         List<CostAndStockInfo> costAndStockList = product.getCostAndStockInfo();
         if (costAndStockList == null) {
             costAndStockList = new ArrayList<>();
         }
-        
+
         addOrMergeCostAndStockInfo(costAndStockList, newInfo);
+        // Clear AUTO_DETECTED flags — user has reviewed this product
+        clearAutoDetectedFlags(costAndStockList);
         product.setCostAndStockInfo(costAndStockList);
-        
+
         TrendyolProduct savedProduct = trendyolProductRepository.save(product);
         return productMapper.toDto(savedProduct);
     }
-    
+
     @Transactional
     public TrendyolProductDto addStockInfo(UUID productId, AddStockInfoRequest request) {
         TrendyolProduct product = trendyolProductRepository.findById(productId)
                 .orElseThrow(() -> new ResourceNotFoundException("Product", productId.toString()));
-        
+
         CostAndStockInfo newInfo = CostAndStockInfo.builder()
                 .quantity(request.getQuantity())
                 .unitCost(request.getUnitCost())
                 .costVatRate(request.getCostVatRate())
                 .stockDate(request.getStockDate() != null ? request.getStockDate() : LocalDate.now())
+                .costSource("MANUAL")
                 .build();
         
         List<CostAndStockInfo> costAndStockList = product.getCostAndStockInfo();
@@ -499,10 +519,12 @@ public class TrendyolProductService {
         }
         
         addOrMergeCostAndStockInfo(costAndStockList, newInfo);
+        // Clear AUTO_DETECTED flags — user has reviewed this product
+        clearAutoDetectedFlags(costAndStockList);
         product.setCostAndStockInfo(costAndStockList);
-        
+
         TrendyolProduct savedProduct = trendyolProductRepository.save(product);
-        
+
         // Trigger stock-order synchronization after adding stock
         try {
             UUID storeId = savedProduct.getStore().getId();
@@ -532,6 +554,7 @@ public class TrendyolProductService {
                 info.setQuantity(request.getQuantity());
                 info.setUnitCost(request.getUnitCost());
                 info.setCostVatRate(request.getCostVatRate());
+                info.setCostSource("MANUAL"); // Clear auto-detected flag on manual edit
                 found = true;
                 break;
             }
@@ -623,6 +646,7 @@ public class TrendyolProductService {
                         .unitCost(item.getUnitCost().doubleValue())
                         .costVatRate(item.getCostVatRate() != null ? item.getCostVatRate().intValue() : 18)
                         .stockDate(stockDate)
+                        .costSource("MANUAL")
                         .build();
 
                 // Add to existing list or merge with same date
@@ -693,6 +717,10 @@ public class TrendyolProductService {
                 existingInfo.setQuantity(totalQuantity.intValue());
                 existingInfo.setUnitCost(weightedAverageCost.doubleValue());
                 existingInfo.setCostVatRate(weightedAverageVatRate.intValue());
+                // Propagate costSource from the newer entry
+                if (newInfo.getCostSource() != null) {
+                    existingInfo.setCostSource(newInfo.getCostSource());
+                }
                 return;
             }
         }
@@ -700,7 +728,15 @@ public class TrendyolProductService {
         // No existing entry for this date, add new one
         costAndStockList.add(newInfo);
     }
-    
+
+    private void clearAutoDetectedFlags(List<CostAndStockInfo> costAndStockList) {
+        for (CostAndStockInfo info : costAndStockList) {
+            if ("AUTO_DETECTED".equals(info.getCostSource())) {
+                info.setCostSource("MANUAL");
+            }
+        }
+    }
+
     private TrendyolCredentials extractTrendyolCredentials(Store store) {
         MarketplaceCredentials credentials = store.getCredentials();
         if (credentials instanceof TrendyolCredentials) {

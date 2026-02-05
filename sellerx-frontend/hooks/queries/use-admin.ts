@@ -148,6 +148,26 @@ export function useAdminStoreSearch(query: string) {
   });
 }
 
+// Admin Impersonate User
+export function useImpersonateUser() {
+  return useMutation<
+    { token: string },
+    Error,
+    { id: number; name: string; email: string }
+  >({
+    mutationFn: async ({ id }) => {
+      const response = await fetch(`/api/admin/users/${id}/impersonate`, {
+        method: "POST",
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.message || "Hesaba giriş başarısız");
+      }
+      return response.json();
+    },
+  });
+}
+
 // Admin Trigger Store Sync
 export function useTriggerStoreSync() {
   const queryClient = useQueryClient();

@@ -37,6 +37,7 @@ export function POForm({ purchaseOrder, onSave, isSaving, suppliers }: POFormPro
     defaultValues: {
       poDate: purchaseOrder.poDate,
       estimatedArrival: purchaseOrder.estimatedArrival || "",
+      stockEntryDate: purchaseOrder.stockEntryDate || "",
       supplierName: purchaseOrder.supplierName || "",
       supplierId: purchaseOrder.supplierId,
       supplierCurrency: purchaseOrder.supplierCurrency || "TRY",
@@ -55,6 +56,7 @@ export function POForm({ purchaseOrder, onSave, isSaving, suppliers }: POFormPro
     reset({
       poDate: purchaseOrder.poDate,
       estimatedArrival: purchaseOrder.estimatedArrival || "",
+      stockEntryDate: purchaseOrder.stockEntryDate || "",
       supplierName: purchaseOrder.supplierName || "",
       supplierId: purchaseOrder.supplierId,
       supplierCurrency: purchaseOrder.supplierCurrency || "TRY",
@@ -133,6 +135,18 @@ export function POForm({ purchaseOrder, onSave, isSaving, suppliers }: POFormPro
             type="date"
             {...register("estimatedArrival")}
           />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="stockEntryDate">Stok Giriş Tarihi</Label>
+          <Input
+            id="stockEntryDate"
+            type="date"
+            {...register("stockEntryDate")}
+          />
+          <p className="text-xs text-muted-foreground">
+            Ürünlerin depoya girdiği tarih. Boş bırakılırsa sipariş tarihi kullanılır.
+          </p>
         </div>
 
         {/* Supplier */}

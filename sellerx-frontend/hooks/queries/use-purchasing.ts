@@ -14,6 +14,7 @@ import type {
   StockValuationResponse,
   ProfitabilityResponse,
   PurchaseSummaryResponse,
+  DepletedProduct,
 } from "@/types/purchasing";
 
 // Query Keys
@@ -41,6 +42,8 @@ export const purchasingKeys = {
     [...purchasingKeys.reports(), "profitability", storeId, startDate, endDate] as const,
   purchaseSummary: (storeId: string, startDate: string, endDate: string) =>
     [...purchasingKeys.reports(), "summary", storeId, startDate, endDate] as const,
+  stockDepletion: (storeId: string) =>
+    [...purchasingKeys.reports(), "stock-depletion", storeId] as const,
 };
 
 // === Queries ===
@@ -415,5 +418,15 @@ export function usePurchaseSummary(
     queryKey: purchasingKeys.purchaseSummary(storeId!, startDate!, endDate!),
     queryFn: () => purchasingApi.getPurchaseSummary(storeId!, startDate!, endDate!),
     enabled: !!storeId && !!startDate && !!endDate,
+  });
+}
+
+// Get depleted products (stock depletion warnings)
+export function useStockDepletion(storeId: string | undefined) {
+  return useQuery({
+    queryKey: purchasingKeys.stockDepletion(storeId!),
+    queryFn: () => purchasingApi.getDepletedProducts(storeId!),
+    enabled: !!storeId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 }

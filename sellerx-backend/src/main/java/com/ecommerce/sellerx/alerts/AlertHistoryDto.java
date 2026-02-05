@@ -32,6 +32,8 @@ public class AlertHistoryDto {
     private Boolean pushSent;
     private Boolean inAppSent;
 
+    private String status;
+
     private Boolean read;
     private LocalDateTime readAt;
     private LocalDateTime createdAt;

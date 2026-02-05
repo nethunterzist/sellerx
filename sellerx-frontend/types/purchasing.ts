@@ -17,6 +17,7 @@ export interface PurchaseOrderItem {
   totalCost: number;
   hsCode?: string;
   labels?: string;
+  stockEntryDate?: string;
   comment?: string;
 }
 
@@ -25,6 +26,7 @@ export interface PurchaseOrder {
   poNumber: string;
   poDate: string;
   estimatedArrival?: string;
+  stockEntryDate?: string;
   status: PurchaseOrderStatus;
   supplierName?: string;
   supplierId?: number;
@@ -48,6 +50,7 @@ export interface PurchaseOrderSummary {
   poNumber: string;
   poDate: string;
   estimatedArrival?: string;
+  stockEntryDate?: string;
   status: PurchaseOrderStatus;
   supplierName?: string;
   supplierId?: number;
@@ -74,6 +77,7 @@ export interface PurchaseOrderStats {
 export interface CreatePurchaseOrderRequest {
   poDate?: string;
   estimatedArrival?: string;
+  stockEntryDate?: string;
   supplierName?: string;
   supplierId?: number;
   supplierCurrency?: string;
@@ -86,6 +90,7 @@ export interface CreatePurchaseOrderRequest {
 export interface UpdatePurchaseOrderRequest {
   poDate?: string;
   estimatedArrival?: string;
+  stockEntryDate?: string;
   supplierName?: string;
   supplierId?: number;
   supplierCurrency?: string;
@@ -107,6 +112,7 @@ export interface AddPurchaseOrderItemRequest {
   transportationCostPerUnit?: number;
   hsCode?: string;
   labels?: string;
+  stockEntryDate?: string;
   comment?: string;
 }
 
@@ -200,6 +206,7 @@ export interface ProductValuation {
   averageCost: number;
   oldestStockDate?: string;
   daysInStock: number;
+  stockDepleted?: boolean;
 }
 
 export interface AgingBreakdown {
@@ -227,6 +234,7 @@ export interface ProductProfitability {
   cost: number;
   profit: number;
   margin: number;
+  costEstimated?: boolean;
 }
 
 export interface DailyProfit {
@@ -291,4 +299,13 @@ export interface PurchaseSummaryResponse {
   supplierBreakdown: SupplierBreakdown[];
   topProductsByAmount: ProductPurchase[];
   monthlyTrend: MonthlyPurchase[];
+}
+
+// Stock Depletion
+export interface DepletedProduct {
+  productId: string;
+  productName: string;
+  barcode: string;
+  productImage?: string;
+  lastStockDate?: string;
 }

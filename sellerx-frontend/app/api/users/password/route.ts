@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
+import { getBackendHeaders } from "@/lib/api/bff-auth";
 
 const API_BASE_URL = process.env.API_BASE_URL;
 const isDev = process.env.NODE_ENV === "development";
@@ -7,10 +7,9 @@ const isDev = process.env.NODE_ENV === "development";
 // PUT change password
 export async function PUT(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const accessToken = cookieStore.get("access_token")?.value;
+    const headers = await getBackendHeaders(request);
 
-    if (!accessToken) {
+    if (!headers.Authorization) {
       return NextResponse.json({ error: "Yetkisiz erişim" }, { status: 401 });
     }
 
@@ -40,10 +39,7 @@ export async function PUT(request: NextRequest) {
 
     const response = await fetch(`${API_BASE_URL}/users/password`, {
       method: "PUT",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
+      headers,
       body: JSON.stringify({
         oldPassword: body.currentPassword,
         newPassword: body.newPassword,

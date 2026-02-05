@@ -103,6 +103,7 @@ public class PurchaseOrderService {
                 .carrier(request.getCarrier())
                 .trackingNumber(request.getTrackingNumber())
                 .comment(request.getComment())
+                .stockEntryDate(request.getStockEntryDate())
                 .build();
 
         purchaseOrderRepository.save(po);
@@ -149,6 +150,9 @@ public class PurchaseOrderService {
         }
         if (request.getTransportationCost() != null) {
             po.setTransportationCost(request.getTransportationCost());
+        }
+        if (request.getStockEntryDate() != null) {
+            po.setStockEntryDate(request.getStockEntryDate());
         }
 
         purchaseOrderRepository.save(po);
@@ -209,6 +213,7 @@ public class PurchaseOrderService {
                 .hsCode(request.getHsCode())
                 .manufacturingCostSupplierCurrency(request.getManufacturingCostSupplierCurrency())
                 .labels(request.getLabels())
+                .stockEntryDate(request.getStockEntryDate())
                 .comment(request.getComment())
                 .build();
 
@@ -265,6 +270,9 @@ public class PurchaseOrderService {
         if (request.getLabels() != null) {
             item.setLabels(request.getLabels());
         }
+        if (request.getStockEntryDate() != null) {
+            item.setStockEntryDate(request.getStockEntryDate());
+        }
         if (request.getComment() != null) {
             item.setComment(request.getComment());
         }
@@ -310,6 +318,7 @@ public class PurchaseOrderService {
                 .poNumber(poNumber)
                 .poDate(LocalDate.now())
                 .estimatedArrival(original.getEstimatedArrival())
+                .stockEntryDate(original.getStockEntryDate())
                 .status(PurchaseOrderStatus.DRAFT)
                 .supplierName(original.getSupplierName())
                 .supplier(original.getSupplier())
@@ -336,6 +345,7 @@ public class PurchaseOrderService {
                     .hsCode(originalItem.getHsCode())
                     .manufacturingCostSupplierCurrency(originalItem.getManufacturingCostSupplierCurrency())
                     .labels(originalItem.getLabels())
+                    .stockEntryDate(originalItem.getStockEntryDate())
                     .comment(originalItem.getComment())
                     .build();
             purchaseOrderItemRepository.save(newItem);
@@ -368,6 +378,7 @@ public class PurchaseOrderService {
                 .poNumber(poNumber)
                 .poDate(original.getPoDate())
                 .estimatedArrival(original.getEstimatedArrival())
+                .stockEntryDate(original.getStockEntryDate())
                 .status(original.getStatus())
                 .supplierName(original.getSupplierName())
                 .supplier(original.getSupplier())
@@ -509,10 +520,18 @@ public class PurchaseOrderService {
     }
 
     private void updateProductCosts(PurchaseOrder po) {
-        LocalDate earliestStockDate = po.getPoDate();
+        LocalDate earliestStockDate = null;
 
         for (PurchaseOrderItem item : po.getItems()) {
             TrendyolProduct product = item.getProduct();
+
+            // Effective stock entry date: item-level override → PO-level → poDate
+            LocalDate effectiveStockDate = getEffectiveStockEntryDate(po, item);
+
+            // Track earliest date for FIFO redistribution
+            if (earliestStockDate == null || effectiveStockDate.isBefore(earliestStockDate)) {
+                earliestStockDate = effectiveStockDate;
+            }
 
             // Calculate total cost per unit
             BigDecimal totalCostPerUnit = item.getManufacturingCostPerUnit()
@@ -525,13 +544,14 @@ public class PurchaseOrderService {
                 vatRate = product.getVatRate() != null ? product.getVatRate() : 20;
             }
 
-            // Create new cost and stock entry with VAT rate
+            // Create new cost and stock entry with effective stock date
             CostAndStockInfo newEntry = CostAndStockInfo.builder()
                     .quantity(item.getUnitsOrdered())
                     .unitCost(totalCostPerUnit.doubleValue())
                     .costVatRate(vatRate)
-                    .stockDate(po.getPoDate())
+                    .stockDate(effectiveStockDate)
                     .usedQuantity(0)
+                    .costSource("PURCHASE_ORDER")
                     .build();
 
             // Get existing cost history or create new list
@@ -545,14 +565,30 @@ public class PurchaseOrderService {
             product.setCostAndStockInfo(costHistory);
 
             productRepository.save(product);
-            log.info("Updated COGS for product {} from PO {}: {} units at {} per unit (VAT {}%)",
-                    product.getId(), po.getPoNumber(), item.getUnitsOrdered(), totalCostPerUnit, vatRate);
+            log.info("Updated COGS for product {} from PO {}: {} units at {} per unit (VAT {}%), stockDate={}",
+                    product.getId(), po.getPoNumber(), item.getUnitsOrdered(), totalCostPerUnit, vatRate, effectiveStockDate);
         }
 
-        // FIFO redistribution: Recalculate stock allocation for orders from this date onwards
-        UUID storeId = po.getStore().getId();
-        log.info("Triggering FIFO redistribution for store {} from date {}", storeId, earliestStockDate);
-        stockSyncService.redistributeStockFIFO(storeId, earliestStockDate);
+        // FIFO redistribution: Recalculate stock allocation from the earliest effective date
+        if (earliestStockDate != null) {
+            UUID storeId = po.getStore().getId();
+            log.info("Triggering FIFO redistribution for store {} from date {}", storeId, earliestStockDate);
+            stockSyncService.redistributeStockFIFO(storeId, earliestStockDate);
+        }
+    }
+
+    /**
+     * Get effective stock entry date for a PO item.
+     * Priority: item-level stockEntryDate → PO-level stockEntryDate → poDate
+     */
+    private LocalDate getEffectiveStockEntryDate(PurchaseOrder po, PurchaseOrderItem item) {
+        if (item.getStockEntryDate() != null) {
+            return item.getStockEntryDate();
+        }
+        if (po.getStockEntryDate() != null) {
+            return po.getStockEntryDate();
+        }
+        return po.getPoDate();
     }
 
     // === Mapping Methods ===
@@ -563,6 +599,7 @@ public class PurchaseOrderService {
                 .poNumber(po.getPoNumber())
                 .poDate(po.getPoDate())
                 .estimatedArrival(po.getEstimatedArrival())
+                .stockEntryDate(po.getStockEntryDate())
                 .status(po.getStatus())
                 .supplierName(po.getSupplierName())
                 .supplierId(po.getSupplier() != null ? po.getSupplier().getId() : null)
@@ -588,6 +625,7 @@ public class PurchaseOrderService {
                 .poNumber(po.getPoNumber())
                 .poDate(po.getPoDate())
                 .estimatedArrival(po.getEstimatedArrival())
+                .stockEntryDate(po.getStockEntryDate())
                 .status(po.getStatus())
                 .supplierName(po.getSupplierName())
                 .supplierId(po.getSupplier() != null ? po.getSupplier().getId() : null)
@@ -623,6 +661,7 @@ public class PurchaseOrderService {
                 .hsCode(item.getHsCode())
                 .manufacturingCostSupplierCurrency(item.getManufacturingCostSupplierCurrency())
                 .labels(item.getLabels())
+                .stockEntryDate(item.getStockEntryDate())
                 .comment(item.getComment())
                 .build();
     }

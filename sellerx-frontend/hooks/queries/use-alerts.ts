@@ -9,6 +9,7 @@ import type {
   PaginatedAlerts,
   AlertType,
   AlertSeverity,
+  AlertStatus,
 } from '@/types/alert';
 
 // Query keys
@@ -332,6 +333,58 @@ export function useMarkAllAlertsAsRead() {
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error || 'Failed to mark all alerts as read');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: alertKeys.history() });
+      queryClient.invalidateQueries({ queryKey: alertKeys.unread() });
+      queryClient.invalidateQueries({ queryKey: alertKeys.unreadCount() });
+      queryClient.invalidateQueries({ queryKey: alertKeys.stats() });
+    },
+  });
+}
+
+/**
+ * Approve a pending stock alert — creates cost entry
+ */
+export function useApproveStockAlert() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string): Promise<AlertHistory> => {
+      const response = await fetch(`/api/alerts/${id}/approve`, {
+        method: 'PUT',
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to approve stock alert');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: alertKeys.history() });
+      queryClient.invalidateQueries({ queryKey: alertKeys.unread() });
+      queryClient.invalidateQueries({ queryKey: alertKeys.unreadCount() });
+      queryClient.invalidateQueries({ queryKey: alertKeys.stats() });
+    },
+  });
+}
+
+/**
+ * Dismiss a pending stock alert — no cost entry created
+ */
+export function useDismissStockAlert() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string): Promise<AlertHistory> => {
+      const response = await fetch(`/api/alerts/${id}/dismiss`, {
+        method: 'PUT',
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to dismiss stock alert');
       }
       return response.json();
     },

@@ -28,6 +28,20 @@ public class Jwt {
         return Role.valueOf(claims.get("role", String.class));
     }
 
+    public boolean isImpersonated() {
+        return claims.get("impersonatedBy") != null;
+    }
+
+    public Long getImpersonatedBy() {
+        Object val = claims.get("impersonatedBy");
+        return val != null ? Long.valueOf(val.toString()) : null;
+    }
+
+    public boolean isReadOnly() {
+        Boolean readOnly = claims.get("readOnly", Boolean.class);
+        return Boolean.TRUE.equals(readOnly);
+    }
+
     public String toString() {
         return Jwts.builder().claims(claims).signWith(secretKey).compact();
     }

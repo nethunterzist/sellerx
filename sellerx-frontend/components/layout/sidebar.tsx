@@ -7,7 +7,6 @@ import { useSidebar } from "@/lib/contexts/sidebar-context";
 import {
   LayoutDashboard,
   Package,
-  Settings,
   ChevronLeft,
   ChevronRight,
   Store,
@@ -20,13 +19,13 @@ import {
   Compass,
   FileText,
   Calculator,
-  LifeBuoy,
   Bell,
   TrendingUp,
-  Trophy,
   Activity,
+  Users,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { useImpersonation } from "@/hooks/use-impersonation";
 
 interface SidebarItem {
   icon: React.ElementType;
@@ -38,7 +37,6 @@ interface SidebarItem {
 const menuItems: SidebarItem[] = [
   { icon: LayoutDashboard, label: "Kontrol Paneli", href: "/dashboard" },
   { icon: Package, label: "Ürünler", href: "/products" },
-  { icon: Trophy, label: "Buybox Takip", href: "/buybox" },
   { icon: Activity, label: "Stok Takip", href: "/stock-tracking" },
   { icon: ShoppingCart, label: "Siparişler", href: "/orders" },
   { icon: Wallet, label: "Giderler", href: "/expenses" },
@@ -49,15 +47,15 @@ const menuItems: SidebarItem[] = [
   { icon: Truck, label: "Satın Alma", href: "/purchasing" },
   { icon: RotateCcw, label: "İadeler", href: "/returns" },
   { icon: Sparkles, label: "Müşteri Soruları", href: "/qa", badge: "AI" },
+  { icon: Users, label: "Müşteri Analizi", href: "/customer-analytics" },
   { icon: Bell, label: "Uyarılar", href: "/alerts" },
   { icon: Store, label: "Mağazalar", href: "/new-store" },
-  { icon: LifeBuoy, label: "Destek", href: "/support" },
-  { icon: Settings, label: "Ayarlar", href: "/settings" },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
   const { collapsed, toggleCollapsed } = useSidebar();
+  const { isImpersonating } = useImpersonation();
 
   // Extract locale-independent path for comparison
   const currentPath = pathname.replace(/^\/(tr|en)/, "") || "/dashboard";
@@ -65,8 +63,9 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        "fixed left-0 top-0 z-40 h-screen bg-sidebar transition-all duration-300",
-        collapsed ? "w-[60px]" : "w-[220px]"
+        "fixed left-0 z-40 h-screen bg-sidebar transition-all duration-300",
+        collapsed ? "w-[60px]" : "w-[220px]",
+        isImpersonating ? "top-10" : "top-0"
       )}
     >
       {/* Logo Area */}
@@ -90,7 +89,7 @@ export function Sidebar() {
       </div>
 
       {/* Menu Items */}
-      <nav className="flex flex-col gap-1 p-2">
+      <nav className="flex flex-col gap-1 p-2 overflow-y-auto" style={{ maxHeight: "calc(100vh - 3.5rem)" }}>
         {menuItems.map((item) => {
           const isActive = currentPath === item.href || currentPath.startsWith(item.href + "/");
           const Icon = item.icon;

@@ -168,22 +168,12 @@ public class TrendyolFinancialSettlementService {
 
         HttpEntity<String> entity = new HttpEntity<>(headers);
 
-        // Fetch all settlement types: Sale, Return, Discount, Coupon, EarlyPayment
-        String[] transactionTypes = {"Sale", "Return", "Discount", "Coupon", "EarlyPayment"};
-        
-        for (String transactionType : transactionTypes) {
-            log.info("Fetching {} settlements for store: {} from {} to {}", 
-                transactionType, store.getId(), startDate, endDate);
-                
-            fetchSettlementsByType(store, credentials, entity, startTimestamp, endTimestamp, transactionType);
-            
-            // Add delay between different transaction types
-            try {
-                Thread.sleep(500);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-        }
+        // Trendyol API changelog (30.12.2025): transactionTypes parameter allows fetching
+        // multiple types in a single request, reducing API calls from 5 to 1
+        String combinedTypes = "Sale,Return,Discount,Coupon,EarlyPayment";
+        log.info("Fetching all settlement types [{}] for store: {} from {} to {}",
+                combinedTypes, store.getId(), startDate, endDate);
+        fetchSettlementsByType(store, credentials, entity, startTimestamp, endTimestamp, combinedTypes);
     }
 
     private void fetchSettlementsByType(Store store, TrendyolCredentials credentials, HttpEntity<String> entity,
@@ -194,8 +184,11 @@ public class TrendyolFinancialSettlementService {
         int totalProcessed = 0;
 
         while (currentPage < totalPages) {
-            String url = TRENDYOL_BASE_URL + SETTLEMENT_ENDPOINT + 
-                        "?transactionType=" + transactionType +
+            // Use transactionTypes (plural) parameter for combined query (Trendyol API 30.12.2025)
+            // Falls back gracefully: if value contains comma, use transactionTypes; else transactionType
+            String typeParam = transactionType.contains(",") ? "transactionTypes" : "transactionType";
+            String url = TRENDYOL_BASE_URL + SETTLEMENT_ENDPOINT +
+                        "?" + typeParam + "=" + transactionType +
                         "&startDate=" + startTimestamp +
                         "&endDate=" + endTimestamp +
                         "&page=" + currentPage +

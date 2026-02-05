@@ -43,6 +43,7 @@ public class TrendyolProductMapper {
                 .rejected(product.getRejected())
                 .onSale(product.getOnSale())
                 .costAndStockInfo(product.getCostAndStockInfo())
+                .hasAutoDetectedCost(hasAutoDetectedCost(product))
                 .createdAt(product.getCreatedAt())
                 .updatedAt(product.getUpdatedAt())
                 .build();
@@ -52,5 +53,11 @@ public class TrendyolProductMapper {
         return products.stream()
                 .map(this::toDto)
                 .collect(Collectors.toList());
+    }
+
+    private boolean hasAutoDetectedCost(TrendyolProduct product) {
+        return product.getCostAndStockInfo() != null &&
+                product.getCostAndStockInfo().stream()
+                        .anyMatch(c -> "AUTO_DETECTED".equals(c.getCostSource()));
     }
 }

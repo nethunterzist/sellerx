@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useAdminUsers, useAdminUserSearch } from "@/hooks/queries/use-admin";
+import { useAdminUsers, useAdminUserSearch, useImpersonateUser } from "@/hooks/queries/use-admin";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -25,19 +25,24 @@ import {
   User,
   Eye,
   Download,
+  LogIn,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
+import { useTranslations } from "next-intl";
 import type { AdminUserListItem } from "@/types/admin";
+import type { ImpersonationMeta } from "@/hooks/use-impersonation";
 
 export default function AdminUsersPage() {
   const [page, setPage] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [isExporting, setIsExporting] = useState(false);
   const pageSize = 20;
+  const t = useTranslations("impersonation");
+  const impersonateMutation = useImpersonateUser();
 
   const { data: usersPage, isLoading } = useAdminUsers(page, pageSize);
   const { data: searchResults, isLoading: isSearching } = useAdminUserSearch(searchQuery);
@@ -116,6 +121,32 @@ export default function AdminUsersPage() {
       alert("Excel dışa aktarma sırasında bir hata oluştu");
     } finally {
       setIsExporting(false);
+    }
+  };
+
+  const handleImpersonate = async (user: AdminUserListItem) => {
+    if (!confirm(t("loginAsConfirm"))) return;
+
+    try {
+      const result = await impersonateMutation.mutateAsync({
+        id: user.id,
+        name: user.name || "",
+        email: user.email,
+      });
+
+      const meta: ImpersonationMeta = {
+        targetUserId: user.id,
+        targetUserName: user.name || "",
+        targetUserEmail: user.email,
+        adminUserId: 0, // Admin ID is embedded in the token
+        startedAt: new Date().toISOString(),
+      };
+
+      const metaParam = encodeURIComponent(JSON.stringify(meta));
+      const url = `/impersonate?token=${encodeURIComponent(result.token)}&meta=${metaParam}`;
+      window.open(url, "_blank");
+    } catch {
+      alert(t("error"));
     }
   };
 
@@ -235,12 +266,24 @@ export default function AdminUsersPage() {
                         {formatDate(user.lastLoginAt)}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="sm" asChild>
-                          <Link href={`/admin/users/${user.id}`}>
-                            <Eye className="h-4 w-4 mr-1" />
-                            Detay
-                          </Link>
-                        </Button>
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleImpersonate(user)}
+                            disabled={impersonateMutation.isPending}
+                            title={t("loginAs")}
+                          >
+                            <LogIn className="h-4 w-4 mr-1" />
+                            {t("loginAs")}
+                          </Button>
+                          <Button variant="ghost" size="sm" asChild>
+                            <Link href={`/admin/users/${user.id}`}>
+                              <Eye className="h-4 w-4 mr-1" />
+                              Detay
+                            </Link>
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}

@@ -91,7 +91,10 @@ public class TrendyolClaimsService {
 
                     if (content.isArray() && content.size() > 0) {
                         for (JsonNode claimNode : content) {
-                            String claimId = claimNode.path("id").asText();
+                            // Trendyol API migration: id -> claimId (08.12.2025)
+                            String claimId = claimNode.has("claimId")
+                                    ? claimNode.path("claimId").asText()
+                                    : claimNode.path("id").asText();
 
                             Optional<TrendyolClaim> existingOpt = claimRepository.findByStoreIdAndClaimId(storeId, claimId);
 
@@ -357,6 +360,7 @@ public class TrendyolClaimsService {
         long accepted = claimRepository.countByStoreIdAndStatus(storeId, "Accepted");
         long rejected = claimRepository.countByStoreIdAndStatus(storeId, "Rejected");
         long unresolved = claimRepository.countByStoreIdAndStatus(storeId, "Unresolved");
+        long waitingFraudCheck = claimRepository.countByStoreIdAndStatus(storeId, "WaitingFraudCheck");
 
         return ClaimsStatsDto.builder()
                 .totalClaims(total)
@@ -364,6 +368,7 @@ public class TrendyolClaimsService {
                 .acceptedClaims(accepted)
                 .rejectedClaims(rejected)
                 .unresolvedClaims(unresolved)
+                .waitingFraudCheckClaims(waitingFraudCheck)
                 .build();
     }
 
@@ -592,7 +597,8 @@ public class TrendyolClaimsService {
 
         return TrendyolClaim.builder()
                 .store(store)
-                .claimId(node.path("id").asText())
+                // Trendyol API migration: id -> claimId (08.12.2025)
+                .claimId(node.has("claimId") ? node.path("claimId").asText() : node.path("id").asText())
                 .orderNumber(node.path("orderNumber").asText(null))
                 .customerFirstName(node.path("customerFirstName").asText(null))
                 .customerLastName(node.path("customerLastName").asText(null))

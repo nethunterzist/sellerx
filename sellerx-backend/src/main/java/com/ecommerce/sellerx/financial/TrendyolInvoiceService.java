@@ -2,7 +2,7 @@ package com.ecommerce.sellerx.financial;
 
 import com.ecommerce.sellerx.common.exception.ResourceNotFoundException;
 import com.ecommerce.sellerx.financial.dto.AggregatedProductDto;
-import com.ecommerce.sellerx.financial.dto.CostOfGoodsSoldDto;
+import com.ecommerce.sellerx.financial.dto.PurchaseVatDto;
 import com.ecommerce.sellerx.financial.dto.SalesVatDto;
 import com.ecommerce.sellerx.financial.dto.CargoInvoiceItemDto;
 import com.ecommerce.sellerx.financial.dto.CommissionInvoiceItemDto;
@@ -16,6 +16,9 @@ import com.ecommerce.sellerx.financial.dto.TransactionTypeBreakdownDto;
 import com.ecommerce.sellerx.orders.OrderItem;
 import com.ecommerce.sellerx.orders.TrendyolOrder;
 import com.ecommerce.sellerx.orders.TrendyolOrderRepository;
+import com.ecommerce.sellerx.purchasing.PurchaseOrder;
+import com.ecommerce.sellerx.purchasing.PurchaseOrderItem;
+import com.ecommerce.sellerx.purchasing.PurchaseOrderRepository;
 import com.ecommerce.sellerx.products.TrendyolProduct;
 import com.ecommerce.sellerx.products.TrendyolProductRepository;
 import com.ecommerce.sellerx.stores.Store;
@@ -52,6 +55,7 @@ public class TrendyolInvoiceService {
     private final TrendyolOrderRepository orderRepository;
     private final TrendyolProductRepository productRepository;
     private final StoreRepository storeRepository;
+    private final PurchaseOrderRepository purchaseOrderRepository;
 
     // Invoice type to category mapping
     private static final Map<String, String> TYPE_TO_CATEGORY = Map.ofEntries(
@@ -248,55 +252,78 @@ public class TrendyolInvoiceService {
             });
         }
 
-        // Calculate Cost of Goods Sold (COGS) from delivered orders
+        // Calculate Purchase VAT from CLOSED purchase orders by stockEntryDate
+        // Per Turkish VAT law, input VAT is deductible in the month of purchase/stock entry
+        List<PurchaseOrder> closedPOs = purchaseOrderRepository.findClosedWithItemsByStoreId(storeId);
+
+        BigDecimal totalPurchaseCostExclVat = BigDecimal.ZERO;
+        BigDecimal totalPurchaseVat = BigDecimal.ZERO;
+        int totalItemsPurchased = 0;
+        Map<Integer, BigDecimal[]> purchaseVatByRateMap = new LinkedHashMap<>(); // vatRate -> [costAmount, vatAmount, itemCount]
+
+        for (PurchaseOrder po : closedPOs) {
+            if (po.getItems() == null) continue;
+            for (PurchaseOrderItem item : po.getItems()) {
+                // Determine effective stock entry date: item > PO > poDate
+                LocalDate effectiveDate = item.getStockEntryDate();
+                if (effectiveDate == null) effectiveDate = po.getStockEntryDate();
+                if (effectiveDate == null) effectiveDate = po.getPoDate();
+
+                // Filter by period
+                if (effectiveDate.isBefore(startDate) || effectiveDate.isAfter(endDate)) continue;
+
+                int units = item.getUnitsOrdered() != null ? item.getUnitsOrdered() : 0;
+                if (units <= 0) continue;
+
+                // totalCostPerUnit is a computed DB column (manufacturing + transportation), KDV-exclusive
+                BigDecimal costPerUnit = item.getTotalCostPerUnit();
+                if (costPerUnit == null || costPerUnit.compareTo(BigDecimal.ZERO) <= 0) continue;
+
+                BigDecimal lineCost = costPerUnit.multiply(BigDecimal.valueOf(units));
+                int vatRate = item.getCostVatRate() != null ? item.getCostVatRate() : 0;
+                BigDecimal lineVat = vatRate > 0
+                        ? lineCost.multiply(BigDecimal.valueOf(vatRate))
+                            .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP)
+                        : BigDecimal.ZERO;
+
+                totalPurchaseCostExclVat = totalPurchaseCostExclVat.add(lineCost);
+                totalPurchaseVat = totalPurchaseVat.add(lineVat);
+                totalItemsPurchased += units;
+
+                // Accumulate by rate
+                purchaseVatByRateMap.compute(vatRate, (k, arr) -> {
+                    if (arr == null) arr = new BigDecimal[]{ BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO };
+                    arr[0] = arr[0].add(lineCost);
+                    arr[1] = arr[1].add(lineVat);
+                    arr[2] = arr[2].add(BigDecimal.valueOf(units));
+                    return arr;
+                });
+            }
+        }
+
+        List<PurchaseVatDto.PurchaseVatByRate> purchaseVatByRate = purchaseVatByRateMap.entrySet().stream()
+                .sorted(Comparator.comparingInt(Map.Entry::getKey))
+                .map(e -> PurchaseVatDto.PurchaseVatByRate.builder()
+                        .vatRate(e.getKey())
+                        .costAmount(e.getValue()[0])
+                        .vatAmount(e.getValue()[1])
+                        .itemCount(e.getValue()[2].intValue())
+                        .build())
+                .collect(Collectors.toList());
+
+        PurchaseVatDto purchaseVatDto = PurchaseVatDto.builder()
+                .totalPurchaseCostExclVat(totalPurchaseCostExclVat)
+                .totalPurchaseVatAmount(totalPurchaseVat)
+                .totalItemsPurchased(totalItemsPurchased)
+                .byRate(purchaseVatByRate)
+                .build();
+
+        // Calculate Sales VAT (Satış KDV'si) from delivered orders
         List<TrendyolOrder> deliveredOrders = orderRepository
                 .findByStoreIdAndOrderDateBetweenAndStatusIn(
                         storeId, startDateTime, endDateTime,
                         List.of("Delivered"));
 
-        BigDecimal totalCostIncVat = BigDecimal.ZERO;
-        BigDecimal totalCostVat = BigDecimal.ZERO;
-        int totalItemsSold = 0;
-        int itemsWithoutCost = 0;
-        int itemsWithoutCostVat = 0;
-
-        for (TrendyolOrder order : deliveredOrders) {
-            if (order.getOrderItems() == null) continue;
-            for (OrderItem item : order.getOrderItems()) {
-                int qty = item.getQuantity() != null ? item.getQuantity() : 1;
-
-                if (item.getCost() == null || item.getCost().compareTo(BigDecimal.ZERO) <= 0) {
-                    itemsWithoutCost += qty;
-                    continue;
-                }
-
-                if (item.getCostVat() == null || item.getCostVat() <= 0) {
-                    itemsWithoutCostVat += qty;
-                }
-
-                BigDecimal itemTotalCost = item.getCost().multiply(BigDecimal.valueOf(qty));
-                totalCostIncVat = totalCostIncVat.add(itemTotalCost);
-
-                int vatRate = (item.getCostVat() != null && item.getCostVat() > 0) ? item.getCostVat() : 0;
-                if (vatRate > 0) {
-                    BigDecimal vatAmount = itemTotalCost.multiply(BigDecimal.valueOf(vatRate))
-                            .divide(BigDecimal.valueOf(100 + vatRate), 2, RoundingMode.HALF_UP);
-                    totalCostVat = totalCostVat.add(vatAmount);
-                }
-
-                totalItemsSold += qty;
-            }
-        }
-
-        CostOfGoodsSoldDto cogsDto = CostOfGoodsSoldDto.builder()
-                .totalCostIncludingVat(totalCostIncVat)
-                .totalCostVatAmount(totalCostVat)
-                .totalItemsSold(totalItemsSold)
-                .itemsWithoutCost(itemsWithoutCost)
-                .itemsWithoutCostVat(itemsWithoutCostVat)
-                .build();
-
-        // Calculate Sales VAT (Satış KDV'si) from delivered orders
         // Build barcode -> vatRate map from products (order items don't have saleVatRate populated)
         Map<String, Integer> barcodeToVatRate = productRepository.findByStoreId(storeId).stream()
                 .filter(p -> p.getBarcode() != null && p.getVatRate() != null)
@@ -375,7 +402,7 @@ public class TrendyolInvoiceService {
                 .totalInvoiceCount(invoices.size())
                 .invoicesByType(sortedStats)
                 .invoicesByCategory(new ArrayList<>(categorySummaries.values()))
-                .costOfGoodsSold(cogsDto)
+                .purchaseVat(purchaseVatDto)
                 .salesVat(salesVatDto)
                 .build();
     }

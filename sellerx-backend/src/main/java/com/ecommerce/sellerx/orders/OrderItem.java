@@ -2,6 +2,7 @@ package com.ecommerce.sellerx.orders;
 
 import com.ecommerce.sellerx.financial.FinancialSettlement;
 import com.ecommerce.sellerx.financial.FinancialOrderItemsTransactionSummary;
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 
@@ -35,6 +36,7 @@ public class OrderItem {
     private BigDecimal unitPriceTyDiscount; // This is "tyDiscount" from Trendyol API
     
     @JsonProperty("vatBaseAmount")
+    @JsonAlias("vatRate") // Trendyol API migration: vatBaseAmount -> vatRate (08.12.2025)
     private BigDecimal vatBaseAmount;
 
     // VAT fields for KDV Mahsuplasmasi
@@ -56,6 +58,9 @@ public class OrderItem {
     
     @JsonProperty("stockDate")
     private LocalDate stockDate; // Which stock date this order item was sourced from
+
+    @JsonProperty("costSource")
+    private String costSource; // "FIFO" = from FIFO lot, "LAST_KNOWN" = fallback from depleted stock, null = no cost data
     
     // ESTIMATED values from order data (these may not be the final values)
     @JsonProperty("estimatedCommissionRate")

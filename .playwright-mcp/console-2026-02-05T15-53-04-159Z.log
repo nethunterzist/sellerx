@@ -1,0 +1,2 @@
+[    1327ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/tr/forgot-password:0
+[  110735ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/api/buybox/products/dc873a2d-f7d5-4026-8d3f-6183c719af59/check:0

@@ -36,6 +36,9 @@ public class PurchaseOrder {
     @Column(name = "estimated_arrival")
     private LocalDate estimatedArrival;
 
+    @Column(name = "stock_entry_date")
+    private LocalDate stockEntryDate;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 20)
     @Builder.Default

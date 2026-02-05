@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays, Package, TrendingDown, TrendingUp } from "lucide-react";
+import { CalendarDays, Package, Sparkles, ShoppingCart, TrendingDown, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { CostAndStockInfo } from "@/types/product";
 import { Progress } from "@/components/ui/progress";
@@ -158,6 +158,18 @@ export function CostHistoryTimeline({ costHistory, salePrice, vatRate }: CostHis
                       {isFullyUsed && (
                         <span className="px-1.5 py-0.5 text-[10px] bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 rounded font-medium">
                           Tükendi
+                        </span>
+                      )}
+                      {entry.costSource === "AUTO_DETECTED" && (
+                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded font-medium">
+                          <Sparkles className="h-2.5 w-2.5" />
+                          Otomatik
+                        </span>
+                      )}
+                      {entry.costSource === "PURCHASE_ORDER" && (
+                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded font-medium">
+                          <ShoppingCart className="h-2.5 w-2.5" />
+                          Satin Alma
                         </span>
                       )}
                     </div>

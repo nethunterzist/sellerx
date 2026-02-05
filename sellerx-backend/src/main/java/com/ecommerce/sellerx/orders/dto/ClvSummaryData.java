@@ -1,0 +1,19 @@
+package com.ecommerce.sellerx.orders.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.math.BigDecimal;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class ClvSummaryData {
+    private BigDecimal avgClv;
+    private BigDecimal medianClv;
+    private BigDecimal top10PercentClv;
+    private double top10PercentRevenueShare;
+}

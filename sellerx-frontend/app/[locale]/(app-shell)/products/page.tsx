@@ -21,7 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, ChevronLeft, ChevronRight, Coins, Download, Upload, FileSpreadsheet, ExternalLink } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, Coins, Download, Upload, FileSpreadsheet, ExternalLink, Sparkles } from "lucide-react";
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 import { cn } from "@/lib/utils";
@@ -529,15 +529,33 @@ export default function ProductsPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleOpenCostModal(product)}
-                        className="h-8 text-foreground dark:bg-gray-700/50 dark:hover:bg-gray-600/50 border dark:border-gray-600"
-                      >
-                        <Coins className="h-4 w-4 mr-1" />
-                        Maliyet
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleOpenCostModal(product)}
+                          className="h-8 text-foreground dark:bg-gray-700/50 dark:hover:bg-gray-600/50 border dark:border-gray-600"
+                        >
+                          <Coins className="h-4 w-4 mr-1" />
+                          Maliyet
+                        </Button>
+                        {product.hasAutoDetectedCost && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span
+                                className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 cursor-pointer"
+                                onClick={() => handleOpenCostModal(product)}
+                              >
+                                <Sparkles className="h-3 w-3" />
+                                Otomatik
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="max-w-[250px]">
+                              Stok artisi algilandi ve otomatik maliyet kaydi olusturuldu. Kontrol etmek icin tiklayin.
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))

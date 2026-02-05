@@ -142,6 +142,36 @@ public class TrendyolOrder {
     private Integer shipmentDistrictId;
 
     /**
+     * Actual delivery date extracted from Trendyol webhook packageHistories
+     * when order status becomes "Delivered".
+     */
+    @Column(name = "delivery_date")
+    private LocalDateTime deliveryDate;
+
+    // Customer identity fields (masked/encrypted from Trendyol API)
+    @Column(name = "customer_first_name")
+    private String customerFirstName;
+
+    @Column(name = "customer_last_name")
+    private String customerLastName;
+
+    @Column(name = "customer_email")
+    private String customerEmail;
+
+    @Column(name = "customer_id")
+    private Long customerId;
+
+    // Cancellation information (from Trendyol API changelog 08.12.2025)
+    @Column(name = "cancelled_by")
+    private String cancelledBy; // "customer", "seller", "system"
+
+    @Column(name = "cancel_reason")
+    private String cancelReason;
+
+    @Column(name = "cancel_reason_code")
+    private String cancelReasonCode;
+
+    /**
      * Source of order data:
      * - ORDER_API: Full data from Trendyol Orders API (last 90 days)
      * - SETTLEMENT_API: Limited data from Financial Settlements API (historical orders >90 days)

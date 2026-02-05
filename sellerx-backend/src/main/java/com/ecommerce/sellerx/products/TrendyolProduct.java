@@ -78,6 +78,10 @@ public class TrendyolProduct {
     @Column(name = "trendyol_quantity")
     @Builder.Default
     private Integer trendyolQuantity = 0;
+
+    @Column(name = "previous_trendyol_quantity")
+    @Builder.Default
+    private Integer previousTrendyolQuantity = 0;
     
     @Column(name = "commission_rate", precision = 5, scale = 2)
     private BigDecimal commissionRate;
@@ -117,6 +121,10 @@ public class TrendyolProduct {
     @Builder.Default
     private Boolean onSale = false;
     
+    @Column(name = "stock_depleted")
+    @Builder.Default
+    private Boolean stockDepleted = false;
+
     @Type(JsonBinaryType.class)
     @Column(name = "cost_and_stock_info", columnDefinition = "jsonb")
     @Builder.Default

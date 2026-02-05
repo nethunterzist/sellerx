@@ -19,6 +19,7 @@ import type {
 } from "@/types/returns";
 
 import { logger } from "@/lib/logger";
+import { getImpersonationToken } from "@/hooks/use-impersonation";
 
 // Auth token refresh function with better error handling
 let isRefreshing = false;
@@ -83,11 +84,23 @@ export async function apiRequest<T>(
       ...(retryCount > 0 ? { retry: retryCount } : {}),
     });
 
+    // Build headers — inject impersonation token if present
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      ...(options.headers as Record<string, string>),
+    };
+    const impersonationToken = getImpersonationToken();
+    if (impersonationToken) {
+      headers["X-Impersonation-Token"] = impersonationToken;
+
+      // Block write operations during impersonation (read-only mode)
+      if (method !== "GET") {
+        throw new Error("Salt okunur modda bu işlem kullanılamaz");
+      }
+    }
+
     const config: RequestInit = {
-      headers: {
-        "Content-Type": "application/json",
-        ...options.headers,
-      },
+      headers,
       credentials: "include", // Cookie'leri dahil et
       ...options,
     };
@@ -101,6 +114,12 @@ export async function apiRequest<T>(
 
     // 401 Unauthorized - Token expired
     if (response.status === 401 && retryCount === 0) {
+      // During impersonation, don't attempt token refresh — just throw
+      if (impersonationToken) {
+        logger.warn("401 during impersonation session, token expired", { endpoint, method });
+        throw new Error("Impersonation oturumu sona erdi");
+      }
+
       logger.warn(`401 Unauthorized, attempting token refresh`, {
         endpoint,
         method,
@@ -796,6 +815,7 @@ import type {
   StockValuationResponse,
   ProfitabilityResponse,
   PurchaseSummaryResponse,
+  DepletedProduct,
 } from "@/types/purchasing";
 
 export const purchasingApi = {
@@ -954,6 +974,10 @@ export const purchasingApi = {
     apiRequest<PurchaseSummaryResponse>(
       `/purchasing/orders/${storeId}/reports/summary?startDate=${startDate}&endDate=${endDate}`
     ),
+
+  // Get depleted products
+  getDepletedProducts: (storeId: string) =>
+    apiRequest<DepletedProduct[]>(`/purchasing/orders/${storeId}/reports/stock-depletion`),
 };
 
 // Billing API

@@ -24,6 +24,7 @@ public class PurchaseOrderController {
     private final PurchaseOrderService purchaseOrderService;
     private final PurchaseReportService purchaseReportService;
     private final PurchaseOrderExcelService purchaseOrderExcelService;
+    private final StockDepletionService stockDepletionService;
 
     // === List & Get ===
 
@@ -290,5 +291,17 @@ public class PurchaseOrderController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
         PurchaseSummaryResponse response = purchaseReportService.getPurchaseSummary(storeId, startDate, endDate);
         return ResponseEntity.ok(response);
+    }
+
+    // === Stock Depletion ===
+
+    /**
+     * Get products with depleted stock (using LAST_KNOWN cost fallback)
+     */
+    @PreAuthorize("@userSecurityRules.canAccessStore(authentication, #storeId)")
+    @GetMapping("/reports/stock-depletion")
+    public ResponseEntity<List<DepletedProductDto>> getDepletedProducts(@PathVariable UUID storeId) {
+        List<DepletedProductDto> depleted = stockDepletionService.getDepletedProducts(storeId);
+        return ResponseEntity.ok(depleted);
     }
 }

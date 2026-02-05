@@ -1,21 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { getBackendHeaders } from "@/lib/api/bff-auth";
 
 const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:8080';
 
-async function getAuthHeaders() {
-  const cookieStore = await cookies();
-  const accessToken = cookieStore.get('access_token')?.value;
-
-  return {
-    'Content-Type': 'application/json',
-    ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-  };
-}
-
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const headers = await getAuthHeaders();
+    const headers = await getBackendHeaders(request);
 
     const response = await fetch(`${API_BASE_URL}/api/billing/payment-methods`, {
       method: 'GET',
@@ -40,7 +30,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const headers = await getAuthHeaders();
+    const headers = await getBackendHeaders(request);
     const body = await request.json();
 
     const response = await fetch(`${API_BASE_URL}/api/billing/payment-methods`, {

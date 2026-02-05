@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -592,4 +593,569 @@ public interface TrendyolOrderRepository extends JpaRepository<TrendyolOrder, UU
           AND o.is_shipping_estimated = true
         """, nativeQuery = true)
     int updateOrdersWithCargoInvoices(@Param("storeId") UUID storeId);
+
+    // ============== Customer Analytics Queries ==============
+
+    /**
+     * Customer analytics summary: total customers, repeat customers, revenue breakdown.
+     * Uses customer_id (stable numeric ID) instead of customer_email (masked by Trendyol).
+     * Repeat customer = customer who placed 2+ separate orders (order_count >= 2).
+     * avgItemsPerCustomer = average total items purchased per customer (based on quantity from order_items JSONB)
+     */
+    @Query(value = """
+            WITH customer_stats AS (
+                SELECT customer_id,
+                       COUNT(*) as order_count,
+                       COALESCE(SUM(
+                           (SELECT COALESCE(SUM((item->>'quantity')::int), 0)
+                            FROM jsonb_array_elements(order_items) AS item)
+                       ), 0) as item_count,
+                       SUM(total_price) as total_spend
+                FROM trendyol_orders
+                WHERE store_id = :storeId
+                AND customer_id IS NOT NULL
+                AND status IN ('Created', 'Picking', 'Invoiced', 'Shipped', 'Delivered', 'AtCollectionPoint', 'UnPacked')
+                GROUP BY customer_id
+            )
+            SELECT
+                COUNT(*) as totalCustomers,
+                COUNT(*) FILTER (WHERE order_count >= 2) as repeatCustomers,
+                COALESCE(SUM(total_spend), 0) as totalRevenue,
+                COALESCE(SUM(total_spend) FILTER (WHERE order_count >= 2), 0) as repeatRevenue,
+                COALESCE(AVG(order_count), 0) as avgOrdersPerCustomer,
+                COALESCE(AVG(item_count), 0) as avgItemsPerCustomer
+            FROM customer_stats
+            """, nativeQuery = true)
+    com.ecommerce.sellerx.orders.dto.CustomerAnalyticsProjections.SummaryProjection
+    getCustomerAnalyticsSummary(@Param("storeId") UUID storeId);
+
+    /**
+     * Customer segmentation: by order count (1 / 2-3 / 4-6 / 7+ orders placed).
+     * Uses number of orders instead of item count for accurate loyalty segmentation.
+     * Segments: 1 (new customer), 2-3 (returning), 4-6 (regular), 7+ (loyal)
+     */
+    @Query(value = """
+            WITH customer_stats AS (
+                SELECT customer_id,
+                       COUNT(*) as order_count,
+                       SUM(total_price) as total_spend
+                FROM trendyol_orders
+                WHERE store_id = :storeId
+                AND customer_id IS NOT NULL
+                AND status IN ('Created', 'Picking', 'Invoiced', 'Shipped', 'Delivered', 'AtCollectionPoint', 'UnPacked')
+                GROUP BY customer_id
+            )
+            SELECT
+                CASE
+                    WHEN order_count = 1 THEN '1'
+                    WHEN order_count BETWEEN 2 AND 3 THEN '2-3'
+                    WHEN order_count BETWEEN 4 AND 6 THEN '4-6'
+                    ELSE '7+'
+                END as segment,
+                COUNT(*) as customerCount,
+                COALESCE(SUM(total_spend), 0) as totalRevenue
+            FROM customer_stats
+            GROUP BY 1
+            ORDER BY MIN(order_count)
+            """, nativeQuery = true)
+    List<com.ecommerce.sellerx.orders.dto.CustomerAnalyticsProjections.SegmentProjection>
+    getCustomerSegmentation(@Param("storeId") UUID storeId);
+
+    /**
+     * City-based repeat customer analysis (top 20 cities).
+     * Repeat customer = customer who placed 2+ separate orders (order_count >= 2).
+     */
+    @Query(value = """
+            WITH customer_city AS (
+                SELECT customer_id,
+                       shipment_city as city,
+                       COUNT(*) as order_count,
+                       SUM(total_price) as total_spend
+                FROM trendyol_orders
+                WHERE store_id = :storeId
+                AND customer_id IS NOT NULL
+                AND shipment_city IS NOT NULL
+                AND status IN ('Created', 'Picking', 'Invoiced', 'Shipped', 'Delivered', 'AtCollectionPoint', 'UnPacked')
+                GROUP BY customer_id, shipment_city
+            )
+            SELECT
+                city,
+                COUNT(*) as totalCustomers,
+                COUNT(*) FILTER (WHERE order_count >= 2) as repeatCustomers,
+                COALESCE(SUM(total_spend), 0) as totalRevenue
+            FROM customer_city
+            GROUP BY city
+            ORDER BY totalCustomers DESC
+            LIMIT 20
+            """, nativeQuery = true)
+    List<com.ecommerce.sellerx.orders.dto.CustomerAnalyticsProjections.CityRepeatProjection>
+    getCityRepeatAnalysis(@Param("storeId") UUID storeId);
+
+    /**
+     * Monthly new vs repeat customer trend (last 12 months).
+     */
+    @Query(value = """
+            WITH monthly_orders AS (
+                SELECT
+                    TO_CHAR(order_date, 'YYYY-MM') as month,
+                    customer_id,
+                    MIN(order_date) OVER (PARTITION BY customer_id) as first_order_date,
+                    SUM(total_price) as monthly_spend
+                FROM trendyol_orders
+                WHERE store_id = :storeId
+                AND customer_id IS NOT NULL
+                AND status IN ('Created', 'Picking', 'Invoiced', 'Shipped', 'Delivered', 'AtCollectionPoint', 'UnPacked')
+                AND order_date >= NOW() - INTERVAL '12 months'
+                GROUP BY TO_CHAR(order_date, 'YYYY-MM'), customer_id, order_date
+            ),
+            monthly_classified AS (
+                SELECT
+                    month,
+                    customer_id,
+                    CASE
+                        WHEN TO_CHAR(first_order_date, 'YYYY-MM') = month THEN 'new'
+                        ELSE 'repeat'
+                    END as customer_type,
+                    monthly_spend
+                FROM monthly_orders
+            )
+            SELECT
+                month,
+                COUNT(DISTINCT customer_id) FILTER (WHERE customer_type = 'new') as newCustomers,
+                COUNT(DISTINCT customer_id) FILTER (WHERE customer_type = 'repeat') as repeatCustomers,
+                COALESCE(SUM(monthly_spend) FILTER (WHERE customer_type = 'new'), 0) as newRevenue,
+                COALESCE(SUM(monthly_spend) FILTER (WHERE customer_type = 'repeat'), 0) as repeatRevenue
+            FROM monthly_classified
+            GROUP BY month
+            ORDER BY month ASC
+            """, nativeQuery = true)
+    List<com.ecommerce.sellerx.orders.dto.CustomerAnalyticsProjections.MonthlyTrendProjection>
+    getMonthlyNewVsRepeatTrend(@Param("storeId") UUID storeId);
+
+    /**
+     * Product-level repeat buyer analysis using JSONB order_items.
+     * Calculates how many unique buyers each product has, how many are repeat buyers.
+     * Repeat buyer = customer who purchased the same product in 2+ separate orders.
+     */
+    @Query(value = """
+            WITH product_buyers AS (
+                SELECT
+                    item->>'barcode' as barcode,
+                    MAX(item->>'productName') as product_name,
+                    o.customer_id,
+                    COUNT(*) as purchase_count,
+                    SUM((item->>'quantity')::integer) as total_qty
+                FROM trendyol_orders o
+                CROSS JOIN LATERAL jsonb_array_elements(o.order_items) AS item
+                WHERE o.store_id = :storeId
+                AND o.customer_id IS NOT NULL
+                AND o.status IN ('Created', 'Picking', 'Invoiced', 'Shipped', 'Delivered', 'AtCollectionPoint', 'UnPacked')
+                AND item->>'barcode' IS NOT NULL
+                GROUP BY item->>'barcode', o.customer_id
+            )
+            SELECT
+                pb.barcode,
+                MAX(pb.product_name) as productName,
+                COUNT(*) as totalBuyers,
+                COUNT(*) FILTER (WHERE pb.purchase_count >= 2) as repeatBuyers,
+                COALESCE(SUM(pb.total_qty), 0) as totalQuantitySold,
+                MAX(p.image) as image,
+                MAX(p.product_url) as productUrl
+            FROM product_buyers pb
+            LEFT JOIN trendyol_products p ON pb.barcode = p.barcode AND p.store_id = :storeId
+            GROUP BY pb.barcode
+            HAVING COUNT(*) >= 3
+            ORDER BY repeatBuyers DESC, totalBuyers DESC
+            LIMIT 50
+            """, nativeQuery = true)
+    List<com.ecommerce.sellerx.orders.dto.CustomerAnalyticsProjections.ProductRepeatProjection>
+    getProductRepeatAnalysis(@Param("storeId") UUID storeId);
+
+    /**
+     * Cross-sell analysis: products frequently bought together by the same customer.
+     * Returns top product pairs with co-occurrence count and confidence.
+     */
+    @Query(value = """
+            WITH customer_products AS (
+                SELECT DISTINCT
+                    o.customer_id,
+                    item->>'barcode' as barcode,
+                    MAX(item->>'productName') as product_name
+                FROM trendyol_orders o
+                CROSS JOIN LATERAL jsonb_array_elements(o.order_items) AS item
+                WHERE o.store_id = :storeId
+                AND o.customer_id IS NOT NULL
+                AND o.status IN ('Created', 'Picking', 'Invoiced', 'Shipped', 'Delivered', 'AtCollectionPoint', 'UnPacked')
+                AND item->>'barcode' IS NOT NULL
+                GROUP BY o.customer_id, item->>'barcode'
+            ),
+            product_pairs AS (
+                SELECT
+                    a.barcode as source_barcode,
+                    a.product_name as source_product_name,
+                    b.barcode as target_barcode,
+                    b.product_name as target_product_name,
+                    COUNT(DISTINCT a.customer_id) as co_occurrence_count
+                FROM customer_products a
+                JOIN customer_products b ON a.customer_id = b.customer_id AND a.barcode < b.barcode
+                GROUP BY a.barcode, a.product_name, b.barcode, b.product_name
+                HAVING COUNT(DISTINCT a.customer_id) >= 2
+            )
+            SELECT
+                pp.source_barcode as sourceBarcode,
+                pp.source_product_name as sourceProductName,
+                pp.target_barcode as targetBarcode,
+                pp.target_product_name as targetProductName,
+                pp.co_occurrence_count as coOccurrenceCount,
+                sp.image as sourceImage,
+                sp.product_url as sourceProductUrl,
+                tp.image as targetImage,
+                tp.product_url as targetProductUrl
+            FROM product_pairs pp
+            LEFT JOIN trendyol_products sp ON pp.source_barcode = sp.barcode AND sp.store_id = :storeId
+            LEFT JOIN trendyol_products tp ON pp.target_barcode = tp.barcode AND tp.store_id = :storeId
+            ORDER BY pp.co_occurrence_count DESC
+            LIMIT 30
+            """, nativeQuery = true)
+    List<com.ecommerce.sellerx.orders.dto.CustomerAnalyticsProjections.CrossSellProjection>
+    getCrossSellAnalysis(@Param("storeId") UUID storeId);
+
+    /**
+     * Paginated customer list with aggregated stats.
+     * itemCount = total quantity of items purchased (sum of quantity from order_items JSONB)
+     */
+    @Query(value = """
+            SELECT
+                customer_id as customerId,
+                CONCAT(MAX(customer_first_name), ' ', MAX(customer_last_name)) as displayName,
+                MAX(shipment_city) as city,
+                COUNT(*) as orderCount,
+                COALESCE(SUM(
+                    (SELECT COALESCE(SUM((item->>'quantity')::int), 0)
+                     FROM jsonb_array_elements(order_items) AS item)
+                ), 0) as itemCount,
+                COALESCE(SUM(total_price), 0) as totalSpend,
+                MIN(order_date) as firstOrderDate,
+                MAX(order_date) as lastOrderDate
+            FROM trendyol_orders
+            WHERE store_id = :storeId
+            AND customer_id IS NOT NULL
+            AND status IN ('Created', 'Picking', 'Invoiced', 'Shipped', 'Delivered', 'AtCollectionPoint', 'UnPacked')
+            GROUP BY customer_id
+            ORDER BY totalSpend DESC
+            LIMIT :limit OFFSET :offset
+            """, nativeQuery = true)
+    List<com.ecommerce.sellerx.orders.dto.CustomerAnalyticsProjections.CustomerSummaryProjection>
+    findCustomerSummaries(@Param("storeId") UUID storeId,
+                          @Param("limit") int limit,
+                          @Param("offset") int offset);
+
+    /**
+     * Count distinct customers for pagination.
+     */
+    @Query(value = """
+            SELECT COUNT(DISTINCT customer_id)
+            FROM trendyol_orders
+            WHERE store_id = :storeId
+            AND customer_id IS NOT NULL
+            AND status IN ('Created', 'Picking', 'Invoiced', 'Shipped', 'Delivered', 'AtCollectionPoint', 'UnPacked')
+            """, nativeQuery = true)
+    long countDistinctCustomers(@Param("storeId") UUID storeId);
+
+    /**
+     * Paginated customer list with search filter.
+     * itemCount = total quantity of items purchased (sum of quantity from order_items JSONB)
+     */
+    @Query(value = """
+            SELECT
+                customer_id as customerId,
+                CONCAT(MAX(customer_first_name), ' ', MAX(customer_last_name)) as displayName,
+                MAX(shipment_city) as city,
+                COUNT(*) as orderCount,
+                COALESCE(SUM(
+                    (SELECT COALESCE(SUM((item->>'quantity')::int), 0)
+                     FROM jsonb_array_elements(order_items) AS item)
+                ), 0) as itemCount,
+                COALESCE(SUM(total_price), 0) as totalSpend,
+                MIN(order_date) as firstOrderDate,
+                MAX(order_date) as lastOrderDate
+            FROM trendyol_orders
+            WHERE store_id = :storeId
+            AND customer_id IS NOT NULL
+            AND status IN ('Created', 'Picking', 'Invoiced', 'Shipped', 'Delivered', 'AtCollectionPoint', 'UnPacked')
+            GROUP BY customer_id
+            HAVING LOWER(CONCAT(MAX(customer_first_name), ' ', MAX(customer_last_name))) LIKE LOWER(CONCAT('%', :search, '%'))
+                OR LOWER(MAX(shipment_city)) LIKE LOWER(CONCAT('%', :search, '%'))
+            ORDER BY totalSpend DESC
+            LIMIT :limit OFFSET :offset
+            """, nativeQuery = true)
+    List<com.ecommerce.sellerx.orders.dto.CustomerAnalyticsProjections.CustomerSummaryProjection>
+    findCustomerSummariesWithSearch(@Param("storeId") UUID storeId,
+                                    @Param("search") String search,
+                                    @Param("limit") int limit,
+                                    @Param("offset") int offset);
+
+    /**
+     * Count distinct customers with search filter.
+     */
+    @Query(value = """
+            SELECT COUNT(*) FROM (
+                SELECT customer_id
+                FROM trendyol_orders
+                WHERE store_id = :storeId
+                AND customer_id IS NOT NULL
+                AND status IN ('Created', 'Picking', 'Invoiced', 'Shipped', 'Delivered', 'AtCollectionPoint', 'UnPacked')
+                GROUP BY customer_id
+                HAVING LOWER(CONCAT(MAX(customer_first_name), ' ', MAX(customer_last_name))) LIKE LOWER(CONCAT('%', :search, '%'))
+                    OR LOWER(MAX(shipment_city)) LIKE LOWER(CONCAT('%', :search, '%'))
+            ) as filtered_customers
+            """, nativeQuery = true)
+    long countDistinctCustomersWithSearch(@Param("storeId") UUID storeId, @Param("search") String search);
+
+    /**
+     * Customer data backfill coverage: total orders vs orders with customer_id.
+     */
+    @Query(value = """
+            SELECT
+                COUNT(*) as totalOrders,
+                COUNT(customer_id) as ordersWithCustomerData
+            FROM trendyol_orders
+            WHERE store_id = :storeId
+            AND status IN ('Created', 'Picking', 'Invoiced', 'Shipped', 'Delivered', 'AtCollectionPoint', 'UnPacked')
+            """, nativeQuery = true)
+    com.ecommerce.sellerx.orders.dto.CustomerAnalyticsProjections.BackfillCoverageProjection
+    getCustomerDataCoverage(@Param("storeId") UUID storeId);
+
+    /**
+     * Average repeat interval in days for customers who ordered more than once.
+     */
+    @Query(value = """
+            WITH customer_orders AS (
+                SELECT customer_id, order_date,
+                       LAG(order_date) OVER (PARTITION BY customer_id ORDER BY order_date) as prev_order_date
+                FROM trendyol_orders
+                WHERE store_id = :storeId
+                AND customer_id IS NOT NULL
+                AND status IN ('Created', 'Picking', 'Invoiced', 'Shipped', 'Delivered', 'AtCollectionPoint', 'UnPacked')
+            )
+            SELECT COALESCE(AVG(EXTRACT(EPOCH FROM (order_date - prev_order_date)) / 86400), 0)
+            FROM customer_orders
+            WHERE prev_order_date IS NOT NULL
+            """, nativeQuery = true)
+    Double getAvgRepeatIntervalDays(@Param("storeId") UUID storeId);
+
+    /**
+     * Average days between repurchase per product (for products with repeat buyers).
+     */
+    @Query(value = """
+            WITH product_customer_orders AS (
+                SELECT
+                    item->>'barcode' as barcode,
+                    o.customer_id,
+                    o.order_date,
+                    LAG(o.order_date) OVER (PARTITION BY item->>'barcode', o.customer_id ORDER BY o.order_date) as prev_order_date
+                FROM trendyol_orders o
+                CROSS JOIN LATERAL jsonb_array_elements(o.order_items) AS item
+                WHERE o.store_id = :storeId
+                AND o.customer_id IS NOT NULL
+                AND o.status IN ('Created', 'Picking', 'Invoiced', 'Shipped', 'Delivered', 'AtCollectionPoint', 'UnPacked')
+                AND item->>'barcode' IS NOT NULL
+            )
+            SELECT barcode,
+                   COALESCE(AVG(EXTRACT(EPOCH FROM (order_date - prev_order_date)) / 86400), 0) as avgDays
+            FROM product_customer_orders
+            WHERE prev_order_date IS NOT NULL
+            GROUP BY barcode
+            """, nativeQuery = true)
+    List<Object[]> getProductAvgRepeatIntervalDays(@Param("storeId") UUID storeId);
+
+    /**
+     * Find distinct order numbers that have no customer data (customer_id IS NULL).
+     */
+    @Query(value = """
+            SELECT DISTINCT ty_order_number
+            FROM trendyol_orders
+            WHERE store_id = :storeId
+            AND customer_id IS NULL
+            AND ty_order_number IS NOT NULL
+            AND status IN ('Created', 'Picking', 'Invoiced', 'Shipped', 'Delivered', 'AtCollectionPoint', 'UnPacked', 'Returned', 'Cancelled', 'UnSupplied')
+            ORDER BY ty_order_number
+            """, nativeQuery = true)
+    List<String> findOrderNumbersWithoutCustomerData(@Param("storeId") UUID storeId);
+
+    // ============== Advanced Customer Analytics Queries ==============
+
+    /**
+     * Customer Lifecycle Stages: categorize customers by their lifecycle stage.
+     * Uses item_count (total items purchased) instead of order_count for more accurate segmentation.
+     * Stages: new (30d), active (30d + 3+ items), loyal (10+ items + 60d active),
+     * at_risk (60-120d), dormant (120-180d), lost (180+d)
+     */
+    @Query(value = """
+            WITH customer_stats AS (
+                SELECT
+                    customer_id,
+                    COUNT(*) as order_count,
+                    COALESCE(SUM(
+                        (SELECT COALESCE(SUM((item->>'quantity')::int), 0)
+                         FROM jsonb_array_elements(order_items) AS item)
+                    ), 0) as item_count,
+                    SUM(total_price) as total_spend,
+                    MIN(order_date) as first_order_date,
+                    MAX(order_date) as last_order_date
+                FROM trendyol_orders
+                WHERE store_id = :storeId
+                AND customer_id IS NOT NULL
+                AND status IN ('Created', 'Picking', 'Invoiced', 'Shipped', 'Delivered', 'AtCollectionPoint', 'UnPacked')
+                GROUP BY customer_id
+            ),
+            lifecycle_classified AS (
+                SELECT
+                    customer_id,
+                    total_spend,
+                    CASE
+                        WHEN first_order_date > NOW() - INTERVAL '30 days' THEN 'new'
+                        WHEN last_order_date > NOW() - INTERVAL '30 days' AND item_count >= 3 THEN 'active'
+                        WHEN item_count >= 10 AND last_order_date > NOW() - INTERVAL '60 days' THEN 'loyal'
+                        WHEN last_order_date BETWEEN NOW() - INTERVAL '120 days' AND NOW() - INTERVAL '60 days' THEN 'at_risk'
+                        WHEN last_order_date BETWEEN NOW() - INTERVAL '180 days' AND NOW() - INTERVAL '120 days' THEN 'dormant'
+                        WHEN last_order_date < NOW() - INTERVAL '180 days' THEN 'lost'
+                        ELSE 'other'
+                    END as lifecycle_stage
+                FROM customer_stats
+            )
+            SELECT
+                lifecycle_stage as lifecycleStage,
+                COUNT(*) as customerCount,
+                COALESCE(SUM(total_spend), 0) as totalRevenue
+            FROM lifecycle_classified
+            GROUP BY lifecycle_stage
+            ORDER BY
+                CASE lifecycle_stage
+                    WHEN 'new' THEN 1
+                    WHEN 'active' THEN 2
+                    WHEN 'loyal' THEN 3
+                    WHEN 'at_risk' THEN 4
+                    WHEN 'dormant' THEN 5
+                    WHEN 'lost' THEN 6
+                    ELSE 7
+                END
+            """, nativeQuery = true)
+    List<com.ecommerce.sellerx.orders.dto.CustomerAnalyticsProjections.LifecycleStageProjection>
+    getCustomerLifecycleStages(@Param("storeId") UUID storeId);
+
+    /**
+     * Cohort Analysis: Monthly cohort retention data.
+     * Groups customers by their first purchase month and tracks which months they returned.
+     */
+    @Query(value = """
+            WITH customer_first_order AS (
+                SELECT
+                    customer_id,
+                    DATE_TRUNC('month', MIN(order_date)) as cohort_month
+                FROM trendyol_orders
+                WHERE store_id = :storeId
+                AND customer_id IS NOT NULL
+                AND status IN ('Created', 'Picking', 'Invoiced', 'Shipped', 'Delivered', 'AtCollectionPoint', 'UnPacked')
+                GROUP BY customer_id
+            ),
+            customer_order_months AS (
+                SELECT DISTINCT
+                    o.customer_id,
+                    DATE_TRUNC('month', o.order_date) as order_month
+                FROM trendyol_orders o
+                WHERE o.store_id = :storeId
+                AND o.customer_id IS NOT NULL
+                AND o.status IN ('Created', 'Picking', 'Invoiced', 'Shipped', 'Delivered', 'AtCollectionPoint', 'UnPacked')
+            )
+            SELECT
+                TO_CHAR(f.cohort_month, 'YYYY-MM') as cohortMonth,
+                TO_CHAR(m.order_month, 'YYYY-MM') as orderMonth,
+                COUNT(DISTINCT f.customer_id) as activeCustomers
+            FROM customer_first_order f
+            JOIN customer_order_months m ON f.customer_id = m.customer_id
+            WHERE f.cohort_month >= NOW() - INTERVAL '12 months'
+            GROUP BY f.cohort_month, m.order_month
+            ORDER BY f.cohort_month, m.order_month
+            """, nativeQuery = true)
+    List<com.ecommerce.sellerx.orders.dto.CustomerAnalyticsProjections.CohortProjection>
+    getCohortAnalysis(@Param("storeId") UUID storeId);
+
+    /**
+     * Purchase Frequency Distribution: how many customers placed 1, 2-3, 4-6, 7-10, 11+ orders.
+     * Uses order count to measure customer return behavior and loyalty.
+     */
+    @Query(value = """
+            WITH customer_orders AS (
+                SELECT
+                    customer_id,
+                    COUNT(*) as order_count,
+                    SUM(total_price) as total_spend
+                FROM trendyol_orders
+                WHERE store_id = :storeId
+                AND customer_id IS NOT NULL
+                AND status IN ('Created', 'Picking', 'Invoiced', 'Shipped', 'Delivered', 'AtCollectionPoint', 'UnPacked')
+                GROUP BY customer_id
+            )
+            SELECT
+                CASE
+                    WHEN order_count = 1 THEN '1'
+                    WHEN order_count BETWEEN 2 AND 3 THEN '2-3'
+                    WHEN order_count BETWEEN 4 AND 6 THEN '4-6'
+                    WHEN order_count BETWEEN 7 AND 10 THEN '7-10'
+                    ELSE '11+'
+                END as frequencyBucket,
+                COUNT(*) as customerCount,
+                COALESCE(SUM(total_spend), 0) as totalRevenue,
+                COALESCE(SUM(order_count), 0) as totalOrders
+            FROM customer_orders
+            GROUP BY 1
+            ORDER BY MIN(order_count)
+            """, nativeQuery = true)
+    List<com.ecommerce.sellerx.orders.dto.CustomerAnalyticsProjections.FrequencyDistributionProjection>
+    getPurchaseFrequencyDistribution(@Param("storeId") UUID storeId);
+
+    /**
+     * CLV Summary Statistics: average CLV, top 10% CLV, top 10% revenue share.
+     * CLV = Total Spend (simplified model)
+     */
+    @Query(value = """
+            WITH customer_clv AS (
+                SELECT
+                    customer_id,
+                    SUM(total_price) as clv
+                FROM trendyol_orders
+                WHERE store_id = :storeId
+                AND customer_id IS NOT NULL
+                AND status IN ('Created', 'Picking', 'Invoiced', 'Shipped', 'Delivered', 'AtCollectionPoint', 'UnPacked')
+                GROUP BY customer_id
+            ),
+            clv_stats AS (
+                SELECT
+                    AVG(clv) as avg_clv,
+                    PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY clv) as median_clv,
+                    PERCENTILE_CONT(0.9) WITHIN GROUP (ORDER BY clv) as p90_clv,
+                    SUM(clv) as total_revenue,
+                    COUNT(*) as total_customers
+                FROM customer_clv
+            ),
+            top_10_revenue AS (
+                SELECT SUM(clv) as top_10_revenue
+                FROM (
+                    SELECT clv FROM customer_clv ORDER BY clv DESC LIMIT (SELECT GREATEST(total_customers / 10, 1) FROM clv_stats)
+                ) t
+            )
+            SELECT
+                s.avg_clv as avgClv,
+                s.median_clv as medianClv,
+                s.p90_clv as top10PercentClv,
+                CASE WHEN s.total_revenue > 0
+                     THEN (t.top_10_revenue / s.total_revenue) * 100
+                     ELSE 0
+                END as top10PercentRevenueShare
+            FROM clv_stats s, top_10_revenue t
+            """, nativeQuery = true)
+    com.ecommerce.sellerx.orders.dto.CustomerAnalyticsProjections.ClvSummaryProjection
+    getClvSummary(@Param("storeId") UUID storeId);
+
 }

@@ -4,6 +4,129 @@ Bu dosya projedeki tüm önemli değişiklikleri kronolojik olarak takip eder.
 
 ---
 
+## [2026-02-04] - Admin Impersonation (Hesabına Gir)
+
+### Özet
+Admin panelinden kullanıcıların hesabını **salt okunur (read-only)** olarak yeni sekmede görüntüleme özelliği. Müşteri destek işlemlerinde admin, kullanıcının dashboard'unu doğrudan görebilir; veri değişikliği yapılamaz.
+
+### Backend Değişiklikleri
+
+**Yeni Dosyalar:**
+- **`auth/ReadOnlyInterceptor.java`** — `HandlerInterceptor`: readOnly attribute varsa POST/PUT/DELETE/PATCH isteklerini 403 ile reddeder. Allowlist: `/auth/refresh`, `/auth/me`
+- **`config/WebConfig.java`** — ReadOnlyInterceptor'ı register eden `WebMvcConfigurer`
+- **`admin/ImpersonationLog.java`** — Audit log JPA entity (admin, hedef kullanıcı, IP, user-agent)
+- **`admin/ImpersonationLogRepository.java`** — Audit log repository
+- **`db/migration/V91__add_impersonation_audit_log.sql`** — `impersonation_logs` tablosu + indexler
+
+**Güncellenen Dosyalar:**
+- **`auth/Jwt.java`** — `isImpersonated()`, `getImpersonatedBy()`, `isReadOnly()` claim accessor'ları
+- **`auth/JwtService.java`** — `generateImpersonationToken(User, Long)` metodu (impersonatedBy + readOnly claim'leri)
+- **`auth/JwtAuthenticationFilter.java`** — Token parse sonrası impersonation claim'lerini request attribute olarak set eder
+- **`admin/AdminUserService.java`** — `generateImpersonationToken()` + audit log kaydı
+- **`admin/AdminUserController.java`** — `POST /api/admin/users/{id}/impersonate` endpoint
+- **`auth/AuthController.java`** — `/me` response'una impersonation metadata ekler
+- **`users/UserDto.java`** — `isImpersonated`, `impersonatedBy`, `readOnly` alanları (nullable, @JsonInclude NON_NULL)
+
+### Frontend Değişiklikleri
+
+**Yeni Dosyalar:**
+- **`hooks/use-impersonation.ts`** — SessionStorage bazlı state yönetimi (`isImpersonating`, `targetUserName`, `startImpersonation`, `stopImpersonation`)
+- **`lib/api/bff-auth.ts`** — BFF route'lar için ortak auth helper; `X-Impersonation-Token` header varsa onu, yoksa cookie'yi kullanır
+- **`components/admin/impersonation-banner.tsx`** — Sabit kırmızı banner: "[UserName] hesabını görüntülüyorsunuz - Salt Okunur" + Sonlandır butonu
+- **`app/[locale]/(app-shell)/impersonate/page.tsx`** — Init sayfası: URL'den token alır → sessionStorage'a kaydeder → URL temizler → `/dashboard`'a redirect
+- **`app/api/admin/users/[id]/impersonate/route.ts`** — BFF impersonation proxy route
+
+**Güncellenen Dosyalar:**
+- **`lib/api/client.ts`** — Impersonation token header injection + impersonation modda refresh devre dışı
+- **`app/[locale]/(app-shell)/layout.tsx`** — ImpersonationBanner entegrasyonu
+- **`app/[locale]/(admin)/admin/users/page.tsx`** — "Hesabına Gir" butonu (LogIn ikonu, onay dialog'u, yeni sekme açar)
+- **`hooks/queries/use-admin.ts`** — `useImpersonateUser()` mutation hook
+- **Tüm BFF route'lar (`app/api/**/route.ts`)** — `getBackendHeaders()` kullanımına geçirildi (impersonation token forwarding)
+- **`messages/tr.json`** — Türkçe çeviriler (impersonation bölümü)
+- **`messages/en.json`** — İngilizce çeviriler (impersonation bölümü)
+
+### Veritabanı
+
+**Yeni Tablo: `impersonation_logs`**
+- `id`, `admin_user_id`, `target_user_id`, `action`, `ip_address`, `user_agent`, `created_at`
+- Indexler: `admin_user_id`, `target_user_id`, `created_at DESC`
+
+### Güvenlik
+- JWT token 1 saat ömürlü, refresh yok
+- Çift katmanlı salt okunur koruma (frontend UI + backend interceptor)
+- Audit log: her impersonation kaydedilir
+- SessionStorage: tab-scoped, diğer sekmelere sızmaz
+- URL'deki token hemen temizlenir
+
+### Mimari Dokümantasyon
+- [Admin Impersonation Dokümantasyonu](architecture/ADMIN_IMPERSONATION.md)
+
+---
+
+## [2026-02-04] - KDV Sayfası: Mal Alış KDV'si (Purchase VAT)
+
+### Özet
+KDV sayfasındaki "SMM KDV" (Satılan Malın Maliyeti) hesaplaması kaldırılarak yerine **Mal Alış KDV'si** (Purchase VAT) hesaplaması getirildi. Artık KDV sayfasında satın alma siparişlerinin (PO) stok giriş tarihine göre aylık alış KDV'si hesaplanıyor. Terminoloji Türk Tek Düzen Hesap Planı'na uygun olarak "Mal Alış KDV'si" / "Hesaplanan KDV" şeklinde güncellendi.
+
+### Backend Değişiklikleri
+
+**Yeni DTO'lar:**
+- **`PurchaseVatDto.java`** — Mal alış KDV özeti: toplam maliyet (KDV hariç), toplam KDV tutarı, toplam kalem sayısı, oran bazlı gruplama
+- **`SalesVatDto.java`** — Satış KDV özeti: toplam satış tutarı (KDV hariç), toplam KDV tutarı, toplam sipariş sayısı, oran bazlı gruplama
+- **`PurchaseVatDto.PurchaseVatByRate`** — KDV oran bazlı kırılım (%0, %10, %20 vb.)
+
+**Repository Güncellemesi:**
+- **`PurchaseOrderRepository.findClosedWithItemsByStoreId()`** — CLOSED statüdeki PO'ları item'larıyla birlikte fetch eden JPQL query
+
+**Servis Güncellemesi:**
+- **`TrendyolInvoiceService.getInvoiceSummary()`** — Purchase VAT hesaplama mantığı eklendi:
+  - `stockEntryDate` fallback zinciri: `item.stockEntryDate → PO.stockEntryDate → PO.poDate`
+  - Sadece CLOSED PO'lar dahil
+  - KDV formülü: `totalCostPerUnit × unitsOrdered × costVatRate / 100`
+  - Oran bazlı gruplama
+
+**InvoiceSummaryDto Güncellemesi:**
+- `costOfGoodsSold` alanı → `purchaseVat` (PurchaseVatDto) olarak değiştirildi
+- `salesVat` (SalesVatDto) alanı eklendi
+
+### Frontend Değişiklikleri
+
+**KDV Sayfası (`app/[locale]/(app-shell)/kdv/page.tsx`):**
+- "Mal Alış KDV'si" bölümü eklendi (kalem sayısı, KDV hariç maliyet, KDV tutarı)
+- GİDER tablosunda "Mal Alış KDV'si" satırı
+- Label değişikliği: "Stok Alım" → "Mal Alış" (Tek Düzen Hesap Planı uyumlu)
+- Oran bazlı detay tablosu (%0, %10, %20)
+
+**Type Güncellemesi (`types/financial.ts`):**
+- `PurchaseVatData`, `PurchaseVatByRate`, `SalesVatData` TypeScript tipleri eklendi
+- `InvoiceSummary` tipinde `purchaseVat` ve `salesVat` alanları
+
+### Testler (6/6 Başarılı)
+
+| Test | Açıklama |
+|------|----------|
+| `shouldCalculatePurchaseVatForItemsInPeriod` | Dönem içi kalem KDV hesaplama |
+| `shouldExcludeItemsOutsidePeriod` | Dönem dışı kalemlerin hariç tutulması |
+| `shouldUseItemLevelStockEntryDate` | Item-level stockEntryDate override |
+| `shouldFallbackToPoDate` | stockEntryDate null → poDate fallback |
+| `shouldGroupByVatRate` | %0, %10, %20 oran bazlı gruplama |
+| `shouldReturnZeroWhenNoClosedPOs` | CLOSED PO yokken sıfır dönüş |
+
+### Dosya Değişiklikleri
+
+| Dosya | İşlem |
+|-------|-------|
+| `financial/dto/PurchaseVatDto.java` | YENİ |
+| `financial/dto/SalesVatDto.java` | YENİ |
+| `financial/dto/InvoiceSummaryDto.java` | GÜNCELLENDİ |
+| `financial/TrendyolInvoiceService.java` | GÜNCELLENDİ |
+| `purchasing/PurchaseOrderRepository.java` | GÜNCELLENDİ |
+| `TrendyolInvoiceServicePurchaseVatTest.java` | YENİ |
+| `sellerx-frontend/app/[locale]/(app-shell)/kdv/page.tsx` | GÜNCELLENDİ |
+| `sellerx-frontend/types/financial.ts` | GÜNCELLENDİ |
+
+---
+
 ## [2026-01-22] - Backend Test Altyapısı Genişletildi
 
 ### Özet

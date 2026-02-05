@@ -37,6 +37,21 @@ public class JwtService {
         return new Jwt(claims, jwtConfig.getSecretKey());
     }
 
+    public Jwt generateImpersonationToken(User targetUser, Long adminUserId) {
+        var claims = Jwts.claims()
+                .subject(targetUser.getId().toString())
+                .add("email", targetUser.getEmail())
+                .add("name", targetUser.getName())
+                .add("role", targetUser.getRole())
+                .add("impersonatedBy", adminUserId)
+                .add("readOnly", true)
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + 1000 * jwtConfig.getAccessTokenExpiration()))
+                .build();
+
+        return new Jwt(claims, jwtConfig.getSecretKey());
+    }
+
     public Jwt parseToken(String token) {
         try {
             var claims = getClaims(token);

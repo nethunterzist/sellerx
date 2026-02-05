@@ -1,0 +1,48 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getBackendHeaders } from "@/lib/api/bff-auth";
+
+const API_BASE_URL = process.env.API_BASE_URL;
+const isDev = process.env.NODE_ENV === 'development';
+
+interface RouteParams {
+  params: Promise<{ id: string }>;
+}
+
+/**
+ * PUT /api/alerts/[id]/dismiss
+ * Dismiss a pending stock alert — no cost entry created
+ */
+export async function PUT(request: NextRequest, { params }: RouteParams) {
+  try {
+    const { id } = await params;
+    const headers = await getBackendHeaders(request);
+
+    if (!headers.Authorization) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const response = await fetch(`${API_BASE_URL}/api/alerts/${id}/dismiss`, {
+      method: 'PUT',
+      headers,
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+      if (response.status === 404) {
+        return NextResponse.json({ error: 'Alert not found' }, { status: 404 });
+      }
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    return NextResponse.json(data);
+  } catch (error) {
+    if (isDev) console.error('[API] /alerts/[id]/dismiss error:', error);
+    return NextResponse.json(
+      { error: 'Failed to dismiss stock alert' },
+      { status: 500 }
+    );
+  }
+}

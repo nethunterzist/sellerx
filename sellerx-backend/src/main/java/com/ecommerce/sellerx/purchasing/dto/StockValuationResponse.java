@@ -33,6 +33,7 @@ public class StockValuationResponse {
         private LocalDate oldestStockDate;
         private Integer daysInStock;
         private String agingCategory; // "0-30", "30-60", "60-90", "90+"
+        private Boolean stockDepleted;
     }
 
     @Data

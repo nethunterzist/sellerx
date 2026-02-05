@@ -30,7 +30,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useUpdateProductCostAndStock } from "@/hooks/queries/use-products";
 import type { TrendyolProduct, CostAndStockInfo } from "@/types/product";
-import { Loader2, Package, TrendingUp } from "lucide-react";
+import { AlertTriangle, Loader2, Package, TrendingUp } from "lucide-react";
 import { CostHistoryTimeline } from "./cost-history-timeline";
 import { useCurrency } from "@/lib/contexts/currency-context";
 
@@ -130,6 +130,22 @@ export function CostEditModal({ product, open, onOpenChange }: CostEditModalProp
             <p className="font-semibold text-lg text-foreground">%{product.commissionRate}</p>
           </div>
         </div>
+
+        {/* Auto-Detected Cost Banner */}
+        {product.hasAutoDetectedCost && (
+          <div className="flex items-start gap-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+            <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                Otomatik Algilanan Maliyet
+              </p>
+              <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                Bu urun icin stok artisi algilandi ve son bilinen maliyet ile otomatik kayit olusturuldu.
+                Lutfen maliyet ve KDV oranini kontrol edin.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Cost History Timeline */}
         <div className="space-y-3">

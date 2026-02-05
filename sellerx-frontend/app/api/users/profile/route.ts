@@ -1,24 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { logger } from "@/lib/logger";
+import { getBackendHeaders } from "@/lib/api/bff-auth";
 
 const API_BASE_URL = process.env.API_BASE_URL;
 
 // GET user profile
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const accessToken = cookieStore.get("access_token")?.value;
+    const headers = await getBackendHeaders(request);
 
-    if (!accessToken) {
+    if (!headers.Authorization) {
       return NextResponse.json({ error: "Yetkisiz erisim" }, { status: 401 });
     }
 
     const response = await fetch(`${API_BASE_URL}/users/profile`, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
+      headers,
     });
 
     if (!response.ok) {
@@ -42,10 +38,9 @@ export async function GET() {
 // PUT update user profile
 export async function PUT(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const accessToken = cookieStore.get("access_token")?.value;
+    const headers = await getBackendHeaders(request);
 
-    if (!accessToken) {
+    if (!headers.Authorization) {
       return NextResponse.json({ error: "Yetkisiz erisim" }, { status: 401 });
     }
 
@@ -53,10 +48,7 @@ export async function PUT(request: NextRequest) {
 
     const response = await fetch(`${API_BASE_URL}/users/profile`, {
       method: "PUT",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
+      headers,
       body: JSON.stringify(body),
     });
 

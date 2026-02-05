@@ -169,7 +169,7 @@ function PLMetricRow({
         <TableCell
           className={cn(
             "sticky left-0 z-10 bg-card font-medium text-foreground",
-            metric.isBold && "bg-muted/30"
+            metric.isBold && "bg-muted"
           )}
         >
           <div className="flex items-center gap-2">
@@ -208,7 +208,7 @@ function PLMetricRow({
         <TableCell
           className={cn(
             "text-right min-w-[120px] sticky right-0 z-10 bg-card border-l border-border",
-            metric.isBold && "font-semibold bg-muted/30",
+            metric.isBold && "font-semibold bg-muted",
             getValue(total) < 0 && "text-red-600",
             metric.isNegative && getValue(total) !== 0 && "text-red-600"
           )}
@@ -220,7 +220,7 @@ function PLMetricRow({
       {/* Child rows (expandable) */}
       {metric.isExpandable && isExpanded && metric.children?.map((child) => (
         <TableRow key={child.key} className="bg-muted/20 hover:bg-muted/40 transition-colors">
-          <TableCell className="sticky left-0 z-10 bg-muted/20 pl-10 text-muted-foreground text-sm">
+          <TableCell className="sticky left-0 z-10 bg-card pl-10 text-muted-foreground text-sm">
             <div className="flex items-center gap-2">
               <span className="text-muted-foreground">└</span>
               {child.label}
@@ -244,7 +244,7 @@ function PLMetricRow({
           })}
           <TableCell
             className={cn(
-              "text-right text-sm min-w-[120px] sticky right-0 z-10 bg-muted/20 border-l border-border",
+              "text-right text-sm min-w-[120px] sticky right-0 z-10 bg-card border-l border-border",
               (child.field !== "calculated" && (total[child.field] as number) < 0) && "text-red-600",
               child.isNegative && child.field !== "calculated" && (total[child.field] as number) !== 0 && "text-red-600"
             )}

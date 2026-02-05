@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
+import { useImpersonation } from "@/hooks/use-impersonation";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "@/lib/contexts/sidebar-context";
 import {
@@ -37,13 +38,15 @@ import {
   Megaphone,
   BarChart3,
   Store,
-  Trophy,
   Activity,
   Calculator,
   Compass,
   Truck,
   Users,
   LifeBuoy,
+  PieChart as PieChartIcon,
+  UserCheck,
+  ArrowRightLeft,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { getRecentNotifications, getUnreadCount } from "@/lib/mock/notifications";
@@ -100,6 +103,13 @@ const purchasingLinks: HeaderLink[] = [
   { icon: Users, label: "Tedarikçiler", href: "/purchasing/suppliers" },
 ];
 
+const customerAnalyticsTabs: HeaderTab[] = [
+  { icon: PieChartIcon, label: "Genel Bakış", value: "overview" },
+  { icon: Package, label: "Ürün Bazlı", value: "products" },
+  { icon: UserCheck, label: "Müşteriler", value: "customers" },
+  { icon: ArrowRightLeft, label: "Çapraz Satış", value: "cross-sell" },
+];
+
 // Page titles mapping
 interface PageTitle {
   icon: React.ElementType;
@@ -109,7 +119,6 @@ interface PageTitle {
 const pageTitles: Record<string, PageTitle> = {
   "/dashboard": { icon: LayoutDashboard, title: "Kontrol Paneli" },
   "/products": { icon: Package, title: "Ürünler" },
-  "/buybox": { icon: Trophy, title: "Buybox Takip" },
   "/stock-tracking": { icon: Activity, title: "Stok Takip" },
   "/orders": { icon: ShoppingCart, title: "Siparişler" },
   "/expenses": { icon: Wallet, title: "Giderler" },
@@ -122,6 +131,7 @@ const pageTitles: Record<string, PageTitle> = {
   "/purchasing/suppliers": { icon: Users, title: "Tedarikçiler" },
   "/returns": { icon: RotateCcw, title: "İadeler" },
   "/qa": { icon: Sparkles, title: "Müşteri Soruları" },
+  "/customer-analytics": { icon: Users, title: "Müşteri Analizi" },
   "/alerts": { icon: Bell, title: "Uyarılar" },
   "/new-store": { icon: Store, title: "Mağazalar" },
   "/support": { icon: LifeBuoy, title: "Destek" },
@@ -158,6 +168,7 @@ export function Header() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { user, logout } = useAuth();
+  const { isImpersonating } = useImpersonation();
   const { theme, setTheme, resolvedTheme } = useTheme();
   const { collapsed } = useSidebar();
 
@@ -200,11 +211,14 @@ export function Header() {
     setNotifications(getRecentNotifications(5));
   }, []);
 
-  // Get active tab from URL or default to "tiles"
-  const activeTab = searchParams.get("view") || "tiles";
-
   // Get current page path (without locale prefix)
   const currentPath = pathname?.replace(/^\/(tr|en)/, "") || "/dashboard";
+
+  // Check if we're on customer analytics page
+  const isCustomerAnalytics = currentPath === "/customer-analytics";
+
+  // Get active tab from URL or default based on page
+  const activeTab = searchParams.get("view") || (isCustomerAnalytics ? "overview" : "tiles");
 
   // Check if we're on the dashboard page
   const isDashboard = pathname === "/dashboard" || pathname?.endsWith("/dashboard");
@@ -230,8 +244,9 @@ export function Header() {
 
   return (
     <header className={cn(
-      "fixed top-0 right-0 z-30 flex h-14 items-center justify-between border-b border-border bg-background px-4 transition-all duration-300",
-      collapsed ? "left-[60px]" : "left-[220px]"
+      "fixed right-0 z-30 flex h-14 items-center justify-between border-b border-border bg-background px-4 transition-all duration-300",
+      collapsed ? "left-[60px]" : "left-[220px]",
+      isImpersonating ? "top-10" : "top-0"
     )}>
       {/* Left Section - Page Title & Tabs */}
       <div className="flex items-center gap-4">
@@ -286,6 +301,31 @@ export function Header() {
                   <Icon className="h-4 w-4" />
                   <span className="hidden sm:inline">{link.label}</span>
                 </Link>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Customer Analytics Tabs */}
+        {isCustomerAnalytics && (
+          <div className="flex items-center gap-1 ml-4 pl-4 border-l border-border">
+            {customerAnalyticsTabs.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.value;
+              return (
+                <button
+                  key={tab.value}
+                  onClick={() => handleTabChange(tab.value)}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded px-3 py-1.5 text-sm transition-colors",
+                    isActive
+                      ? "bg-[#E8F1FE] dark:bg-[#1D70F1]/20 text-[#1D70F1]"
+                      : "text-foreground/70 hover:text-foreground hover:bg-muted/50"
+                  )}
+                >
+                  <Icon className="h-4 w-4" />
+                  <span className="hidden sm:inline">{tab.label}</span>
+                </button>
               );
             })}
           </div>
@@ -459,6 +499,12 @@ export function Header() {
               <Link href="/settings" className="flex items-center gap-2">
                 <Settings className="h-4 w-4" />
                 Ayarlar
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/support" className="flex items-center gap-2">
+                <LifeBuoy className="h-4 w-4" />
+                Destek
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />

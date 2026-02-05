@@ -1,0 +1,16 @@
+[   96481ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://apigw.trendyol.com/discovery-web-productgw-service/api/productDetail/939029923:0
+[  162191ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://apigw.trendyol.com/discovery-web-productgw-service/api/productDetail/939029923:0
+[  185887ms] [ERROR] Access to fetch at 'https://api.trendyol.com/websearchgw/api/productDetail/merchantList/939029923' from origin 'http://localhost:3000' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ http://localhost:3000/tr/buybox/dc873a2d-f7d5-4026-8d3f-6183c719af59:0
+[  185911ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://api.trendyol.com/websearchgw/api/productDetail/merchantList/939029923:0
+[  186063ms] [ERROR] Failed to load resource: net::ERR_NAME_NOT_RESOLVED @ https://public.trendyol.com/discovery-web-productgw-service/api/productDetail/939029923:0
+[  186205ms] [ERROR] Failed to load resource: net::ERR_NAME_NOT_RESOLVED @ https://public-mdc.trendyol.com/discovery-web-productgw-service/api/productDetail/939029923:0
+[  572512ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/api/alerts/unread-count:0
+[  572545ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/api/alerts/unread:0
+[  573588ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/api/alerts/unread-count:0
+[  573589ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/api/alerts/unread:0
+[  575635ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/api/alerts/unread-count:0
+[  575638ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/api/alerts/unread:0
+[  579637ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/api/alerts/unread-count:0
+[  579647ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/api/alerts/unread:0
+[  601519ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/api/dashboard/stats/0824e453-3761-4cdf-96c9-3215a7770618:0
+[  602553ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/api/dashboard/stats/0824e453-3761-4cdf-96c9-3215a7770618:0

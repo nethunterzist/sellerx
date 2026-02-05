@@ -8,7 +8,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { useUnreadAlertCount, useUnreadAlerts, useMarkAlertAsRead, useMarkAllAlertsAsRead } from '@/hooks/queries/use-alerts';
+import { useUnreadAlertCount, useUnreadAlerts, useMarkAlertAsRead, useMarkAllAlertsAsRead, useApproveStockAlert, useDismissStockAlert } from '@/hooks/queries/use-alerts';
 import type { AlertHistory, AlertType, AlertSeverity } from '@/types/alert';
 import { cn } from '@/lib/utils';
 import { useTranslations } from 'next-intl';
@@ -54,16 +54,23 @@ function formatTimeAgo(dateString: string): string {
 interface NotificationItemProps {
   alert: AlertHistory;
   onMarkAsRead: (id: string) => void;
+  onApprove?: (id: string) => void;
+  onDismiss?: (id: string) => void;
+  isApproving?: boolean;
+  isDismissing?: boolean;
 }
 
-function NotificationItem({ alert, onMarkAsRead }: NotificationItemProps) {
+function NotificationItem({ alert, onMarkAsRead, onApprove, onDismiss, isApproving, isDismissing }: NotificationItemProps) {
   const Icon = alertTypeIcons[alert.alertType];
+  const isPendingApproval = alert.status === 'PENDING_APPROVAL';
+  const hasCostInfo = alert.data?.hasCostInfo === true;
 
   return (
     <div
       className={cn(
         'flex items-start gap-3 p-3 border-b border-gray-100 dark:border-gray-800 transition-colors',
-        !alert.read && 'bg-blue-50/50 dark:bg-blue-950/20'
+        !alert.read && 'bg-blue-50/50 dark:bg-blue-950/20',
+        isPendingApproval && 'bg-amber-50/50 dark:bg-amber-950/20 border-l-2 border-l-amber-400'
       )}
     >
       <div className={cn('p-2 rounded-lg', severityColors[alert.severity])}>
@@ -87,6 +94,60 @@ function NotificationItem({ alert, onMarkAsRead }: NotificationItemProps) {
             {alert.message}
           </p>
         )}
+
+        {/* Pending approval action buttons */}
+        {isPendingApproval && (
+          <div className="flex items-center gap-2 mt-2">
+            {hasCostInfo ? (
+              <Button
+                variant="default"
+                size="sm"
+                className="h-7 text-xs bg-green-600 hover:bg-green-700"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onApprove?.(alert.id);
+                }}
+                disabled={isApproving || isDismissing}
+              >
+                <Check className="h-3 w-3 mr-1" />
+                Onayla
+              </Button>
+            ) : (
+              <Link
+                href="/products"
+                className="inline-flex items-center h-7 px-3 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700"
+                onClick={(e) => e.stopPropagation()}
+              >
+                Maliyet Gir
+              </Link>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-950"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDismiss?.(alert.id);
+              }}
+              disabled={isApproving || isDismissing}
+            >
+              <X className="h-3 w-3 mr-1" />
+              Reddet
+            </Button>
+          </div>
+        )}
+
+        {/* Regular stock alert link (non-pending) */}
+        {!isPendingApproval && alert.alertType === 'STOCK' && alert.data?.productId && (
+          <Link
+            href="/products"
+            className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 mt-1 inline-block"
+            onClick={(e) => e.stopPropagation()}
+          >
+            Urunleri Incele &rarr;
+          </Link>
+        )}
+
         <div className="flex items-center gap-2 mt-1">
           {alert.storeName && (
             <span className="text-xs text-gray-400 dark:text-gray-500">
@@ -99,7 +160,7 @@ function NotificationItem({ alert, onMarkAsRead }: NotificationItemProps) {
         </div>
       </div>
 
-      {!alert.read && (
+      {!alert.read && !isPendingApproval && (
         <Button
           variant="ghost"
           size="sm"
@@ -124,6 +185,8 @@ export function NotificationCenter() {
   const { data: unreadAlerts, isLoading } = useUnreadAlerts();
   const markAsRead = useMarkAlertAsRead();
   const markAllAsRead = useMarkAllAlertsAsRead();
+  const approveAlert = useApproveStockAlert();
+  const dismissAlert = useDismissStockAlert();
 
   const unreadCount = countData?.count || 0;
 
@@ -133,6 +196,14 @@ export function NotificationCenter() {
 
   const handleMarkAllAsRead = () => {
     markAllAsRead.mutate();
+  };
+
+  const handleApprove = (id: string) => {
+    approveAlert.mutate(id);
+  };
+
+  const handleDismiss = (id: string) => {
+    dismissAlert.mutate(id);
   };
 
   return (
@@ -191,6 +262,10 @@ export function NotificationCenter() {
                 key={alert.id}
                 alert={alert}
                 onMarkAsRead={handleMarkAsRead}
+                onApprove={handleApprove}
+                onDismiss={handleDismiss}
+                isApproving={approveAlert.isPending}
+                isDismissing={dismissAlert.isPending}
               />
             ))
           ) : (

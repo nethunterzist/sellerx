@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
+import { getBackendHeaders } from "@/lib/api/bff-auth";
 
 const API_BASE_URL = process.env.API_BASE_URL;
 const isDev = process.env.NODE_ENV === "development";
@@ -11,19 +11,16 @@ export async function GET(
 ) {
   try {
     const { storeId, poId, attachmentId } = await params;
-    const cookieStore = await cookies();
-    const accessToken = cookieStore.get("access_token")?.value;
+    const headers = await getBackendHeaders(request, "");
 
-    if (!accessToken) {
+    if (!headers.Authorization) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const response = await fetch(
       `${API_BASE_URL}/api/stores/${storeId}/purchase-orders/${poId}/attachments/${attachmentId}/download`,
       {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
+        headers,
       }
     );
 
@@ -41,14 +38,14 @@ export async function GET(
     const contentType = response.headers.get("content-type") || "application/octet-stream";
     const blob = await response.arrayBuffer();
 
-    const headers: Record<string, string> = {
+    const responseHeaders: Record<string, string> = {
       "Content-Type": contentType,
     };
     if (contentDisposition) {
-      headers["Content-Disposition"] = contentDisposition;
+      responseHeaders["Content-Disposition"] = contentDisposition;
     }
 
-    return new NextResponse(blob, { headers });
+    return new NextResponse(blob, { headers: responseHeaders });
   } catch (error) {
     if (isDev) console.error("[API] /attachments/[attachmentId] GET error:", error);
     return NextResponse.json(
@@ -65,10 +62,9 @@ export async function DELETE(
 ) {
   try {
     const { storeId, poId, attachmentId } = await params;
-    const cookieStore = await cookies();
-    const accessToken = cookieStore.get("access_token")?.value;
+    const headers = await getBackendHeaders(request, "");
 
-    if (!accessToken) {
+    if (!headers.Authorization) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -76,9 +72,7 @@ export async function DELETE(
       `${API_BASE_URL}/api/stores/${storeId}/purchase-orders/${poId}/attachments/${attachmentId}`,
       {
         method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
+        headers,
       }
     );
 

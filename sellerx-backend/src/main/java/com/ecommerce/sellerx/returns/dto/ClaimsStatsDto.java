@@ -15,4 +15,5 @@ public class ClaimsStatsDto {
     private long acceptedClaims;
     private long rejectedClaims;
     private long unresolvedClaims;
+    private long waitingFraudCheckClaims; // Trendyol API: WaitingFraudCheck status (14.03.2025)
 }

@@ -20,7 +20,7 @@ If approved: `cd sellerx-frontend && npm run build && npm start`
 
 **Backend Changes**: No rebuild needed - Spring Boot supports hot reload.
 
-**Frontend Must Run in Production Mode**: Always use `npm run build && npm start` (200 MB RAM) instead of `npm run dev` (900 MB RAM).
+**Frontend Runs in Production Mode**: Always use `npm run build && npm start` for lower RAM usage (~200 MB vs ~900 MB dev mode).
 
 ## Development Commands
 
@@ -49,8 +49,8 @@ cd sellerx-frontend && npm run build && npm start  # 3. Frontend (production mod
 ### Frontend
 ```bash
 cd sellerx-frontend
-npm run build && npm start  # Production (recommended)
-npm run dev                 # Development (high RAM usage)
+npm run build && npm start  # Production (recommended - low RAM)
+npm run dev                 # Development (hot reload, high RAM)
 npm run lint                # ESLint check
 npx tsc --noEmit            # TypeScript check (no build output)
 npx prettier --check .      # Check formatting
@@ -102,6 +102,9 @@ app/
 │   │   ├── dashboard/     # Sales stats, charts, cost analysis
 │   │   ├── products/      # Product list, sync, cost/stock management
 │   │   ├── orders/        # Order management
+│   │   ├── purchasing/    # Purchase orders, suppliers, reports (profitability, stock valuation)
+│   │   ├── hakedis/       # Trendyol settlement tracking
+│   │   ├── profit/        # Profit analysis
 │   │   ├── settings/      # Store settings, webhooks configuration
 │   │   └── new-store/     # Store creation with Trendyol credentials
 │   └── (auth)/            # Public auth pages (sign-in, register)
@@ -110,18 +113,21 @@ app/
 
 **Key Directories**:
 - `components/` - React components by feature (auth, dashboard, products, settings, ui)
-- `hooks/queries/` - React Query hooks: `use-auth.ts`, `use-stores.ts`, `use-products.ts`, `use-orders.ts`, `use-webhooks.ts`, `use-financial.ts`, `use-ads.ts`, `use-qa.ts`, `use-returns.ts`, `use-purchasing.ts`, `use-billing.ts`
+- `hooks/queries/` - React Query hooks: `use-auth.ts`, `use-stores.ts`, `use-products.ts`, `use-orders.ts`, `use-webhooks.ts`, `use-financial.ts`, `use-ads.ts`, `use-qa.ts`, `use-returns.ts`, `use-purchasing.ts`, `use-billing.ts`, `use-hakedis.ts`, `use-admin.ts`
 - `lib/api/client.ts` - Centralized API client with queue-based token refresh (prevents duplicate refresh requests via `isRefreshing` flag and subscriber queue)
 - `lib/validators/` - Zod schemas for form validation
 - `messages/` - i18n translations (en.json, tr.json)
 
 ### Backend Structure (`sellerx-backend/src/main/java/com/ecommerce/sellerx/`)
 ```
+admin/          # Admin panel: users, stores, billing, referrals, notifications, activity logs
 auth/           # JWT auth, SecurityConfig, JwtAuthFilter
 users/          # User entity, service, controller, Role enum
 stores/         # Store management, credentials JSONB
 products/       # Trendyol products, cost/stock history JSONB
 orders/         # Order sync, status tracking, order_items JSONB
+purchasing/     # Purchase orders, suppliers, stock valuation, profitability reports
+hakedis/        # Trendyol settlement (hakedis) calculation and simulation
 dashboard/      # Stats calculation, daily/monthly aggregations
 financial/      # Financial data sync from Trendyol
 expenses/       # Expense categories, frequency enum
@@ -156,6 +162,14 @@ Key tables (Flyway migrations in `src/main/resources/db/migration/`):
 **Rate Limiting**: `TrendyolRateLimiter` limits all Trendyol API calls to 10 requests/second using Guava RateLimiter.
 
 **Commission System**: Orders have estimated commission (`vatBaseAmount × commissionRate / 100`) until financial settlement arrives with actual rates. `isCommissionEstimated` tracks this.
+
+**Admin Impersonation**: Admin users can view a customer's account in read-only mode via a new browser tab:
+1. Admin clicks "Hesabına Gir" on admin users page → backend generates impersonation JWT (1h, no refresh)
+2. New tab opens `/impersonate?token=...` → token saved to `sessionStorage` (tab-scoped) → redirect to `/dashboard`
+3. API client reads `sessionStorage` impersonation token → sends `X-Impersonation-Token` header → BFF routes forward via `getBackendHeaders()`
+4. Backend `ReadOnlyInterceptor` blocks POST/PUT/DELETE/PATCH for read-only tokens (403)
+5. Red banner shows in UI: "[UserName] hesabını görüntülüyorsunuz - Salt Okunur"
+6. Audit log: every impersonation recorded in `impersonation_logs` table (admin, target, IP, user-agent)
 
 **Trendyol API Integration** (`TrendyolService.java`):
 - All API calls go through `TrendyolService` which handles auth headers and rate limiting
@@ -224,71 +238,60 @@ ls sellerx-backend/src/main/resources/db/migration/
 ```
 
 ### Frontend Build Errors
-Build errors are currently ignored (`ignoreBuildErrors: true`), but for debugging:
 ```bash
 cd sellerx-frontend
 npm run lint          # Check ESLint errors
 npx tsc --noEmit     # Check TypeScript errors without building
 ```
 
-## Hata Ayıklama ve Observability
+## Debugging and Observability
 
-Kod değişikliği yaptıktan sonra **mutlaka** ilgili testleri çalıştır. Bir hata varsa önce test çıktılarına ve loglara bak.
+After any code change, **always** run related tests first. If there's a bug, check test output and logs before anything else.
 
-### Backend Hata Ayıklama Adımları
+### Backend Debugging
 
-1. **Testleri çalıştır** — değişiklik sonrası ilk adım bu olmalı:
+1. **Run tests** — first step after any change:
 ```bash
 cd sellerx-backend
-./mvnw test                               # Tüm testler (~619 test)
-./mvnw test -Dtest=*ServiceTest           # Sadece service testleri
-./mvnw test -Dtest=ClassName              # Tek bir test sınıfı
-./mvnw test -Dtest=ClassName#methodName   # Tek bir test metodu
+./mvnw test                               # All tests (~619 tests)
+./mvnw test -Dtest=*ServiceTest           # Service tests only
+./mvnw test -Dtest=ClassName              # Single test class
+./mvnw test -Dtest=ClassName#methodName   # Single test method
 ```
 
-2. **Logları oku** — uygulama çalışırken structured log basıyor:
-   - Development: insan-okunabilir format (console)
-   - Production: JSON format (logback-spring.xml ile yapılandırılmış)
-   - Her request'te `requestId` ve `userId` MDC context'i var
+2. **Read logs** — structured logging is active at runtime:
+   - Development: human-readable format (console)
+   - Production: JSON format (configured via logback-spring.xml)
+   - Each request has `requestId` and `userId` in MDC context
 
-3. **Actuator endpoint'lerini kontrol et**:
+3. **Actuator endpoints**:
 ```bash
-curl localhost:8080/actuator/health        # Uygulama + Trendyol API sağlığı
-curl localhost:8080/actuator/metrics       # Metrik listesi
-curl localhost:8080/actuator/metrics/trendyol.api.calls  # Trendyol API çağrı sayısı
+curl localhost:8080/actuator/health        # App + Trendyol API health
+curl localhost:8080/actuator/metrics       # Metrics list
+curl localhost:8080/actuator/metrics/trendyol.api.calls  # Trendyol API call count
 ```
 
-4. **Custom metrikler** (Micrometer):
-   - `order.sync.duration` — order sync süresi
-   - `trendyol.api.calls` — Trendyol API çağrı sayısı (endpoint + hata bazlı)
-   - `webhook.events` — webhook event sayısı (event type bazlı)
+4. **Custom metrics** (Micrometer):
+   - `order.sync.duration` — order sync duration
+   - `trendyol.api.calls` — Trendyol API call count (by endpoint + error)
+   - `webhook.events` — webhook event count (by event type)
 
-### Frontend Hata Ayıklama
+### Frontend Debugging
 
-1. **Testleri çalıştır**:
+1. **Run tests**:
 ```bash
 cd sellerx-frontend
-npm run test                  # Tüm testler (Vitest)
-npm run test -- --run         # CI modu (watch olmadan)
+npm run test                  # All tests (Vitest, watch mode)
+npm run test -- --run         # CI mode (no watch)
 ```
 
-2. **Error Boundary**: Component patlayınca beyaz ekran yerine hata sayfası gösterir. Hata `lib/logger.ts` üzerinden loglanır.
+2. **Error Boundary**: Shows error page instead of white screen on component crash. Errors are logged via `lib/logger.ts`.
 
-3. **Logger** (`lib/logger.ts`): Development'ta console'a yazar, production'da sessiz. Direkt `console.log` yerine bunu kullan:
+3. **Logger** (`lib/logger.ts`): Writes to console in development, silent in production. Use this instead of `console.log`:
 ```typescript
 import { logger } from '@/lib/logger';
 logger.error('Order sync failed', { storeId, error });
 ```
-
-### Test Altyapısı (Backend)
-
-Test yazarken bu base class'ları kullan:
-- `BaseIntegrationTest` — gerçek PostgreSQL ile (TestContainers)
-- `BaseControllerTest` — mock service'lerle WebMvcTest
-- `BaseUnitTest` — saf Mockito unit test
-- `TestDataBuilder` — test entity'leri oluşturmak için fluent API
-
-**Dikkat**: `TestDataBuilder` entity ID set etmez (`@GeneratedValue`). Unit testlerde manuel set et: `entity.setId(UUID.randomUUID())`
 
 ## Development Patterns
 
@@ -315,6 +318,7 @@ Tests use TestContainers (PostgreSQL) + JUnit 5 + Mockito. Base classes in `src/
 - `BaseControllerTest` - WebMvcTest with mocked services
 - `BaseUnitTest` - Pure unit tests with Mockito
 - `TestDataBuilder` - Fluent API for creating test entities
+  - **Note**: `TestDataBuilder` does not set entity IDs (`@GeneratedValue`). In unit tests, set IDs manually: `entity.setId(UUID.randomUUID())`
 
 ```java
 // Example: Integration test extending BaseIntegrationTest
@@ -365,8 +369,6 @@ Webhook receiver (`/api/webhook/trendyol/{sellerId}`) must:
 
 ### Known Technical Debt
 - TypeScript strict mode disabled (`tsconfig.json`: `strict: false`)
-- ESLint/TypeScript errors ignored during builds (`next.config.ts`: `ignoreBuildErrors: true`)
-- No frontend tests (backend has ~162 tests)
 - Net profit calculation missing: commission, stoppage, return costs not subtracted
 
 ## Adding New Features
@@ -404,6 +406,8 @@ All frontend API calls go through Next.js API routes (not directly to Spring Boo
 
 ## Documentation Reference
 
+All documentation (inventory, maps, architecture) is in the **docs/** directory. Entry point: [docs/README.md](docs/README.md).
+
 Detailed architecture docs in `docs/architecture/`:
 - `STORE_ONBOARDING.md` - Async store sync flow
 - `COMMISSION_SYSTEM.md` - Estimated vs actual commission calculation
@@ -414,6 +418,5 @@ Detailed architecture docs in `docs/architecture/`:
 - `DATABASE_SCHEMA.md` - Full database schema reference
 - `ASYNC_PROCESSING.md` - @Async patterns and thread pools
 - `TRENDYOL_API_LIMITS.md` - API limitations and workarounds
-- `BUYBOX_SYSTEM.md` - BuyBox tracking feature
 
 Development log: `docs/CHANGELOG.md`

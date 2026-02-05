@@ -14,6 +14,7 @@ public class PurchaseOrderSummaryDto {
     private String poNumber;
     private LocalDate poDate;
     private LocalDate estimatedArrival;
+    private LocalDate stockEntryDate;
     private PurchaseOrderStatus status;
     private String supplierName;
     private Long supplierId;

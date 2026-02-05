@@ -11,6 +11,10 @@ export interface User {
   role?: UserRole;
   createdAt?: string;
   updatedAt?: string;
+  // Impersonation metadata (only present during impersonated sessions)
+  isImpersonated?: boolean;
+  impersonatedBy?: number;
+  readOnly?: boolean;
 }
 
 export interface UpdateProfileRequest {

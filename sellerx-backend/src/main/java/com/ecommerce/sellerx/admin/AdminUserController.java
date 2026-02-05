@@ -3,6 +3,7 @@ package com.ecommerce.sellerx.admin;
 import com.ecommerce.sellerx.admin.dto.AdminUserDto;
 import com.ecommerce.sellerx.admin.dto.AdminUserListDto;
 import com.ecommerce.sellerx.admin.dto.ChangeRoleRequest;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -12,9 +13,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/admin/users")
@@ -91,5 +94,22 @@ public class AdminUserController {
         log.info("Admin exporting all users");
         List<AdminUserListDto> users = adminUserService.getAllUsersForExport();
         return ResponseEntity.ok(users);
+    }
+
+    /**
+     * Generate impersonation token to view user's account (read-only)
+     * POST /api/admin/users/{id}/impersonate
+     */
+    @PostMapping("/{id}/impersonate")
+    public ResponseEntity<Map<String, String>> impersonateUser(
+            @PathVariable Long id,
+            HttpServletRequest request) {
+
+        Long adminUserId = (Long) SecurityContextHolder.getContext()
+                .getAuthentication().getPrincipal();
+
+        log.info("Admin {} requesting impersonation of user {}", adminUserId, id);
+        String token = adminUserService.generateImpersonationToken(id, adminUserId, request);
+        return ResponseEntity.ok(Map.of("token", token));
     }
 }

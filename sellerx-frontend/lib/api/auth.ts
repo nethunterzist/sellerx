@@ -32,9 +32,17 @@ export const authApi = {
   },
 
   me: async () => {
+    const headers: Record<string, string> = {};
+    if (typeof window !== "undefined") {
+      const impToken = sessionStorage.getItem("impersonation_token");
+      if (impToken) {
+        headers["X-Impersonation-Token"] = impToken;
+      }
+    }
     const res = await fetch("/api/auth/me", {
       credentials: "include",
       cache: "no-cache", // Prevent browser caching for auth checks
+      headers,
     });
 
     if (!res.ok) {

@@ -11,6 +11,7 @@ import java.time.LocalDate;
 public class CreatePurchaseOrderRequest {
     private LocalDate poDate;
     private LocalDate estimatedArrival;
+    private LocalDate stockEntryDate;
     private String supplierName;
     private Long supplierId;
     private String supplierCurrency;

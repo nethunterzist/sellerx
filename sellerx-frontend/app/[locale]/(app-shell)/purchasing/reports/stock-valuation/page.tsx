@@ -389,9 +389,17 @@ export default function StockValuationPage() {
                             <Package className="h-5 w-5 text-muted-foreground" />
                           </div>
                         )}
-                        <span className="text-sm font-medium text-foreground line-clamp-2 max-w-[200px]">
-                          {product.productName}
-                        </span>
+                        <div className="max-w-[200px]">
+                          <span className="text-sm font-medium text-foreground line-clamp-2">
+                            {product.productName}
+                          </span>
+                          {product.stockDepleted && (
+                            <span className="inline-flex items-center gap-0.5 mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                              <AlertTriangle className="h-2.5 w-2.5" />
+                              Stok Tukendi
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </td>
                     <td className="p-3 text-sm text-muted-foreground font-mono">

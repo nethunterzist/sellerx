@@ -1,14 +1,13 @@
-import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
+import { getBackendHeaders } from "@/lib/api/bff-auth";
 
 export async function GET(req: NextRequest) {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("access_token")?.value;
-  if (!token) {
+  const headers = await getBackendHeaders(req);
+  if (!headers.Authorization) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const backendRes = await fetch(`${process.env.API_BASE_URL}/auth/me`, {
-    headers: { Authorization: `Bearer ${token}` },
+    headers,
     credentials: "include",
   });
 

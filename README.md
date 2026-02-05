@@ -1,8 +1,22 @@
 # Sellerx
 
-Modern e-ticaret yönetim platformu. Frontend (Next.js) + Backend (Spring Boot) + PostgreSQL ile Docker geliştirme ortamı.
+Trendyol odaklı mağaza yönetim platformu. Teknik dokümantasyon: [docs/](docs/). Geliştirici rehberi: [CLAUDE.md](CLAUDE.md).
 
-## 🎯 Hızlı Başlangıç
+Frontend (Next.js 15) + Backend (Spring Boot) + PostgreSQL. Docker veya yerel kurulum.
+
+## Yerel kurulum (Docker'sız)
+
+1. **Veritabanı:** `./db.sh start`
+2. **Backend:** `cd sellerx-backend && export JWT_SECRET='sellerx-development-jwt-secret-key-2026-minimum-256-bits-required' && ./mvnw spring-boot:run`
+3. **Frontend:** `cd sellerx-frontend && npm run build && npm start`
+
+Tümünü tek seferde başlatmak için: `./start-sellerx.sh`
+
+Erişim: Frontend http://localhost:3000, Backend http://localhost:8080, DB localhost:5432. Test kullanıcı: test@test.com / 123456.
+
+---
+
+## 🎯 Docker ile Hızlı Başlangıç
 
 ### Gereksinimler
 
@@ -177,7 +191,7 @@ docker-compose -f docker-compose.prod.yml up --build -d
 
 ```
 Sellerx/
-├── 📁 sellerx-frontend/           # Frontend (Next.js 14+)
+├── 📁 sellerx-frontend/           # Frontend (Next.js 15)
 │   ├── app/                  # App Router
 │   ├── components/           # React Components
 │   ├── lib/                  # Utilities & API

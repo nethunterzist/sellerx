@@ -156,6 +156,7 @@ CREATE TABLE alert_history (
     title VARCHAR(500) NOT NULL,
     message TEXT,
     severity VARCHAR(20) DEFAULT 'MEDIUM',
+    status VARCHAR(20) DEFAULT 'INFO',   -- INFO, PENDING_APPROVAL, APPROVED, DISMISSED (V88)
     data JSONB,  -- Ek veri (ürün bilgisi, değerler vs.)
 
     email_sent BOOLEAN DEFAULT false,
@@ -169,6 +170,17 @@ CREATE TABLE alert_history (
 CREATE INDEX idx_alert_history_user_created ON alert_history(user_id, created_at DESC);
 CREATE INDEX idx_alert_history_unread ON alert_history(user_id, read_at) WHERE read_at IS NULL;
 ```
+
+#### status Alanı (V88 Migration)
+
+| Status | Açıklama |
+|--------|----------|
+| `INFO` | Default. Kural bazlı normal bildirimler |
+| `PENDING_APPROVAL` | Stok artışı algılandı, kullanıcı onayı bekleniyor |
+| `APPROVED` | Kullanıcı onayladı, maliyet kaydı oluşturuldu |
+| `DISMISSED` | Kullanıcı reddetti, hiçbir işlem yapılmadı |
+
+Detay: [features/AUTO_STOCK_DETECTION.md](../features/AUTO_STOCK_DETECTION.md)
 
 ---
 
@@ -215,6 +227,8 @@ POST /api/alert-rules
 | `GET` | `/api/alerts/stats` | İstatistikler |
 | `GET` | `/api/alerts/{id}` | Tek uyarı detayı |
 | `PUT` | `/api/alerts/{id}/read` | Okundu işaretle |
+| `PUT` | `/api/alerts/{id}/approve` | Onay bekleyen alert'i onayla (maliyet kaydı oluşturur) |
+| `PUT` | `/api/alerts/{id}/dismiss` | Onay bekleyen alert'i reddet (hiçbir işlem yapılmaz) |
 | `PUT` | `/api/alerts/read-all` | Tümünü okundu işaretle |
 
 **Örnek Response - Stats:**
@@ -360,6 +374,10 @@ useUnreadCount()
 useAlertStats()
 useMarkAsRead()
 useMarkAllAsRead()
+
+// Stok artışı onay/red (PENDING_APPROVAL alertler için)
+useApproveStockAlert()   // PUT /api/alerts/{id}/approve
+useDismissStockAlert()   // PUT /api/alerts/{id}/dismiss
 ```
 
 ### Next.js API Routes
@@ -370,7 +388,9 @@ app/api/alerts/
 ├── route.ts              # GET /api/alerts (list)
 ├── [id]/
 │   ├── route.ts          # GET/PUT /api/alerts/{id}
-│   └── read/route.ts     # PUT /api/alerts/{id}/read
+│   ├── read/route.ts     # PUT /api/alerts/{id}/read
+│   ├── approve/route.ts  # PUT /api/alerts/{id}/approve (stok onay)
+│   └── dismiss/route.ts  # PUT /api/alerts/{id}/dismiss (stok red)
 ├── unread/route.ts       # GET /api/alerts/unread
 ├── unread-count/route.ts # GET /api/alerts/unread-count
 ├── read-all/route.ts     # PUT /api/alerts/read-all
@@ -461,5 +481,7 @@ Yeni kullanıcı kaydolduğunda otomatik oluşturulabilecek önerilen kurallar:
 ## İlgili Dosyalar
 
 - Migration: `V60__create_alert_tables.sql`
+- Migration: `V88__add_alert_status_field.sql` — `status` kolonu (PENDING_APPROVAL desteği)
 - Security: `WebhookSecurityRules.java` - alert endpoint'leri auth gerektir
 - Async: `AsyncConfig.java` - `@Async` annotation desteği
+- Otomatik stok algılama: [features/AUTO_STOCK_DETECTION.md](../features/AUTO_STOCK_DETECTION.md)

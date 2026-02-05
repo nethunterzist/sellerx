@@ -17,6 +17,7 @@ import {
   TrendsView,
   CitiesView,
 } from "@/components/dashboard";
+import { StockDepletionBanner } from "@/components/dashboard/stock-depletion-banner";
 import { useCityStats } from "@/hooks/queries/use-city-stats";
 import type { DashboardViewType } from "@/components/dashboard/dashboard-tabs";
 import type { ProductItem } from "@/components/dashboard/dashboard-filters";
@@ -409,6 +410,9 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      {/* Stock Depletion Warning */}
+      <StockDepletionBanner storeId={storeId} />
+
       {/* Error Message */}
       {displayError && (
         <p className="text-sm text-red-500">

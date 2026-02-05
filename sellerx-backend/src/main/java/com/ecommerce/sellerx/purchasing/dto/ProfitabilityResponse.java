@@ -39,6 +39,7 @@ public class ProfitabilityResponse {
         private BigDecimal profit;
         private Double margin;
         private String marginCategory; // "high" (>30%), "medium" (15-30%), "low" (<15%)
+        private Boolean costEstimated; // true if any order used LAST_KNOWN cost
     }
 
     @Data

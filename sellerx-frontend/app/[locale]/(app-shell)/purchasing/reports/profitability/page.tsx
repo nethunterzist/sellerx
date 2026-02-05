@@ -18,6 +18,7 @@ import {
   Calendar,
   ChevronDown,
   ChevronUp,
+  AlertTriangle,
 } from "lucide-react";
 import type { ProductProfitability } from "@/types/purchasing";
 
@@ -146,9 +147,20 @@ export default function ProfitabilityPage() {
             </div>
           )}
           <div className="min-w-0">
-            <p className="text-sm font-medium text-foreground line-clamp-1">
-              {product.productName}
-            </p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-sm font-medium text-foreground line-clamp-1">
+                {product.productName}
+              </p>
+              {product.costEstimated && (
+                <span
+                  className="inline-flex items-center gap-0.5 shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                  title="Bu urunun FIFO stogu tukenmis, maliyet son bilinen maliyet uzerinden hesaplandi"
+                >
+                  <AlertTriangle className="h-2.5 w-2.5" />
+                  Tahmini
+                </span>
+              )}
+            </div>
             <p className="text-xs text-muted-foreground font-mono">
               {product.barcode}
             </p>

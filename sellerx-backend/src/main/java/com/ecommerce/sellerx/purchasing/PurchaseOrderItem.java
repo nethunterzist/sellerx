@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -64,6 +65,9 @@ public class PurchaseOrderItem {
 
     @Column(name = "labels", columnDefinition = "TEXT")
     private String labels;
+
+    @Column(name = "stock_entry_date")
+    private LocalDate stockEntryDate;
 
     @Column(name = "comment", columnDefinition = "TEXT")
     private String comment;

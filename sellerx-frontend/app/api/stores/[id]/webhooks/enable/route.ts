@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
+import { getBackendHeaders } from "@/lib/api/bff-auth";
 
 const API_BASE_URL = process.env.API_BASE_URL;
 const isDev = process.env.NODE_ENV === "development";
@@ -10,10 +10,9 @@ export async function POST(
 ) {
   try {
     const { id: storeId } = await params;
-    const cookieStore = await cookies();
-    const accessToken = cookieStore.get("access_token")?.value;
+    const headers = await getBackendHeaders(request);
 
-    if (!accessToken) {
+    if (!headers.Authorization) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -21,10 +20,7 @@ export async function POST(
       `${API_BASE_URL}/api/stores/${storeId}/webhooks/enable`,
       {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
+        headers,
       }
     );
 

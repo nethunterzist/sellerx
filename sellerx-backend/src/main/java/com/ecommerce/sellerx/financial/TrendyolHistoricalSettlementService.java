@@ -352,17 +352,10 @@ public class TrendyolHistoricalSettlementService {
      */
     private boolean checkDataExists(Store store, TrendyolCredentials credentials, HttpEntity<String> entity,
                                    LocalDate start, LocalDate end) {
-        // Check all transaction types to ensure we don't miss the first order
-        // (e.g., if first transaction is a Return or Discount)
-        String[] transactionTypes = {"Sale", "Return", "Discount", "Coupon", "EarlyPayment"};
-        
-        for (String transactionType : transactionTypes) {
-            if (checkTransactionTypeExists(store, credentials, entity, start, end, transactionType)) {
-                return true; // Data exists in at least one transaction type
-            }
-        }
-        
-        return false; // No data found in any transaction type
+        // Trendyol API changelog (30.12.2025): Use combined transactionTypes parameter
+        // to check all types in a single API call instead of 5 separate calls
+        return checkTransactionTypeExists(store, credentials, entity, start, end,
+                "Sale,Return,Discount,Coupon,EarlyPayment");
     }
 
     /**
@@ -391,12 +384,14 @@ public class TrendyolHistoricalSettlementService {
                 .toInstant()
                 .toEpochMilli();
             
+            // Use transactionTypes (plural) for combined query (Trendyol API 30.12.2025)
+            String typeParam = transactionType.contains(",") ? "transactionTypes" : "transactionType";
             String url = TRENDYOL_BASE_URL + SETTLEMENT_ENDPOINT +
-                        "?transactionType=" + transactionType +
+                        "?" + typeParam + "=" + transactionType +
                         "&startDate=" + startTimestamp +
                         "&endDate=" + endTimestamp +
                         "&page=0" +
-                        "&size=1000"; // Trendyol API requires specific size values (1000 works like Financial service)
+                        "&size=1000";
             
             // Use retry mechanism for resilience against timeouts and transient errors
             ResponseEntity<TrendyolFinancialSettlementResponse> response =
@@ -744,23 +739,11 @@ public class TrendyolHistoricalSettlementService {
         long startTimestamp = startDate.atZone(ZoneId.of("Europe/Istanbul")).toInstant().toEpochMilli();
         long endTimestamp = endDate.atZone(ZoneId.of("Europe/Istanbul")).toInstant().toEpochMilli();
 
-        String[] transactionTypes = {"Sale", "Return", "Discount", "Coupon", "EarlyPayment"};
-        int totalSettlements = 0;
-
-        for (String transactionType : transactionTypes) {
-            int typeSettlements = fetchSettlementsByType(
-                store, credentials, entity, startTimestamp, endTimestamp, transactionType, allSettlementsByOrder);
-            totalSettlements += typeSettlements;
-
-            // Small delay between transaction types
-            try {
-                Thread.sleep(200);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-        }
-
-        return totalSettlements;
+        // Trendyol API changelog (30.12.2025): Use combined transactionTypes parameter
+        // to fetch all types in a single paginated query instead of 5 separate queries
+        String combinedTypes = "Sale,Return,Discount,Coupon,EarlyPayment";
+        return fetchSettlementsByType(
+                store, credentials, entity, startTimestamp, endTimestamp, combinedTypes, allSettlementsByOrder);
     }
 
     /**
@@ -780,8 +763,10 @@ public class TrendyolHistoricalSettlementService {
         int totalProcessed = 0;
 
         while (currentPage < totalPages) {
+            // Use transactionTypes (plural) for combined query (Trendyol API 30.12.2025)
+            String typeParam = transactionType.contains(",") ? "transactionTypes" : "transactionType";
             String url = TRENDYOL_BASE_URL + SETTLEMENT_ENDPOINT +
-                        "?transactionType=" + transactionType +
+                        "?" + typeParam + "=" + transactionType +
                         "&startDate=" + startTimestamp +
                         "&endDate=" + endTimestamp +
                         "&page=" + currentPage +

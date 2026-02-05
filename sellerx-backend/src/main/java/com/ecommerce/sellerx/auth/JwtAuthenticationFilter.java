@@ -75,6 +75,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         SecurityContextHolder.getContext().setAuthentication(authentication);
         log.debug("[AUTH] Authenticated user {} (role: {}) for: {}", jwt.getUserId(), jwt.getRole(), uri);
 
+        if (jwt.isImpersonated()) {
+            request.setAttribute("impersonatedBy", jwt.getImpersonatedBy());
+            request.setAttribute("readOnly", true);
+            log.info("[AUTH] Impersonated session: admin {} viewing as user {} on: {}",
+                    jwt.getImpersonatedBy(), jwt.getUserId(), uri);
+        }
+
         filterChain.doFilter(request, response);
     }
 }

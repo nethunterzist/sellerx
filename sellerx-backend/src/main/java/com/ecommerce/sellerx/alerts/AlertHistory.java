@@ -77,6 +77,11 @@ public class AlertHistory {
     @Builder.Default
     private Boolean inAppSent = true;
 
+    // Approval status: INFO (default), PENDING_APPROVAL, APPROVED, DISMISSED
+    @Column(name = "status", length = 20)
+    @Builder.Default
+    private String status = "INFO";
+
     // Read status
     @Column(name = "read_at")
     private LocalDateTime readAt;

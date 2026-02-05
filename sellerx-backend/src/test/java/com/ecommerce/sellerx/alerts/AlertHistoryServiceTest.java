@@ -3,6 +3,8 @@ package com.ecommerce.sellerx.alerts;
 import com.ecommerce.sellerx.auth.AuthService;
 import com.ecommerce.sellerx.common.BaseUnitTest;
 import com.ecommerce.sellerx.common.TestDataBuilder;
+import com.ecommerce.sellerx.orders.StockOrderSynchronizationService;
+import com.ecommerce.sellerx.products.TrendyolProductRepository;
 import com.ecommerce.sellerx.stores.Store;
 import com.ecommerce.sellerx.users.User;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,6 +31,12 @@ class AlertHistoryServiceTest extends BaseUnitTest {
     @Mock
     private AuthService authService;
 
+    @Mock
+    private TrendyolProductRepository productRepository;
+
+    @Mock
+    private StockOrderSynchronizationService stockSyncService;
+
     private AlertHistoryService alertHistoryService;
 
     private User testUser;
@@ -37,7 +45,7 @@ class AlertHistoryServiceTest extends BaseUnitTest {
     @BeforeEach
     void setUp() {
         TestDataBuilder.resetSequence();
-        alertHistoryService = new AlertHistoryService(alertHistoryRepository, authService);
+        alertHistoryService = new AlertHistoryService(alertHistoryRepository, authService, productRepository, stockSyncService);
 
         testUser = TestDataBuilder.user().build();
         testUser.setId(1L);

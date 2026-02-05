@@ -1,17 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { getBackendHeaders } from "@/lib/api/bff-auth";
 
 const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:8080';
-
-async function getAuthHeaders() {
-  const cookieStore = await cookies();
-  const accessToken = cookieStore.get('access_token')?.value;
-
-  return {
-    'Content-Type': 'application/json',
-    ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-  };
-}
 
 export async function DELETE(
   request: NextRequest,
@@ -19,7 +9,7 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const headers = await getAuthHeaders();
+    const headers = await getBackendHeaders(request);
 
     const response = await fetch(`${API_BASE_URL}/api/billing/payment-methods/${id}`, {
       method: 'DELETE',

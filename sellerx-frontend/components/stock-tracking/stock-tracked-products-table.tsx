@@ -120,7 +120,7 @@ export function StockTrackedProductsTable({
 
   if (isLoading) {
     return (
-      <div className="rounded-md border">
+      <div className="bg-card rounded-lg border border-border">
         <Table>
           <TableHeader>
             <TableRow>
@@ -149,7 +149,7 @@ export function StockTrackedProductsTable({
 
   if (!products || products.length === 0) {
     return (
-      <div className="rounded-md border p-8 text-center">
+      <div className="bg-card rounded-lg border border-border p-8 text-center">
         <p className="text-muted-foreground">{t("table.empty")}</p>
       </div>
     );
@@ -157,7 +157,7 @@ export function StockTrackedProductsTable({
 
   return (
     <>
-      <div className="rounded-md border">
+      <div className="bg-card rounded-lg border border-border">
         <Table>
           <TableHeader>
             <TableRow>

@@ -6,6 +6,8 @@ export type AlertConditionType = 'BELOW' | 'ABOVE' | 'EQUALS' | 'CHANGED' | 'ZER
 
 export type AlertSeverity = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 
+export type AlertStatus = 'INFO' | 'PENDING_APPROVAL' | 'APPROVED' | 'DISMISSED';
+
 // Alert Rule interfaces
 export interface AlertRule {
   id: string;
@@ -72,6 +74,7 @@ export interface AlertHistory {
   emailSent: boolean;
   pushSent: boolean;
   inAppSent: boolean;
+  status?: AlertStatus;
   read: boolean;
   readAt?: string;
   createdAt: string;

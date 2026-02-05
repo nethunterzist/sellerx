@@ -1,5 +1,6 @@
 package com.ecommerce.sellerx.webhook;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
@@ -46,6 +47,7 @@ public class TrendyolWebhookPayload {
     private String customerLastName;
     
     @JsonProperty("id")
+    @JsonAlias("shipmentPackageId") // Trendyol API migration: id -> shipmentPackageId (08.12.2025)
     private Long id; // This is the package number
     
     @JsonProperty("cargoTrackingNumber")
@@ -164,6 +166,19 @@ public class TrendyolWebhookPayload {
     
     @JsonProperty("originPackageIds")
     private List<Long> originPackageIds;
+
+    // New fields from Trendyol API changelog (08.12.2025)
+    @JsonProperty("cancelledBy")
+    private String cancelledBy;
+
+    @JsonProperty("cancelReason")
+    private String cancelReason;
+
+    @JsonProperty("cancelReasonCode")
+    private String cancelReasonCode;
+
+    @JsonProperty("packageTotalDiscount")
+    private BigDecimal packageTotalDiscount;
     
     @Data
     public static class Address {
@@ -261,6 +276,7 @@ public class TrendyolWebhookPayload {
         private String productSize;
         
         @JsonProperty("merchantSku")
+        @JsonAlias("stockCode") // Trendyol API migration: merchantSku -> stockCode (08.12.2025)
         private String merchantSku;
         
         @JsonProperty("productName")
@@ -273,9 +289,11 @@ public class TrendyolWebhookPayload {
         private String productOrigin;
         
         @JsonProperty("merchantId")
+        @JsonAlias("sellerId") // Trendyol API migration: merchantId -> sellerId (08.12.2025)
         private Long merchantId;
         
         @JsonProperty("amount")
+        @JsonAlias("lineGrossAmount") // Trendyol API migration: amount -> lineGrossAmount (08.12.2025)
         private BigDecimal amount;
         
         @JsonProperty("discount")
@@ -300,6 +318,7 @@ public class TrendyolWebhookPayload {
         private String sku;
         
         @JsonProperty("vatBaseAmount")
+        @JsonAlias("vatRate") // Trendyol API migration: vatBaseAmount -> vatRate (08.12.2025)
         private BigDecimal vatBaseAmount;
         
         @JsonProperty("barcode")
@@ -319,6 +338,10 @@ public class TrendyolWebhookPayload {
         
         @JsonProperty("laborCost")
         private BigDecimal laborCost;
+
+        // New field from Trendyol API changelog (08.12.2025)
+        @JsonProperty("lineTotalDiscount")
+        private BigDecimal lineTotalDiscount;
         
         @Data
         public static class DiscountDetail {

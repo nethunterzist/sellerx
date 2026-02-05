@@ -92,14 +92,23 @@ export interface CategorySummary {
  * Invoice summary response from API
  */
 /**
- * Cost of Goods Sold data for KDV page
+ * Purchase VAT breakdown by rate
  */
-export interface CostOfGoodsSold {
-  totalCostIncludingVat: number;
-  totalCostVatAmount: number;
-  totalItemsSold: number;
-  itemsWithoutCost: number;
-  itemsWithoutCostVat: number;
+export interface PurchaseVatByRate {
+  vatRate: number;
+  costAmount: number;
+  vatAmount: number;
+  itemCount: number;
+}
+
+/**
+ * Purchase VAT data for KDV page — based on stock entry date
+ */
+export interface PurchaseVat {
+  totalPurchaseCostExclVat: number;
+  totalPurchaseVatAmount: number;
+  totalItemsPurchased: number;
+  byRate: PurchaseVatByRate[];
 }
 
 /**
@@ -133,7 +142,7 @@ export interface InvoiceSummary {
   totalInvoiceCount: number;
   invoicesByType: InvoiceTypeStats[];
   invoicesByCategory: CategorySummary[];
-  costOfGoodsSold?: CostOfGoodsSold;
+  purchaseVat?: PurchaseVat;
   salesVat?: SalesVat;
 }
 

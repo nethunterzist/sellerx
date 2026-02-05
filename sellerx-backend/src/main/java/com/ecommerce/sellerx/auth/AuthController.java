@@ -130,13 +130,22 @@ public class AuthController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<UserDto> me() {
+    public ResponseEntity<UserDto> me(HttpServletRequest httpRequest) {
         var user = authService.getCurrentUser();
         if (user == null) {
             return ResponseEntity.notFound().build();
         }
 
         var userDto = userMapper.toDto(user);
+
+        // Add impersonation metadata if present
+        Long impersonatedBy = (Long) httpRequest.getAttribute("impersonatedBy");
+        if (impersonatedBy != null) {
+            userDto.setIsImpersonated(true);
+            userDto.setImpersonatedBy(impersonatedBy);
+            userDto.setReadOnly(true);
+        }
+
         return ResponseEntity.ok(userDto);
     }
 

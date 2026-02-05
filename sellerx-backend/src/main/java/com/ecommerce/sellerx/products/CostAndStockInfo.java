@@ -20,6 +20,8 @@ public class CostAndStockInfo {
     private Integer costVatRate;
     private LocalDate stockDate;
     
+    private String costSource; // "AUTO_DETECTED", "MANUAL", "PURCHASE_ORDER" (null = legacy/manual)
+
     // Stock usage tracking - default to 0 if null
     @JsonProperty(value = "usedQuantity", defaultValue = "0")
     private Integer usedQuantity; // How much has been used from this stock

@@ -1,17 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
+import { getBackendHeaders } from "@/lib/api/bff-auth";
 
 const BACKEND_URL = process.env.API_BASE_URL || "http://localhost:8080";
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   context: { params: Promise<{ storeId: string }> }
 ) {
   try {
-    const cookieStore = await cookies();
-    const accessToken = cookieStore.get("accessToken")?.value;
+    const headers = await getBackendHeaders(request);
 
-    if (!accessToken) {
+    if (!headers.Authorization) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -20,10 +19,7 @@ export async function GET(
     const response = await fetch(
       `${BACKEND_URL}/api/returns/stores/${storeId}/analytics/last-30-days`,
       {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
+        headers,
       }
     );
 

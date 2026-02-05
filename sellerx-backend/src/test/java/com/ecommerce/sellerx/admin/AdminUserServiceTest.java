@@ -2,6 +2,7 @@ package com.ecommerce.sellerx.admin;
 
 import com.ecommerce.sellerx.admin.dto.AdminUserDto;
 import com.ecommerce.sellerx.admin.dto.AdminUserListDto;
+import com.ecommerce.sellerx.auth.JwtService;
 import com.ecommerce.sellerx.common.BaseUnitTest;
 import com.ecommerce.sellerx.stores.Store;
 import com.ecommerce.sellerx.stores.StoreRepository;
@@ -33,6 +34,12 @@ class AdminUserServiceTest extends BaseUnitTest {
     @Mock
     private StoreRepository storeRepository;
 
+    @Mock
+    private JwtService jwtService;
+
+    @Mock
+    private ImpersonationLogRepository impersonationLogRepository;
+
     private AdminUserService adminUserService;
 
     private User testUser;
@@ -40,7 +47,7 @@ class AdminUserServiceTest extends BaseUnitTest {
 
     @BeforeEach
     void setUp() {
-        adminUserService = new AdminUserService(userRepository, storeRepository);
+        adminUserService = new AdminUserService(userRepository, storeRepository, jwtService, impersonationLogRepository);
 
         testUser = User.builder()
                 .name("Test User")
