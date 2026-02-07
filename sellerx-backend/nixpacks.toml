@@ -1,0 +1,12 @@
+# Nixpacks configuration for SellerX Backend
+# This project requires Java 21 (not Java 17)
+
+[phases.setup]
+nixPkgs = ["jdk21", "maven"]
+
+[phases.build]
+cmds = ["chmod +x ./mvnw && ./mvnw -DoutputFile=target/mvn-dependency-list.log -B -DskipTests clean package"]
+cacheDirectories = [".m2/repository"]
+
+[start]
+cmd = "java -Dserver.port=$PORT $JAVA_OPTS -jar target/*.jar"
