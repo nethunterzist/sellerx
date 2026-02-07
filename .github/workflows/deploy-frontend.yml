@@ -1,0 +1,98 @@
+name: Deploy Frontend
+
+on:
+  push:
+    branches: [main]
+    paths: ['sellerx-frontend/**']
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/frontend
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=
+            type=raw,value=latest
+
+      - name: Build and Push
+        uses: docker/build-push-action@v5
+        with:
+          context: ./sellerx-frontend
+          file: ./sellerx-frontend/Dockerfile.production
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            NEXT_PUBLIC_API_BASE_URL=https://uwgss4kkocg4kks8880kwwwo.157.180.78.53.sslip.io
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Deploy to Server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: 157.180.78.53
+          username: root
+          password: ${{ secrets.SERVER_PASSWORD }}
+          script: |
+            # Login to GHCR
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+            # Pull new image
+            docker pull ghcr.io/${{ github.repository }}/frontend:latest
+
+            # Stop and remove old container
+            docker stop sellerx-frontend || true
+            docker rm sellerx-frontend || true
+
+            # Get backend container name for internal routing
+            BACKEND_CONTAINER=$(docker ps --format '{{.Names}}' | grep -E 'sellerx-backend|uwgss4kkocg4kks8880kwwwo' | head -1)
+            if [ -z "$BACKEND_CONTAINER" ]; then
+              BACKEND_CONTAINER="sellerx-backend"
+            fi
+
+            # Run new container
+            docker run -d \
+              --name sellerx-frontend \
+              --network coolify \
+              --restart unless-stopped \
+              -e API_BASE_URL=http://$BACKEND_CONTAINER:8080 \
+              -e NODE_ENV=production \
+              -l traefik.enable=true \
+              -l 'traefik.http.routers.sellerx-frontend.rule=Host(`sellerx.157.180.78.53.sslip.io`)' \
+              -l traefik.http.routers.sellerx-frontend.entrypoints=https \
+              -l traefik.http.routers.sellerx-frontend.tls=true \
+              -l traefik.http.services.sellerx-frontend.loadbalancer.server.port=3000 \
+              ghcr.io/${{ github.repository }}/frontend:latest
+
+            # Wait and check logs
+            sleep 10
+            docker logs sellerx-frontend --tail 10
+
+            # Cleanup old images
+            docker image prune -f
