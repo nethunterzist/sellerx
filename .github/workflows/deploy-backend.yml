@@ -57,42 +57,41 @@ jobs:
           username: root
           password: ${{ secrets.SERVER_PASSWORD }}
           script: |
-            # Login to GHCR
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            # Stop and remove old container
+            docker stop sellerx-backend 2>/dev/null || true
+            docker rm sellerx-backend 2>/dev/null || true
 
-            # Pull new image
-            docker pull ghcr.io/${{ github.repository }}/backend:latest
+            # Pull new image (public package)
+            docker pull ghcr.io/nethunterzist/sellerx/backend:latest
 
-            # Get current backend container name
-            BACKEND_CONTAINER=$(docker ps --format '{{.Names}}' | grep -E '^uwgss4kkocg4kks8880kwwwo' | head -1)
-
-            # Stop and remove old container if exists
-            if [ -n "$BACKEND_CONTAINER" ]; then
-              echo "Stopping existing backend: $BACKEND_CONTAINER"
-              docker stop $BACKEND_CONTAINER || true
-              docker rm $BACKEND_CONTAINER || true
-            fi
-
-            # Get database connection info
-            DB_HOST=$(docker ps --format '{{.Names}}' | grep -E 'postgres|sellerx-db' | head -1)
-
-            # Run new container
+            # SellerX Database container: uws408w88ko044c84gwgkw04
+            # Run new container with all production env vars
             docker run -d \
               --name sellerx-backend \
               --network coolify \
               --restart unless-stopped \
-              -e SPRING_DATASOURCE_URL=jdbc:postgresql://$DB_HOST:5432/sellerx_db \
-              -e SPRING_DATASOURCE_USERNAME=sellerx \
-              -e SPRING_DATASOURCE_PASSWORD=SellerX-DB-2026! \
+              -e DB_HOST=uws408w88ko044c84gwgkw04 \
+              -e DB_PORT=5432 \
+              -e DB_NAME=sellerx_db \
+              -e DB_USERNAME=postgres \
+              -e DB_PASSWORD=L6CAVfFloyZIYbvxqJR6k0dM8E79SalonpemTqs3oPBMMKwYIjrhAM7sLsVV9YZB \
               -e JWT_SECRET=sellerx-production-jwt-secret-key-2026-minimum-256-bits \
               -e SERVER_PORT=8080 \
               -e SPRING_PROFILES_ACTIVE=production \
+              -e SPRING_FLYWAY_VALIDATE_ON_MIGRATE=false \
+              -e CORS_ALLOWED_ORIGINS=https://sellerx.157.180.78.53.sslip.io \
+              -e WEBHOOK_BASE_URL=https://uwgss4kkocg4kks8880kwwwo.157.180.78.53.sslip.io \
+              -e WEBHOOK_API_KEY=webhook-api-key-placeholder \
+              -e WEBHOOK_SIGNATURE_SECRET=webhook-signature-secret-placeholder \
+              -e IYZICO_CALLBACK_URL=https://sellerx.157.180.78.53.sslip.io/api/payment/callback \
+              -e FRONTEND_URL=https://sellerx.157.180.78.53.sslip.io \
+              -e PARASUT_REDIRECT_URI=https://sellerx.157.180.78.53.sslip.io/api/parasut/callback \
               -l traefik.enable=true \
               -l 'traefik.http.routers.sellerx-backend.rule=Host(`uwgss4kkocg4kks8880kwwwo.157.180.78.53.sslip.io`)' \
               -l traefik.http.routers.sellerx-backend.entrypoints=https \
               -l traefik.http.routers.sellerx-backend.tls=true \
               -l traefik.http.services.sellerx-backend.loadbalancer.server.port=8080 \
-              ghcr.io/${{ github.repository }}/backend:latest
+              ghcr.io/nethunterzist/sellerx/backend:latest
 
             # Wait and check health
             sleep 30
