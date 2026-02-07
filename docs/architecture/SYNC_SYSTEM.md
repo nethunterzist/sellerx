@@ -43,7 +43,6 @@ Tum zamanlar **Europe/Istanbul** saat dilimine goredir. Dagitik kilit yonetimi i
 ```
 Her 6 saat    logGapAnalysisStatus         Gap analizi durum loglama
 Her 6 saat    retryFailedSettlements       Basarisiz settlement yeniden deneme
-Her 12 saat   buyboxTracking               BuyBox takibi
 03:00         dailyStockReport             Stok gunluk rapor
 03:00         patternDiscovery             Q&A pattern kesfetme
 ```
@@ -221,16 +220,7 @@ Kesilen Faturalar = REKLAM + CEZA + ULUSLARARASI + DIGER - IADE
 | `syncAllDataForAllTrendyolStores` | Gunluk 06:15 | Tam iade sync |
 | `catchUpSync` | Saatlik (:00) | Yeni iadeleri yakala |
 
-### 8. BuyBox Takibi
-
-**Dosyalar**:
-- `BuyboxScheduledService.java`
-
-| Yontem | Frekans | Aciklama |
-|--------|---------|----------|
-| BuyBox polling | 12 saatte bir | Rakip fiyat ve BuyBox durumu |
-
-### 9. Stok Takibi
+### 8. Stok Takibi
 
 **Dosyalar**:
 - `StockTrackingScheduledService.java`
@@ -240,7 +230,7 @@ Kesilen Faturalar = REKLAM + CEZA + ULUSLARARASI + DIGER - IADE
 | Stok snapshot | Saatlik (:30) | Stok seviyesi kaydı |
 | Gunluk rapor | 03:00 | Gunluk stok ozeti |
 
-### 10. Doviz Kuru
+### 9. Doviz Kuru
 
 **Dosyalar**:
 - `CurrencyService.java`

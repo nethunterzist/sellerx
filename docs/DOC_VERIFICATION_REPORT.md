@@ -9,7 +9,7 @@
 
 | Kategori | Güncel | Güncellendi | Obsolete / Archive |
 |----------|--------|-------------|-------------------------|
-| architecture/ | 16 | 1 (README Scheduled Jobs) | 0 |
+| architecture/ | 15 | 1 (README Scheduled Jobs) | 0 |
 | features/ | 2 | 0 | 0 (CAMPAIGNS, CAMPAIGN_SIMULATION archive'a taşındı) |
 
 ---
@@ -22,7 +22,6 @@
 | ASYNC_PROCESSING.md | Güncel | @Async, AsyncConfig kodla uyumlu. |
 | BACKEND_ARCHITECTURE.md | Güncel | Paket yapısı ve stack güncel. |
 | BILLING_SYSTEM.md | Güncel | billing/ paketi, Subscription, Invoice ile uyumlu. |
-| BUYBOX_SYSTEM.md | Güncel | buybox/ paketi, BuyboxTrackedProduct, BuyboxService ile uyumlu. |
 | COMMISSION_SYSTEM.md | Güncel | Komisyon formülü ve fallback mantığı kodla aynı. |
 | DATABASE_SCHEMA.md | Güncel | Flyway migration’lar ve entity–tablo eşlemesi güncel. |
 | HISTORICAL_SETTLEMENT_SYNC.md | Güncel | financial/ historical sync, 90 gün limiti workaround mevcut. |

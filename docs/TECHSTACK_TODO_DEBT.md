@@ -22,11 +22,11 @@ Güncel teknoloji listesi, modül durumu ve teknik borç. Detaylı envanter: [sp
 | **Hibernate Extensions** | hibernate-types-60             | 2.21.1         |
 | **Test**                 | JUnit 5, TestContainers, Mockito | ~619 test    |
 
-### Backend paketleri (30 paket)
+### Backend paketleri (29 paket)
 
-Core: auth, users, stores, config, common, controller.  
-Admin: admin.  
-Domain: orders, products, financial, categories, dashboard, purchasing, expenses, billing, webhook, trendyol, alerts, qa, returns, buybox, stocktracking, activitylog, education, notifications, referral, support, email, currency, ai.
+Core: auth, users, stores, config, common, controller.
+Admin: admin.
+Domain: orders, products, financial, categories, dashboard, purchasing, expenses, billing, webhook, trendyol, alerts, qa, returns, stocktracking, activitylog, education, notifications, referral, support, email, currency, ai.
 
 Tam liste: [sprint-3-backend-domains/01-domain-list.md](sprint-3-backend-domains/01-domain-list.md).
 
@@ -106,7 +106,6 @@ sellerx-frontend/
 | **Webhook**     | Tamamlandı   | Tamamlandı   | Ayarlar, event listesi |
 | **Purchasing**  | Tamamlandı   | Tamamlandı   | PO, tedarikçi, raporlar |
 | **Alerts**      | Tamamlandı   | Tamamlandı   | Kurallar, bildirimler   |
-| **Buybox**      | Tamamlandı   | Tamamlandı   | Takip, uyarılar         |
 | **Stock Tracking** | Tamamlandı | Tamamlandı   | Takip, uyarılar         |
 | **QA**          | Tamamlandı   | Tamamlandı   | Soru/cevap, pattern, conflict |
 | **Returns**     | Tamamlandı   | Tamamlandı   | Claims, analitik        |

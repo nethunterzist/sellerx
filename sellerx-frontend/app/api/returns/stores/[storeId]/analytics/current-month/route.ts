@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getBackendHeaders } from "@/lib/api/bff-auth";
 
-const BACKEND_URL = process.env.API_BASE_URL || "http://localhost:8080";
+const BACKEND_URL = process.env.API_BASE_URL;
 
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ storeId: string }> }
 ) {
+  if (!BACKEND_URL) {
+    return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
+  }
+
   try {
     const headers = await getBackendHeaders(request);
 

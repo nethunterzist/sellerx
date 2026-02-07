@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-const API_BASE_URL = process.env.API_BASE_URL || "http://localhost:8080";
+const API_BASE_URL = process.env.API_BASE_URL;
 
 /**
  * GET /api/currency/rates
@@ -8,6 +8,16 @@ const API_BASE_URL = process.env.API_BASE_URL || "http://localhost:8080";
  * Returns: { USD_TRY, EUR_TRY, TRY_USD, TRY_EUR }
  */
 export async function GET() {
+  if (!API_BASE_URL) {
+    // Return fallback rates if API is not configured
+    return NextResponse.json({
+      USD_TRY: 34.5,
+      EUR_TRY: 37.2,
+      TRY_USD: 0.029,
+      TRY_EUR: 0.027,
+    });
+  }
+
   try {
     const response = await fetch(`${API_BASE_URL}/currency/rates`, {
       method: "GET",

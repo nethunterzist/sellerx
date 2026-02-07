@@ -39,7 +39,7 @@ Purchasing / Stock depletion için derin doc eklendi: [features/PURCHASING.md](f
 - **sprint-1 (Backend endpoint):** Tüm Controller’lar ve endpoint’ler doc’ta; multi-period, ActivityLog, stock-depletion, sync-historical-cargo, StockOrderSynchronizationController, TrendyolFinancialOrderSettlementController dahil.
 - **sprint-1 (BFF):** app/api/**/route.ts ile 03-bff-routes ve 04-bff-to-backend-map uyumlu; stock-depletion route doc’ta.
 - **sprint-2 (Migration):** db/migration/ altında 84 V*.sql dosyası; 01-migration-list.md V1–V84 ile aynı.
-- **sprint-3 (Domain):** 30 paket listelenmiş; ads/ yok (doğru). **sprint-3 (Scheduled job):** 18 @Scheduled metodu doc’ta; HybridSyncScheduleConfig, TrendyolOrderScheduledService, TrendyolFinancialSettlementScheduledService, StockTrackingScheduledService, BuyboxScheduledService, CurrencyService, PatternDiscoveryService, SeniorityService.
+- **sprint-3 (Domain):** 29 paket listelenmiş; ads/ yok (doğru). **sprint-3 (Scheduled job):** 17 @Scheduled metodu doc'ta; HybridSyncScheduleConfig, TrendyolOrderScheduledService, TrendyolFinancialSettlementScheduledService, StockTrackingScheduledService, CurrencyService, PatternDiscoveryService, SeniorityService.
 - **sprint-4 (Sayfa):** 54 page.tsx; path’ler doc ile aynı. Stock-depletion için ayrı sayfa yok (sadece dashboard banner); doc’ta da yok, tutarlı.
 
 ---
