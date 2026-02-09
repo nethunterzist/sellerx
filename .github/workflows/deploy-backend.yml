@@ -50,32 +50,57 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Deploy to Server
+      - name: Deploy to Server with Rollback
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: 157.180.78.53
           username: root
-          password: ${{ secrets.SERVER_PASSWORD }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            # Stop and remove old container
-            docker stop sellerx-backend 2>/dev/null || true
-            docker rm sellerx-backend 2>/dev/null || true
+            set -e
 
-            # Pull new image (public package)
-            docker pull ghcr.io/nethunterzist/sellerx/backend:latest
+            CONTAINER_NAME="sellerx-backend"
+            IMAGE_REPO="ghcr.io/nethunterzist/sellerx/backend"
+            NEW_IMAGE="${IMAGE_REPO}:latest"
+            ROLLBACK_IMAGE="${IMAGE_REPO}:rollback"
+            HEALTH_ENDPOINT="http://localhost:8080/actuator/health"
+            MAX_HEALTH_RETRIES=10
+            HEALTH_RETRY_DELAY=6
 
-            # SellerX Database container: uws408w88ko044c84gwgkw04
-            # Run new container with all production env vars
+            echo "=== Starting deployment with rollback support ==="
+
+            # Step 0: Login to GHCR (for private repo)
+            echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u nethunterzist --password-stdin
+
+            # Step 1: Save current running image as rollback
+            if docker inspect $CONTAINER_NAME >/dev/null 2>&1; then
+              CURRENT_IMAGE=$(docker inspect --format='{{.Config.Image}}' $CONTAINER_NAME)
+              echo "Tagging current image as rollback: $CURRENT_IMAGE"
+              docker tag $CURRENT_IMAGE $ROLLBACK_IMAGE 2>/dev/null || true
+            fi
+
+            # Step 2: Pull new image
+            echo "Pulling new image: $NEW_IMAGE"
+            docker pull $NEW_IMAGE
+
+            # Step 3: Stop and remove old container
+            echo "Stopping old container..."
+            docker stop $CONTAINER_NAME 2>/dev/null || true
+            docker rm $CONTAINER_NAME 2>/dev/null || true
+
+            # Step 4: Run new container
+            echo "Starting new container..."
             docker run -d \
-              --name sellerx-backend \
+              --name $CONTAINER_NAME \
               --network coolify \
               --restart unless-stopped \
               -e DB_HOST=uws408w88ko044c84gwgkw04 \
               -e DB_PORT=5432 \
               -e DB_NAME=sellerx_db \
               -e DB_USERNAME=postgres \
-              -e DB_PASSWORD=L6CAVfFloyZIYbvxqJR6k0dM8E79SalonpemTqs3oPBMMKwYIjrhAM7sLsVV9YZB \
-              -e JWT_SECRET=sellerx-production-jwt-secret-key-2026-minimum-256-bits \
+              -e DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
+              -e JWT_SECRET=${{ secrets.JWT_SECRET }} \
+              -e ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY }} \
               -e SERVER_PORT=8080 \
               -e SPRING_PROFILES_ACTIVE=production \
               -e SPRING_FLYWAY_VALIDATE_ON_MIGRATE=false \
@@ -91,11 +116,99 @@ jobs:
               -l traefik.http.routers.sellerx-backend.entrypoints=https \
               -l traefik.http.routers.sellerx-backend.tls=true \
               -l traefik.http.services.sellerx-backend.loadbalancer.server.port=8080 \
-              ghcr.io/nethunterzist/sellerx/backend:latest
+              $NEW_IMAGE
 
-            # Wait and check health
-            sleep 30
-            docker logs sellerx-backend --tail 20
+            # Step 5: Health check with retries
+            echo "Waiting for application to start..."
+            sleep 15
 
-            # Cleanup old images
+            HEALTH_OK=false
+            for i in $(seq 1 $MAX_HEALTH_RETRIES); do
+              echo "Health check attempt $i/$MAX_HEALTH_RETRIES..."
+
+              # Check container is running
+              if ! docker ps | grep -q $CONTAINER_NAME; then
+                echo "Container not running! Checking logs..."
+                docker logs $CONTAINER_NAME --tail 50
+                break
+              fi
+
+              # Check health endpoint
+              HEALTH_STATUS=$(docker exec $CONTAINER_NAME curl -s -o /dev/null -w "%{http_code}" $HEALTH_ENDPOINT 2>/dev/null || echo "000")
+
+              if [ "$HEALTH_STATUS" = "200" ]; then
+                echo "Health check passed! Status: $HEALTH_STATUS"
+                HEALTH_OK=true
+                break
+              fi
+
+              echo "Health check returned: $HEALTH_STATUS, waiting..."
+              sleep $HEALTH_RETRY_DELAY
+            done
+
+            # Step 6: Rollback if health check failed
+            if [ "$HEALTH_OK" = false ]; then
+              echo "=== HEALTH CHECK FAILED - INITIATING ROLLBACK ==="
+
+              # Show container logs for debugging
+              echo "Container logs:"
+              docker logs $CONTAINER_NAME --tail 100
+
+              # Check if we have a rollback image
+              if docker images | grep -q "$ROLLBACK_IMAGE"; then
+                echo "Rolling back to previous version..."
+                docker stop $CONTAINER_NAME 2>/dev/null || true
+                docker rm $CONTAINER_NAME 2>/dev/null || true
+
+                # Run rollback container
+                docker run -d \
+                  --name $CONTAINER_NAME \
+                  --network coolify \
+                  --restart unless-stopped \
+                  -e DB_HOST=uws408w88ko044c84gwgkw04 \
+                  -e DB_PORT=5432 \
+                  -e DB_NAME=sellerx_db \
+                  -e DB_USERNAME=postgres \
+                  -e DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
+                  -e JWT_SECRET=${{ secrets.JWT_SECRET }} \
+                  -e ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY }} \
+                  -e SERVER_PORT=8080 \
+                  -e SPRING_PROFILES_ACTIVE=production \
+                  -e SPRING_FLYWAY_VALIDATE_ON_MIGRATE=false \
+                  -e CORS_ALLOWED_ORIGINS=https://sellerx.157.180.78.53.sslip.io \
+                  -e WEBHOOK_BASE_URL=https://uwgss4kkocg4kks8880kwwwo.157.180.78.53.sslip.io \
+                  -e WEBHOOK_API_KEY=webhook-api-key-placeholder \
+                  -e WEBHOOK_SIGNATURE_SECRET=webhook-signature-secret-placeholder \
+                  -e IYZICO_CALLBACK_URL=https://sellerx.157.180.78.53.sslip.io/api/payment/callback \
+                  -e FRONTEND_URL=https://sellerx.157.180.78.53.sslip.io \
+                  -e PARASUT_REDIRECT_URI=https://sellerx.157.180.78.53.sslip.io/api/parasut/callback \
+                  -l traefik.enable=true \
+                  -l 'traefik.http.routers.sellerx-backend.rule=Host(`uwgss4kkocg4kks8880kwwwo.157.180.78.53.sslip.io`)' \
+                  -l traefik.http.routers.sellerx-backend.entrypoints=https \
+                  -l traefik.http.routers.sellerx-backend.tls=true \
+                  -l traefik.http.services.sellerx-backend.loadbalancer.server.port=8080 \
+                  $ROLLBACK_IMAGE
+
+                echo "Rolled back to previous version. Waiting for startup..."
+                sleep 20
+
+                if docker ps | grep -q $CONTAINER_NAME; then
+                  echo "Rollback container is running."
+                else
+                  echo "CRITICAL: Rollback container also failed!"
+                  exit 1
+                fi
+              else
+                echo "No rollback image available!"
+                exit 1
+              fi
+
+              # Exit with failure to mark deployment as failed
+              exit 1
+            fi
+
+            echo "=== Deployment successful! ==="
+            docker logs $CONTAINER_NAME --tail 20
+
+            # Cleanup old images (keep rollback)
             docker image prune -f

@@ -53,46 +53,134 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Deploy to Server
+      - name: Deploy to Server with Rollback
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: 157.180.78.53
           username: root
-          password: ${{ secrets.SERVER_PASSWORD }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            # Login to GHCR
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            set -e
 
-            # Pull new image
-            docker pull ghcr.io/${{ github.repository }}/frontend:latest
+            CONTAINER_NAME="sellerx-frontend"
+            IMAGE_REPO="ghcr.io/nethunterzist/sellerx/frontend"
+            NEW_IMAGE="${IMAGE_REPO}:latest"
+            ROLLBACK_IMAGE="${IMAGE_REPO}:rollback"
+            MAX_HEALTH_RETRIES=8
+            HEALTH_RETRY_DELAY=5
 
-            # Stop and remove old container
-            docker stop sellerx-frontend || true
-            docker rm sellerx-frontend || true
+            echo "=== Starting frontend deployment with rollback support ==="
 
-            # Get backend container name for internal routing
-            BACKEND_CONTAINER=$(docker ps --format '{{.Names}}' | grep -E 'sellerx-backend|uwgss4kkocg4kks8880kwwwo' | head -1)
-            if [ -z "$BACKEND_CONTAINER" ]; then
-              BACKEND_CONTAINER="sellerx-backend"
+            # Step 0: Login to GHCR (for private repo)
+            echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u nethunterzist --password-stdin
+
+            # Step 1: Save current running image as rollback
+            if docker inspect $CONTAINER_NAME >/dev/null 2>&1; then
+              CURRENT_IMAGE=$(docker inspect --format='{{.Config.Image}}' $CONTAINER_NAME)
+              echo "Tagging current image as rollback: $CURRENT_IMAGE"
+              docker tag $CURRENT_IMAGE $ROLLBACK_IMAGE 2>/dev/null || true
             fi
 
-            # Run new container
+            # Step 2: Pull new image
+            echo "Pulling new image: $NEW_IMAGE"
+            docker pull $NEW_IMAGE
+
+            # Step 3: Stop and remove old container
+            echo "Stopping old container..."
+            docker stop $CONTAINER_NAME 2>/dev/null || true
+            docker rm $CONTAINER_NAME 2>/dev/null || true
+
+            # Step 4: Run new container
+            echo "Starting new container..."
             docker run -d \
-              --name sellerx-frontend \
+              --name $CONTAINER_NAME \
               --network coolify \
               --restart unless-stopped \
-              -e API_BASE_URL=http://$BACKEND_CONTAINER:8080 \
+              -e API_BASE_URL=http://sellerx-backend:8080 \
               -e NODE_ENV=production \
               -l traefik.enable=true \
               -l 'traefik.http.routers.sellerx-frontend.rule=Host(`sellerx.157.180.78.53.sslip.io`)' \
               -l traefik.http.routers.sellerx-frontend.entrypoints=https \
               -l traefik.http.routers.sellerx-frontend.tls=true \
               -l traefik.http.services.sellerx-frontend.loadbalancer.server.port=3000 \
-              ghcr.io/${{ github.repository }}/frontend:latest
+              $NEW_IMAGE
 
-            # Wait and check logs
+            # Step 5: Health check with retries
+            echo "Waiting for application to start..."
             sleep 10
-            docker logs sellerx-frontend --tail 10
 
-            # Cleanup old images
+            HEALTH_OK=false
+            for i in $(seq 1 $MAX_HEALTH_RETRIES); do
+              echo "Health check attempt $i/$MAX_HEALTH_RETRIES..."
+
+              # Check container is running
+              if ! docker ps | grep -q $CONTAINER_NAME; then
+                echo "Container not running! Checking logs..."
+                docker logs $CONTAINER_NAME --tail 50
+                break
+              fi
+
+              # Check if Next.js is responding (port 3000)
+              HEALTH_STATUS=$(docker exec $CONTAINER_NAME curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/ 2>/dev/null || echo "000")
+
+              if [ "$HEALTH_STATUS" = "200" ] || [ "$HEALTH_STATUS" = "307" ] || [ "$HEALTH_STATUS" = "302" ]; then
+                echo "Health check passed! Status: $HEALTH_STATUS"
+                HEALTH_OK=true
+                break
+              fi
+
+              echo "Health check returned: $HEALTH_STATUS, waiting..."
+              sleep $HEALTH_RETRY_DELAY
+            done
+
+            # Step 6: Rollback if health check failed
+            if [ "$HEALTH_OK" = false ]; then
+              echo "=== HEALTH CHECK FAILED - INITIATING ROLLBACK ==="
+
+              # Show container logs for debugging
+              echo "Container logs:"
+              docker logs $CONTAINER_NAME --tail 100
+
+              # Check if we have a rollback image
+              if docker images | grep -q "$ROLLBACK_IMAGE"; then
+                echo "Rolling back to previous version..."
+                docker stop $CONTAINER_NAME 2>/dev/null || true
+                docker rm $CONTAINER_NAME 2>/dev/null || true
+
+                # Run rollback container
+                docker run -d \
+                  --name $CONTAINER_NAME \
+                  --network coolify \
+                  --restart unless-stopped \
+                  -e API_BASE_URL=http://sellerx-backend:8080 \
+                  -e NODE_ENV=production \
+                  -l traefik.enable=true \
+                  -l 'traefik.http.routers.sellerx-frontend.rule=Host(`sellerx.157.180.78.53.sslip.io`)' \
+                  -l traefik.http.routers.sellerx-frontend.entrypoints=https \
+                  -l traefik.http.routers.sellerx-frontend.tls=true \
+                  -l traefik.http.services.sellerx-frontend.loadbalancer.server.port=3000 \
+                  $ROLLBACK_IMAGE
+
+                echo "Rolled back to previous version. Waiting for startup..."
+                sleep 10
+
+                if docker ps | grep -q $CONTAINER_NAME; then
+                  echo "Rollback container is running."
+                else
+                  echo "CRITICAL: Rollback container also failed!"
+                  exit 1
+                fi
+              else
+                echo "No rollback image available!"
+                exit 1
+              fi
+
+              # Exit with failure to mark deployment as failed
+              exit 1
+            fi
+
+            echo "=== Deployment successful! ==="
+            docker logs $CONTAINER_NAME --tail 10
+
+            # Cleanup old images (keep rollback)
             docker image prune -f
