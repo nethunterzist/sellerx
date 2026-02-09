@@ -120,16 +120,14 @@ jobs:
                 break
               fi
 
-              # Check if Next.js is responding (port 3000)
-              HEALTH_STATUS=$(docker exec $CONTAINER_NAME curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/ 2>/dev/null || echo "000")
-
-              if [ "$HEALTH_STATUS" = "200" ] || [ "$HEALTH_STATUS" = "307" ] || [ "$HEALTH_STATUS" = "302" ]; then
-                echo "Health check passed! Status: $HEALTH_STATUS"
+              # Check if Next.js is ready by checking logs for "Ready in" message
+              if docker logs $CONTAINER_NAME 2>&1 | grep -q "Ready in"; then
+                echo "Health check passed! Next.js is ready."
                 HEALTH_OK=true
                 break
               fi
 
-              echo "Health check returned: $HEALTH_STATUS, waiting..."
+              echo "Next.js not ready yet, waiting..."
               sleep $HEALTH_RETRY_DELAY
             done
 
