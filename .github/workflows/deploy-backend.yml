@@ -64,8 +64,8 @@ jobs:
             NEW_IMAGE="${IMAGE_REPO}:latest"
             ROLLBACK_IMAGE="${IMAGE_REPO}:rollback"
             HEALTH_ENDPOINT="http://localhost:8080/actuator/health"
-            MAX_HEALTH_RETRIES=10
-            HEALTH_RETRY_DELAY=6
+            MAX_HEALTH_RETRIES=15
+            HEALTH_RETRY_DELAY=10
 
             echo "=== Starting deployment with rollback support ==="
 
@@ -120,7 +120,7 @@ jobs:
 
             # Step 5: Health check with retries
             echo "Waiting for application to start..."
-            sleep 15
+            sleep 60
 
             HEALTH_OK=false
             for i in $(seq 1 $MAX_HEALTH_RETRIES); do
@@ -134,7 +134,7 @@ jobs:
               fi
 
               # Check if Spring Boot has started by looking for startup message in logs
-              if docker logs $CONTAINER_NAME 2>&1 | grep -q "Started SellerxApplication"; then
+              if docker logs $CONTAINER_NAME 2>&1 | grep -q "Started StoreApplication"; then
                 echo "Health check passed! Spring Boot application started."
                 HEALTH_OK=true
                 break
