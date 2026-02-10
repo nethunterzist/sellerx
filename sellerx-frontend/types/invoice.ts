@@ -58,6 +58,8 @@ export const INVOICE_CATEGORIES = {
   REKLAM: 'REKLAM',
   DIGER: 'DIGER',
   IADE: 'IADE',
+  STOPAJ: 'STOPAJ',
+  HIZMET_BEDELI: 'HIZMET_BEDELI',
 } as const;
 
 export type InvoiceCategory = (typeof INVOICE_CATEGORIES)[keyof typeof INVOICE_CATEGORIES];
@@ -144,6 +146,9 @@ export interface InvoiceSummary {
   invoicesByCategory: CategorySummary[];
   purchaseVat?: PurchaseVat;
   salesVat?: SalesVat;
+  // Stopaj (Tevkifat) summary
+  totalStoppageAmount?: number;
+  stoppageCount?: number;
 }
 
 /**
@@ -225,6 +230,10 @@ export function getCategoryIcon(category: string): string {
       return 'megaphone';
     case INVOICE_CATEGORIES.IADE:
       return 'refresh-ccw';
+    case INVOICE_CATEGORIES.STOPAJ:
+      return 'percent';
+    case INVOICE_CATEGORIES.HIZMET_BEDELI:
+      return 'wrench';
     default:
       return 'file-text';
   }
@@ -256,6 +265,10 @@ export function getCategoryDisplayName(category: string): string {
       return 'Diğer';
     case INVOICE_CATEGORIES.IADE:
       return 'Geri Yatan Ödeme';
+    case INVOICE_CATEGORIES.STOPAJ:
+      return 'Stopaj';
+    case INVOICE_CATEGORIES.HIZMET_BEDELI:
+      return 'Hizmet Bedeli';
     default:
       return category;
   }
@@ -662,4 +675,117 @@ export interface ProductCargoBreakdown {
   averageCostPerShipment: number;
   /** List of recent shipments (limited to last 50) */
   shipments: CargoShipmentDetail[];
+}
+
+// ========================================
+// Paginated Invoice Item Types (Lazy Loading)
+// For infinite scroll in invoice detail panel
+// ========================================
+
+/**
+ * Paginated cargo invoice items response
+ * Used for lazy loading in invoice detail panel
+ */
+export interface CargoInvoiceItemsPage {
+  content: CargoInvoiceItem[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  hasNext: boolean;
+}
+
+/**
+ * Paginated generic invoice items response
+ * Used for lazy loading in invoice detail panel
+ */
+export interface InvoiceItemsPage {
+  content: InvoiceItem[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  hasNext: boolean;
+}
+
+/**
+ * Paginated commission invoice items response
+ * Used for lazy loading in invoice detail panel
+ */
+export interface CommissionInvoiceItemsPage {
+  content: CommissionInvoiceItem[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  hasNext: boolean;
+}
+
+// ========================================
+// Order Invoice Items Types (Sipariş Fatura Giderleri)
+// For Order Detail Panel - shows all invoices linked to a specific order
+// ========================================
+
+/**
+ * All invoice items (cargo, commission, deductions) linked to a specific order
+ * Used to show actual invoiced expenses in order detail panel
+ */
+export interface OrderInvoiceItemsResponse {
+  orderNumber: string;
+
+  // Kargo fatura kalemleri
+  cargoItems: CargoInvoiceItem[];
+  totalCargoAmount: number;
+  totalCargoVatAmount: number;
+
+  // Komisyon kalemleri (financial_transactions'dan)
+  commissionItems: CommissionInvoiceItem[];
+  totalCommissionAmount: number;
+  totalCommissionVatAmount: number;
+
+  // Kesinti kalemleri (platform, reklam, ceza vb.)
+  deductionItems: InvoiceItem[];
+  totalDeductionAmount: number;
+  totalDeductionVatAmount: number;
+
+  // Toplam fatura gideri (tüm kategoriler)
+  grandTotal: number;
+
+  // Fatura durumu - en az bir fatura kalemi var mı?
+  hasInvoiceData: boolean;
+}
+
+// ========================================
+// Stoppage (Stopaj/Tevkifat) Types
+// Withholding tax records from Trendyol
+// ========================================
+
+/**
+ * Individual stoppage (withholding tax) record
+ */
+export interface StoppageItem {
+  id: string;
+  transactionDate: string;
+  amount: number;
+  invoiceSerialNumber?: string;
+  paymentOrderId?: number;
+  receiptId?: number;
+  description?: string;
+}
+
+/**
+ * Stoppage summary response from API
+ */
+export interface StoppageSummary {
+  storeId: string;
+  periodStart: string;
+  periodEnd: string;
+  count: number;
+  totalAmount: number;
+  items?: StoppageItem[];
+  page?: number;
+  size?: number;
+  totalElements?: number;
+  totalPages?: number;
+  hasNext?: boolean;
 }

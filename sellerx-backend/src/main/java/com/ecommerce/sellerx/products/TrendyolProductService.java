@@ -424,40 +424,64 @@ public class TrendyolProductService {
         );
     }
     
-    public ProductListResponse<TrendyolProductDto> getProductsByStoreWithPagination(UUID storeId, 
-                                                                    Integer page, 
-                                                                    Integer size, 
-                                                                    String search, 
-                                                                    String sortBy, 
+    public ProductListResponse<TrendyolProductDto> getProductsByStoreWithPagination(UUID storeId,
+                                                                    Integer page,
+                                                                    Integer size,
+                                                                    String search,
+                                                                    Integer minStock,
+                                                                    Integer maxStock,
+                                                                    BigDecimal minPrice,
+                                                                    BigDecimal maxPrice,
+                                                                    BigDecimal minCommission,
+                                                                    BigDecimal maxCommission,
+                                                                    BigDecimal minCost,
+                                                                    BigDecimal maxCost,
+                                                                    String sortBy,
                                                                     String sortDirection) {
         if (!storeRepository.existsById(storeId)) {
             throw new StoreNotFoundException("Store not found");
         }
-        
+
         // Default values
         int pageNumber = page != null ? page : 0;
         int pageSize = size != null ? size : 50;
         String sortField = sortBy != null ? sortBy : "onSale";
-        Sort.Direction direction = "asc".equalsIgnoreCase(sortDirection) ? 
+        Sort.Direction direction = "asc".equalsIgnoreCase(sortDirection) ?
             Sort.Direction.ASC : Sort.Direction.DESC;
-        
+
         // Create pageable with sorting
         Pageable pageable = PageRequest.of(pageNumber, pageSize, Sort.by(direction, sortField));
-        
+
         Page<TrendyolProduct> productsPage;
-        
-        // Search or get all
-        if (search != null && !search.trim().isEmpty()) {
-            productsPage = trendyolProductRepository.findByStoreIdAndSearch(storeId, search.trim(), pageable);
+
+        // Check if any filter is active
+        boolean hasFilters = (search != null && !search.trim().isEmpty())
+                || minStock != null || maxStock != null
+                || minPrice != null || maxPrice != null
+                || minCommission != null || maxCommission != null
+                || minCost != null || maxCost != null;
+
+        if (hasFilters) {
+            // Use native query with all filters
+            // Native query has its own ORDER BY, so use unsorted pageable to prevent Spring Data JPA from appending sort
+            Pageable unsortedPageable = PageRequest.of(pageNumber, pageSize, Sort.unsorted());
+            productsPage = trendyolProductRepository.findByStoreIdWithFilters(
+                    storeId,
+                    search != null ? search.trim() : null,
+                    minStock, maxStock,
+                    minPrice, maxPrice,
+                    minCommission, maxCommission,
+                    minCost, maxCost,
+                    unsortedPageable);
         } else {
             productsPage = trendyolProductRepository.findByStoreId(storeId, pageable);
         }
-        
+
         // Convert to DTOs while preserving pagination info
         List<TrendyolProductDto> productDtos = productsPage.getContent().stream()
                 .map(productMapper::toDto)
                 .toList();
-        
+
         return new ProductListResponse<>(
             productsPage.getTotalElements(),
             productsPage.getTotalPages(),
@@ -476,13 +500,22 @@ public class TrendyolProductService {
         TrendyolProduct product = trendyolProductRepository.findById(productId)
                 .orElseThrow(() -> new ResourceNotFoundException("Product", productId.toString()));
         
-        // Create new cost and stock info
+        // Create new cost and stock info with all fields including currency, OTV, and advertising
         CostAndStockInfo newInfo = CostAndStockInfo.builder()
                 .quantity(request.getQuantity())
                 .unitCost(request.getUnitCost())
                 .costVatRate(request.getCostVatRate())
                 .stockDate(request.getStockDate() != null ? request.getStockDate() : LocalDate.now())
                 .costSource("MANUAL")
+                // Döviz kuru desteği
+                .currency(request.getCurrency())
+                .exchangeRate(request.getExchangeRate())
+                .foreignCost(request.getForeignCost())
+                // ÖTV desteği
+                .otvRate(request.getOtvRate())
+                // Reklam metrikleri
+                .cpc(request.getCpc())
+                .cvr(request.getCvr())
                 .build();
 
         // Add to existing list or merge with same date
@@ -511,6 +544,15 @@ public class TrendyolProductService {
                 .costVatRate(request.getCostVatRate())
                 .stockDate(request.getStockDate() != null ? request.getStockDate() : LocalDate.now())
                 .costSource("MANUAL")
+                // Döviz kuru desteği
+                .currency(request.getCurrency())
+                .exchangeRate(request.getExchangeRate())
+                .foreignCost(request.getForeignCost())
+                // ÖTV desteği
+                .otvRate(request.getOtvRate())
+                // Reklam metrikleri
+                .cpc(request.getCpc())
+                .cvr(request.getCvr())
                 .build();
         
         List<CostAndStockInfo> costAndStockList = product.getCostAndStockInfo();
@@ -555,6 +597,15 @@ public class TrendyolProductService {
                 info.setUnitCost(request.getUnitCost());
                 info.setCostVatRate(request.getCostVatRate());
                 info.setCostSource("MANUAL"); // Clear auto-detected flag on manual edit
+                // Döviz kuru desteği
+                info.setCurrency(request.getCurrency());
+                info.setExchangeRate(request.getExchangeRate());
+                info.setForeignCost(request.getForeignCost());
+                // ÖTV desteği
+                info.setOtvRate(request.getOtvRate());
+                // Reklam metrikleri
+                info.setCpc(request.getCpc());
+                info.setCvr(request.getCvr());
                 found = true;
                 break;
             }

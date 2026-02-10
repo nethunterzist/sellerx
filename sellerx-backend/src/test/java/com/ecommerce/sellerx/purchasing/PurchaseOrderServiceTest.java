@@ -83,7 +83,7 @@ class PurchaseOrderServiceTest extends BaseUnitTest {
             when(purchaseOrderRepository.findByStoreIdOrderByPoDateDesc(storeId))
                     .thenReturn(List.of(po));
 
-            List<PurchaseOrderSummaryDto> result = service.getPurchaseOrders(storeId, null);
+            List<PurchaseOrderSummaryDto> result = service.getPurchaseOrders(storeId, null, null, null);
 
             assertThat(result).hasSize(1);
             assertThat(result.get(0).getPoNumber()).isEqualTo("PO-000001");
@@ -99,7 +99,7 @@ class PurchaseOrderServiceTest extends BaseUnitTest {
             when(purchaseOrderRepository.findByStoreIdAndStatusOrderByPoDateDesc(storeId, PurchaseOrderStatus.ORDERED))
                     .thenReturn(List.of(po));
 
-            List<PurchaseOrderSummaryDto> result = service.getPurchaseOrders(storeId, PurchaseOrderStatus.ORDERED);
+            List<PurchaseOrderSummaryDto> result = service.getPurchaseOrders(storeId, PurchaseOrderStatus.ORDERED, null, null);
 
             assertThat(result).hasSize(1);
             assertThat(result.get(0).getStatus()).isEqualTo(PurchaseOrderStatus.ORDERED);
@@ -111,7 +111,7 @@ class PurchaseOrderServiceTest extends BaseUnitTest {
             when(purchaseOrderRepository.findByStoreIdOrderByPoDateDesc(storeId))
                     .thenReturn(Collections.emptyList());
 
-            List<PurchaseOrderSummaryDto> result = service.getPurchaseOrders(storeId, null);
+            List<PurchaseOrderSummaryDto> result = service.getPurchaseOrders(storeId, null, null, null);
 
             assertThat(result).isEmpty();
         }
@@ -716,7 +716,7 @@ class PurchaseOrderServiceTest extends BaseUnitTest {
                     .thenReturn(List.of(po));
 
             List<PurchaseOrderSummaryDto> result = service.searchPurchaseOrders(
-                    storeId, "PO-000001", PurchaseOrderStatus.DRAFT, null);
+                    storeId, "PO-000001", PurchaseOrderStatus.DRAFT, null, null, null);
 
             assertThat(result).hasSize(1);
         }
@@ -729,7 +729,7 @@ class PurchaseOrderServiceTest extends BaseUnitTest {
                     .thenReturn(List.of(po));
 
             List<PurchaseOrderSummaryDto> result = service.searchPurchaseOrders(
-                    storeId, null, PurchaseOrderStatus.ORDERED, 1L);
+                    storeId, null, PurchaseOrderStatus.ORDERED, 1L, null, null);
 
             assertThat(result).hasSize(1);
             verify(purchaseOrderRepository).findByStoreIdAndSupplierIdAndStatus(storeId, 1L, PurchaseOrderStatus.ORDERED);
@@ -742,7 +742,7 @@ class PurchaseOrderServiceTest extends BaseUnitTest {
                     .thenReturn(Collections.emptyList());
 
             List<PurchaseOrderSummaryDto> result = service.searchPurchaseOrders(
-                    storeId, null, null, null);
+                    storeId, null, null, null, null, null);
 
             verify(purchaseOrderRepository).findByStoreIdOrderByPoDateDesc(storeId);
         }

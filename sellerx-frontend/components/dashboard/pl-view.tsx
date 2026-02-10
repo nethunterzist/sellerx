@@ -30,6 +30,7 @@ import { PL_PERIOD_PRESETS } from "@/types/dashboard";
 
 interface PLViewProps {
   storeId?: string;
+  selectedProducts?: string[]; // Array of barcodes to filter
 }
 
 // Metric row definition
@@ -42,35 +43,95 @@ interface MetricRow {
   isExpandable?: boolean;
   isCurrency?: boolean;
   isPercentage?: boolean;
+  isHighlighted?: boolean;
+  showBadge?: boolean; // For returnCount badge
   children?: MetricRow[];
   getValue?: (period: PeriodStats) => number;
+  getExpenseCategories?: boolean; // For dynamic expense categories
 }
 
 const METRIC_ROWS: MetricRow[] = [
-  { key: "revenue", label: "Satışlar", field: "totalRevenue", isBold: true },
-  { key: "units", label: "Adet", field: "totalProductsSold", isCurrency: false },
-  { key: "orders", label: "Sipariş", field: "totalOrders", isCurrency: false },
+  // ==================== SATIŞLAR ====================
+  { key: "revenue", label: "Satışlar (Brüt Ciro)", field: "totalRevenue", isBold: true },
+  { key: "units", label: "Satış Adedi", field: "totalProductsSold", isCurrency: false },
+  { key: "orders", label: "Sipariş Sayısı", field: "totalOrders", isCurrency: false },
+
+  // ==================== İNDİRİMLER ====================
   {
-    key: "returns",
-    label: "İadeler",
-    field: "returnCount",
-    isCurrency: false,
+    key: "discounts",
+    label: "İndirimler & Kuponlar",
+    field: "calculated",
+    isNegative: true,
     isExpandable: true,
+    getValue: (p) => (p.totalSellerDiscount ?? 0) + (p.totalPlatformDiscount ?? 0) + (p.totalCouponDiscount ?? 0),
     children: [
-      { key: "returnCost", label: "İade Maliyeti", field: "returnCost", isNegative: true },
+      { key: "sellerDiscount", label: "Satıcı İndirimi", field: "totalSellerDiscount", isNegative: true },
+      { key: "platformDiscount", label: "Platform İndirimi", field: "totalPlatformDiscount", isNegative: true },
+      { key: "couponDiscount", label: "Kupon İndirimi", field: "totalCouponDiscount", isNegative: true },
     ],
   },
-  { key: "commission", label: "Komisyon", field: "totalEstimatedCommission", isNegative: true },
-  { key: "productCosts", label: "Ürün Maliyeti", field: "totalProductCosts", isNegative: true },
-  { key: "shippingCost", label: "Kargo Maliyeti", field: "totalShippingCost", isNegative: true },
-  { key: "stoppage", label: "Stopaj", field: "totalStoppage", isNegative: true },
-  { key: "vatDifference", label: "KDV Farkı", field: "vatDifference" },
-  { key: "expenses", label: "Giderler", field: "totalExpenseAmount", isNegative: true },
+
+  // NET CİRO
+  { key: "netRevenue", label: "Net Ciro", field: "netRevenue", isBold: true },
+
   { key: "divider1", label: "divider", field: "calculated" },
-  { key: "grossProfit", label: "Brüt Kâr", field: "grossProfit", isBold: true },
-  { key: "netProfit", label: "Net Kâr", field: "netProfit", isBold: true },
+
+  // ==================== MALİYETLER ====================
+  { key: "commission", label: "Komisyon", field: "totalEstimatedCommission", isNegative: true },
+  { key: "shippingCost", label: "Kargo Maliyeti", field: "totalShippingCost", isNegative: true },
+  { key: "productCosts", label: "Ürün Maliyeti", field: "totalProductCosts", isNegative: true },
+  { key: "stoppage", label: "Stopaj", field: "totalStoppage", isNegative: true },
+
   { key: "divider2", label: "divider", field: "calculated" },
-  { key: "margin", label: "Marj", field: "profitMargin", isBold: true, isCurrency: false, isPercentage: true },
+
+  // ==================== KESİLEN FATURALAR ====================
+  {
+    key: "invoicedFees",
+    label: "Kesilen Faturalar",
+    field: "calculated",
+    isNegative: true,
+    isExpandable: true,
+    getValue: (p) =>
+      (p.platformServiceFee ?? 0) +
+      (p.azPlatformServiceFee ?? 0) +
+      (p.invoicedAdvertisingFees ?? 0) +
+      (p.invoicedPenaltyFees ?? 0) +
+      (p.invoicedInternationalFees ?? 0) +
+      (p.invoicedOtherFees ?? 0) -
+      (p.invoicedRefunds ?? 0),
+    children: [
+      { key: "platformService", label: "Platform Hizmet Bedeli", field: "platformServiceFee", isNegative: true },
+      { key: "azPlatformService", label: "AZ-Platform Hizmet Bedeli", field: "azPlatformServiceFee", isNegative: true },
+      { key: "advertising", label: "Reklam Bedeli", field: "invoicedAdvertisingFees", isNegative: true },
+      { key: "penalty", label: "Ceza", field: "invoicedPenaltyFees", isNegative: true },
+      { key: "international", label: "Uluslararası Hizmet Bedeli", field: "invoicedInternationalFees", isNegative: true },
+      { key: "other", label: "Diğer Kesintiler", field: "invoicedOtherFees", isNegative: true },
+      { key: "refunds", label: "İadeler", field: "invoicedRefunds", isNegative: false },
+    ],
+  },
+
+  { key: "divider2b", label: "divider", field: "calculated" },
+
+  // ==================== KÂR ====================
+  { key: "grossProfit", label: "Brüt Kâr", field: "grossProfit", isBold: true },
+  {
+    key: "expenses",
+    label: "Ekstra Giderler",
+    field: "totalExpenseAmount",
+    isNegative: true,
+    isExpandable: true,
+    getExpenseCategories: true,
+  },
+
+  { key: "divider3", label: "divider", field: "calculated" },
+
+  // NET KÂR (highlighted)
+  { key: "netProfit", label: "Net Kâr", field: "netProfit", isBold: true, isHighlighted: true },
+
+  { key: "divider4", label: "divider", field: "calculated" },
+
+  // ==================== METRİKLER ====================
+  { key: "margin", label: "Kâr Marjı", field: "profitMargin", isBold: true, isCurrency: false, isPercentage: true },
   { key: "roi", label: "ROI", field: "roi", isBold: true, isCurrency: false, isPercentage: true },
 ];
 
@@ -135,11 +196,16 @@ function PLMetricRow({
   onToggleExpand,
   formatValue,
 }: PLMetricRowProps) {
-  // Divider row
+  // Divider row - special highlight for Net Kâr divider
   if (metric.label === "divider") {
+    // Check if next row is highlighted (Net Kâr)
+    const isHighlightDivider = metric.key === "divider3";
     return (
       <TableRow>
-        <TableCell colSpan={periods.length + 2} className="h-2 bg-muted p-0" />
+        <TableCell
+          colSpan={periods.length + 2}
+          className={cn("p-0", isHighlightDivider ? "h-2 bg-primary/10" : "h-2 bg-muted")}
+        />
       </TableRow>
     );
   }
@@ -155,13 +221,19 @@ function PLMetricRow({
     return typeof value === "number" ? value : 0;
   };
 
+  // Get return count for badge
+  const getReturnCount = (period: PeriodStats): number => {
+    return period.returnCount ?? 0;
+  };
+
   return (
     <>
       <TableRow
         className={cn(
           "hover:bg-muted/50 transition-colors",
           metric.isExpandable && "cursor-pointer",
-          metric.isBold && "bg-muted/30"
+          metric.isBold && "bg-muted/30",
+          metric.isHighlighted && "bg-primary/5"
         )}
         onClick={() => metric.isExpandable && onToggleExpand(metric.key)}
       >
@@ -169,7 +241,8 @@ function PLMetricRow({
         <TableCell
           className={cn(
             "sticky left-0 z-10 bg-card font-medium text-foreground",
-            metric.isBold && "bg-muted"
+            metric.isBold && "bg-muted",
+            metric.isHighlighted && "bg-primary/5"
           )}
         >
           <div className="flex items-center gap-2">
@@ -183,6 +256,12 @@ function PLMetricRow({
               <div className="w-4" />
             )}
             <span className={cn(metric.isBold && "font-semibold")}>{metric.label}</span>
+            {/* Badge for return count in total column header */}
+            {metric.showBadge && total.returnCount > 0 && (
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">
+                {total.returnCount} ürün
+              </span>
+            )}
           </div>
         </TableCell>
 
@@ -209,6 +288,7 @@ function PLMetricRow({
           className={cn(
             "text-right min-w-[120px] sticky right-0 z-10 bg-card border-l border-border",
             metric.isBold && "font-semibold bg-muted",
+            metric.isHighlighted && "bg-primary/5",
             getValue(total) < 0 && "text-red-600",
             metric.isNegative && getValue(total) !== 0 && "text-red-600"
           )}
@@ -217,8 +297,8 @@ function PLMetricRow({
         </TableCell>
       </TableRow>
 
-      {/* Child rows (expandable) */}
-      {metric.isExpandable && isExpanded && metric.children?.map((child) => (
+      {/* Child rows (expandable) - Regular children */}
+      {metric.isExpandable && isExpanded && !metric.getExpenseCategories && metric.children?.map((child) => (
         <TableRow key={child.key} className="bg-muted/20 hover:bg-muted/40 transition-colors">
           <TableCell className="sticky left-0 z-10 bg-card pl-10 text-muted-foreground text-sm">
             <div className="flex items-center gap-2">
@@ -258,11 +338,53 @@ function PLMetricRow({
           </TableCell>
         </TableRow>
       ))}
+
+      {/* Dynamic expense categories from expensesByCategory */}
+      {metric.isExpandable && isExpanded && metric.getExpenseCategories && (() => {
+        const categories = total.expensesByCategory;
+        const hasCategories = categories && Object.keys(categories).length > 0;
+
+        if (!hasCategories) {
+          return (
+            <TableRow className="bg-muted/20">
+              <TableCell className="sticky left-0 z-10 bg-card pl-10 text-muted-foreground text-sm italic" colSpan={periods.length + 2}>
+                Kategori detayı bulunamadı
+              </TableCell>
+            </TableRow>
+          );
+        }
+
+        return (
+          <>
+            {Object.entries(categories).map(([categoryName, totalValue]) => (
+              <TableRow key={categoryName} className="bg-muted/20 hover:bg-muted/40 transition-colors">
+                <TableCell className="sticky left-0 z-10 bg-card pl-10 text-muted-foreground text-sm">
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">└</span>
+                    {categoryName}
+                  </div>
+                </TableCell>
+                {periods.map((period, index) => {
+                  const value = period.expensesByCategory?.[categoryName] ?? 0;
+                  return (
+                    <TableCell key={index} className="text-right text-sm min-w-[100px] text-red-600">
+                      {formatValue(value, true, false, value > 0)}
+                    </TableCell>
+                  );
+                })}
+                <TableCell className="text-right text-sm min-w-[120px] sticky right-0 z-10 bg-card border-l border-border text-red-600">
+                  {formatValue(totalValue ?? 0, true, false, true)}
+                </TableCell>
+              </TableRow>
+            ))}
+          </>
+        );
+      })()}
     </>
   );
 }
 
-export function PLView({ storeId }: PLViewProps) {
+export function PLView({ storeId, selectedProducts = [] }: PLViewProps) {
   const [selectedPreset, setSelectedPreset] = useState<PLPeriodPreset>("last12months");
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const { formatCurrency } = useCurrency();
@@ -272,11 +394,15 @@ export function PLView({ storeId }: PLViewProps) {
     return PL_PERIOD_PRESETS.find((p) => p.id === selectedPreset) || PL_PERIOD_PRESETS[0];
   }, [selectedPreset]);
 
+  // Use first selected product barcode for filtering (API supports single product)
+  const productBarcode = selectedProducts.length === 1 ? selectedProducts[0] : undefined;
+
   // Fetch data
   const { data, isLoading, error } = useMultiPeriodStats(
     storeId,
     presetConfig.periodType,
-    presetConfig.periodCount
+    presetConfig.periodCount,
+    productBarcode
   );
 
   const handleToggleExpand = (key: string) => {

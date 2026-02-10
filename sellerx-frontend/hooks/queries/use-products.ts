@@ -4,6 +4,7 @@ import type {
   TrendyolProduct,
   ProductListResponse,
   SyncProductsResponse,
+  ProductFilters,
 } from "@/types/product";
 import { dashboardKeys } from "@/hooks/useDashboardStats";
 
@@ -18,6 +19,8 @@ export const productKeys = {
   byStore: (storeId: string) => [...productKeys.all, "store", storeId] as const,
   byStorePaginated: (storeId: string, page: number, size: number) =>
     [...productKeys.all, "store", storeId, "paginated", { page, size }] as const,
+  byStorePaginatedFiltered: (storeId: string, page: number, size: number, filters?: ProductFilters) =>
+    [...productKeys.all, "store", storeId, "paginated", { page, size, filters }] as const,
 };
 
 // Get all products
@@ -143,7 +146,7 @@ export function useUpdateProductCostAndStock() {
   });
 }
 
-// Get products by store with full pagination support
+// Get products by store with full pagination support and filters
 export function useProductsByStorePaginatedFull(
   storeId: string | undefined,
   options?: {
@@ -151,11 +154,12 @@ export function useProductsByStorePaginatedFull(
     size?: number;
     sortBy?: string;
     sortDirection?: "asc" | "desc";
+    filters?: ProductFilters;
   },
 ) {
-  const { page = 0, size = 50 } = options || {};
+  const { page = 0, size = 50, filters } = options || {};
   return useQuery<ProductListResponse>({
-    queryKey: productKeys.byStorePaginated(storeId!, page, size),
+    queryKey: productKeys.byStorePaginatedFiltered(storeId!, page, size, filters),
     queryFn: () => productApiExtended.getByStorePaginated(storeId!, options),
     enabled: !!storeId,
     staleTime: 5 * 60 * 1000, // 5 dakika - cache'i daha uzun tut
@@ -180,6 +184,50 @@ export function useBulkUpdateCosts() {
       queryClient.invalidateQueries({ queryKey: productKeys.byStore(variables.storeId) });
       // Invalidate dashboard stats as product data may have changed
       queryClient.invalidateQueries({ queryKey: dashboardKeys.stats(variables.storeId) });
+    },
+  });
+}
+
+// Update stock info by date
+export function useUpdateStockInfoByDate() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      productId,
+      stockDate,
+      data,
+    }: {
+      productId: string;
+      stockDate: string;
+      data: { quantity: number; unitCost: number; costVatRate: number };
+    }) => productApiExtended.updateStockInfoByDate(productId, stockDate, data),
+    onSuccess: (data, variables) => {
+      // Update the specific product in cache
+      queryClient.setQueryData(productKeys.detail(variables.productId), data);
+      // Invalidate lists
+      queryClient.invalidateQueries({ queryKey: productKeys.lists() });
+    },
+  });
+}
+
+// Delete stock info by date
+export function useDeleteStockInfoByDate() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      productId,
+      stockDate,
+    }: {
+      productId: string;
+      stockDate: string;
+    }) => productApiExtended.deleteStockInfoByDate(productId, stockDate),
+    onSuccess: (data, variables) => {
+      // Update the specific product in cache
+      queryClient.setQueryData(productKeys.detail(variables.productId), data);
+      // Invalidate lists
+      queryClient.invalidateQueries({ queryKey: productKeys.lists() });
     },
   });
 }

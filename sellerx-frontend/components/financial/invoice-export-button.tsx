@@ -12,11 +12,13 @@ import { saveAs } from "file-saver";
 interface InvoiceExportButtonProps {
   invoices: InvoiceDetail[];
   filename?: string;
+  isLoading?: boolean;
 }
 
 export function InvoiceExportButton({
   invoices,
   filename = "faturalar",
+  isLoading = false,
 }: InvoiceExportButtonProps) {
   const [isExporting, setIsExporting] = useState(false);
 
@@ -75,7 +77,7 @@ export function InvoiceExportButton({
       variant="outline"
       size="sm"
       onClick={handleExport}
-      disabled={isExporting || invoices.length === 0}
+      disabled={isExporting || invoices.length === 0 || isLoading}
       className="gap-2"
     >
       <Download className="h-4 w-4" />

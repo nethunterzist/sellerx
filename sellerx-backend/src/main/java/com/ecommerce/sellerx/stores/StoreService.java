@@ -52,6 +52,8 @@ public class StoreService {
         store.setSyncStatus(SyncStatus.PENDING);
         store.setInitialSyncCompleted(false);
 
+        // Note: Credentials are encrypted automatically by CredentialsEntityListener
+
         // Save store first
         storeRepository.save(store);
 

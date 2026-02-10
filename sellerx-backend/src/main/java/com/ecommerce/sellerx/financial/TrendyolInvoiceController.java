@@ -2,12 +2,17 @@ package com.ecommerce.sellerx.financial;
 
 import com.ecommerce.sellerx.financial.dto.AggregatedProductDto;
 import com.ecommerce.sellerx.financial.dto.CargoInvoiceItemDto;
+import com.ecommerce.sellerx.financial.dto.CargoInvoiceItemsPageDto;
 import com.ecommerce.sellerx.financial.dto.CommissionInvoiceItemDto;
+import com.ecommerce.sellerx.financial.dto.CommissionInvoiceItemsPageDto;
 import com.ecommerce.sellerx.financial.dto.InvoiceDetailDto;
 import com.ecommerce.sellerx.financial.dto.InvoiceItemDto;
+import com.ecommerce.sellerx.financial.dto.InvoiceItemsPageDto;
 import com.ecommerce.sellerx.financial.dto.InvoiceSummaryDto;
+import com.ecommerce.sellerx.financial.dto.OrderInvoiceItemsDto;
 import com.ecommerce.sellerx.financial.dto.ProductCargoBreakdownDto;
 import com.ecommerce.sellerx.financial.dto.ProductCommissionBreakdownDto;
+import com.ecommerce.sellerx.financial.dto.StoppageSummaryDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -192,6 +197,25 @@ public class TrendyolInvoiceController {
     }
 
     /**
+     * Get cargo invoice items by invoice serial number with pagination.
+     * Used for lazy loading in invoice detail panel.
+     */
+    @PreAuthorize("@userSecurityRules.canAccessStore(authentication, #storeId)")
+    @GetMapping("/stores/{storeId}/cargo-items/{invoiceSerialNumber}/paginated")
+    public ResponseEntity<CargoInvoiceItemsPageDto> getCargoInvoiceItemsPaginated(
+            @PathVariable UUID storeId,
+            @PathVariable String invoiceSerialNumber,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+
+        log.info("Getting paginated cargo invoice items for store: {}, invoice: {}, page: {}, size: {}",
+                storeId, invoiceSerialNumber, page, size);
+        size = Math.min(size, 100);
+        CargoInvoiceItemsPageDto pageDto = invoiceService.getCargoInvoiceItemsPaginated(storeId, invoiceSerialNumber, page, size);
+        return ResponseEntity.ok(pageDto);
+    }
+
+    /**
      * Get generic invoice items by invoice serial number.
      * Returns all orders/items within a specific invoice (for CEZA, KOMISYON, etc. types).
      * This endpoint is used for non-cargo invoice detail views.
@@ -241,6 +265,25 @@ public class TrendyolInvoiceController {
     }
 
     /**
+     * Get generic invoice items by invoice serial number with pagination.
+     * Used for lazy loading in invoice detail panel.
+     */
+    @PreAuthorize("@userSecurityRules.canAccessStore(authentication, #storeId)")
+    @GetMapping("/stores/{storeId}/items/{invoiceSerialNumber}/paginated")
+    public ResponseEntity<InvoiceItemsPageDto> getInvoiceItemsPaginated(
+            @PathVariable UUID storeId,
+            @PathVariable String invoiceSerialNumber,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+
+        log.info("Getting paginated invoice items for store: {}, invoice: {}, page: {}, size: {}",
+                storeId, invoiceSerialNumber, page, size);
+        size = Math.min(size, 100);
+        InvoiceItemsPageDto pageDto = invoiceService.getInvoiceItemsPaginated(storeId, invoiceSerialNumber, page, size);
+        return ResponseEntity.ok(pageDto);
+    }
+
+    /**
      * Get commission invoice items by invoice serial number.
      * Returns all orders within a specific commission invoice (Komisyon Fatura).
      * Shows order-level commission breakdown similar to Trendyol Excel export.
@@ -287,6 +330,25 @@ public class TrendyolInvoiceController {
         private java.math.BigDecimal totalCommission;
         private java.math.BigDecimal totalSellerRevenue;
         private List<CommissionInvoiceItemDto> items;
+    }
+
+    /**
+     * Get commission invoice items by invoice serial number with pagination.
+     * Used for lazy loading in invoice detail panel.
+     */
+    @PreAuthorize("@userSecurityRules.canAccessStore(authentication, #storeId)")
+    @GetMapping("/stores/{storeId}/commission-items/{invoiceSerialNumber}/paginated")
+    public ResponseEntity<CommissionInvoiceItemsPageDto> getCommissionInvoiceItemsPaginated(
+            @PathVariable UUID storeId,
+            @PathVariable String invoiceSerialNumber,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+
+        log.info("Getting paginated commission invoice items for store: {}, invoice: {}, page: {}, size: {}",
+                storeId, invoiceSerialNumber, page, size);
+        size = Math.min(size, 100);
+        CommissionInvoiceItemsPageDto pageDto = invoiceService.getCommissionInvoiceItemsPaginated(storeId, invoiceSerialNumber, page, size);
+        return ResponseEntity.ok(pageDto);
     }
 
     /**
@@ -535,5 +597,80 @@ public class TrendyolInvoiceController {
         ProductCargoBreakdownDto breakdown = invoiceService.getProductCargoBreakdown(
                 storeId, barcode, startDate, endDate);
         return ResponseEntity.ok(breakdown);
+    }
+
+    // ================================================================================
+    // Order Invoice Items (for Order Detail Panel)
+    // ================================================================================
+
+    /**
+     * Get all invoice items (cargo, commission, deductions) linked to a specific order.
+     * Used to show actual invoiced expenses in order detail panel.
+     */
+    @PreAuthorize("@userSecurityRules.canAccessStore(authentication, #storeId)")
+    @GetMapping("/stores/{storeId}/by-order/{orderNumber}")
+    public ResponseEntity<OrderInvoiceItemsDto> getInvoiceItemsByOrderNumber(
+            @PathVariable UUID storeId,
+            @PathVariable String orderNumber) {
+
+        log.info("Getting invoice items for order {} in store: {}", orderNumber, storeId);
+
+        OrderInvoiceItemsDto result = invoiceService.getInvoiceItemsByOrderNumber(storeId, orderNumber);
+        return ResponseEntity.ok(result);
+    }
+
+    // ================================================================================
+    // Stoppage (Withholding Tax) Endpoints
+    // ================================================================================
+
+    /**
+     * Get stoppage summary for a store.
+     * Returns total amount and count of stopaj (withholding tax) records.
+     */
+    @PreAuthorize("@userSecurityRules.canAccessStore(authentication, #storeId)")
+    @GetMapping("/stores/{storeId}/stoppages/summary")
+    public ResponseEntity<StoppageSummaryDto> getStoppageSummary(
+            @PathVariable UUID storeId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+
+        // Default to last 30 days if dates not provided
+        if (endDate == null) {
+            endDate = LocalDate.now();
+        }
+        if (startDate == null) {
+            startDate = endDate.minusDays(30);
+        }
+
+        log.info("Getting stoppage summary for store: {} from {} to {}", storeId, startDate, endDate);
+        StoppageSummaryDto summary = invoiceService.getStoppageSummary(storeId, startDate, endDate);
+        return ResponseEntity.ok(summary);
+    }
+
+    /**
+     * Get stoppages with pagination for a store.
+     * Returns stopaj (withholding tax) records with pagination.
+     */
+    @PreAuthorize("@userSecurityRules.canAccessStore(authentication, #storeId)")
+    @GetMapping("/stores/{storeId}/stoppages")
+    public ResponseEntity<StoppageSummaryDto> getStoppages(
+            @PathVariable UUID storeId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+
+        // Default to last 30 days if dates not provided
+        if (endDate == null) {
+            endDate = LocalDate.now();
+        }
+        if (startDate == null) {
+            startDate = endDate.minusDays(30);
+        }
+
+        log.info("Getting stoppages for store: {} from {} to {}, page: {}, size: {}", storeId, startDate, endDate, page, size);
+        size = Math.min(size, 100);
+        StoppageSummaryDto result = invoiceService.getStoppages(storeId, startDate, endDate, page, size);
+        return ResponseEntity.ok(result);
     }
 }

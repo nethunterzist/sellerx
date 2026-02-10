@@ -31,6 +31,12 @@ public interface TrendyolDeductionInvoiceRepository extends JpaRepository<Trendy
     boolean existsByStoreIdAndTrendyolId(UUID storeId, String trendyolId);
 
     /**
+     * Find invoices by store and order number.
+     * Used to get all deduction invoices linked to a specific order.
+     */
+    List<TrendyolDeductionInvoice> findByStoreIdAndOrderNumber(UUID storeId, String orderNumber);
+
+    /**
      * Find all invoices for a store in date range
      */
     List<TrendyolDeductionInvoice> findByStoreIdAndTransactionDateBetween(
@@ -156,6 +162,13 @@ public interface TrendyolDeductionInvoiceRepository extends JpaRepository<Trendy
             UUID storeId, String invoiceSerialNumber);
 
     /**
+     * Find invoices by store and invoice serial number with pagination.
+     * Used for lazy loading in invoice detail panel.
+     */
+    Page<TrendyolDeductionInvoice> findByStoreIdAndInvoiceSerialNumberOrderByTransactionDateDesc(
+            UUID storeId, String invoiceSerialNumber, Pageable pageable);
+
+    /**
      * Count invoices by store and invoice serial number
      */
     long countByStoreIdAndInvoiceSerialNumber(UUID storeId, String invoiceSerialNumber);
@@ -214,14 +227,18 @@ public interface TrendyolDeductionInvoiceRepository extends JpaRepository<Trendy
             @Param("endDate") LocalDateTime endDate);
 
     /**
-     * Sum all international fees (Uluslararası Hizmet, AZ-Uluslararası, Yurtdışı Operasyon)
+     * Sum all international fees (Uluslararası Hizmet, AZ-Uluslararası, Yurt Dışı Operasyon)
+     * Note: AZ-Yurtdışı Operasyon Bedeli is excluded - it's treated as a refund (İADE)
+     * because it shows as negative in Trendyol UI (money returned to seller)
      */
     @Query("SELECT COALESCE(SUM(d.debt), 0) FROM TrendyolDeductionInvoice d " +
             "WHERE d.storeId = :storeId " +
             "AND d.transactionDate BETWEEN :startDate AND :endDate " +
             "AND (d.transactionType IN ('Uluslararası Hizmet Bedeli', 'AZ-Uluslararası Hizmet Bedeli', " +
-            "'AZ-Yurtdışı Operasyon Bedeli', 'AZ-YURTDÕ_Õ OPERASYON BEDELI %18') " +
-            "OR d.transactionType LIKE '%Uluslararası%' OR d.transactionType LIKE '%Yurtdışı%')")
+            "'Yurt Dışı Operasyon Bedeli') " +
+            "OR (d.transactionType LIKE '%Uluslararası%' AND d.transactionType NOT LIKE '%Iade%')) " +
+            "AND d.transactionType NOT LIKE 'AZ-%Yurt%Operasyon%' " +
+            "AND d.transactionType NOT LIKE '%Iade%' AND d.transactionType NOT LIKE '%İade%'")
     BigDecimal sumInvoicedInternationalFees(
             @Param("storeId") UUID storeId,
             @Param("startDate") LocalDateTime startDate,
@@ -250,13 +267,18 @@ public interface TrendyolDeductionInvoiceRepository extends JpaRepository<Trendy
             @Param("endDate") LocalDateTime endDate);
 
     /**
-     * Sum all refund credits (İade/Tazmin faturalari - seller'a geri ödeme)
+     * Sum all refund amounts (İade/Tazmin faturalari - seller'a geri ödeme)
+     * Uses CASE WHEN to capture both credit-based and debt-based refunds:
+     * - credit > 0: Direct refund from Trendyol
+     * - debt > 0 with refund type: Trendyol sends some refunds as positive debt
+     * Includes AZ-Yurtdışı Operasyon Bedeli which shows as negative in Trendyol UI
      */
-    @Query("SELECT COALESCE(SUM(d.credit), 0) FROM TrendyolDeductionInvoice d " +
+    @Query("SELECT COALESCE(SUM(CASE WHEN d.credit > 0 THEN d.credit ELSE d.debt END), 0) FROM TrendyolDeductionInvoice d " +
             "WHERE d.storeId = :storeId " +
             "AND d.transactionDate BETWEEN :startDate AND :endDate " +
             "AND (d.transactionType IN ('Yurtdışı Operasyon Iade Bedeli', 'MP Kargo İtiraz İade Faturası', 'Tazmin Faturası') " +
-            "OR d.transactionType LIKE '%Iade%' OR d.transactionType LIKE '%İade%' OR d.transactionType LIKE '%Tazmin%')")
+            "OR d.transactionType LIKE '%Iade%' OR d.transactionType LIKE '%İade%' OR d.transactionType LIKE '%Tazmin%' " +
+            "OR (d.transactionType LIKE 'AZ-%' AND d.transactionType LIKE '%Yurt%' AND d.transactionType LIKE '%Operasyon%'))")
     BigDecimal sumInvoicedRefunds(
             @Param("storeId") UUID storeId,
             @Param("startDate") LocalDateTime startDate,

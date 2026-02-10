@@ -33,13 +33,24 @@ public class PurchaseOrderService {
 
     // === List & Get ===
 
-    public List<PurchaseOrderSummaryDto> getPurchaseOrders(UUID storeId, PurchaseOrderStatus status) {
+    public List<PurchaseOrderSummaryDto> getPurchaseOrders(UUID storeId, PurchaseOrderStatus status,
+                                                            LocalDate startDate, LocalDate endDate) {
         List<PurchaseOrder> orders;
-        if (status != null) {
+
+        if (startDate != null && endDate != null) {
+            if (status != null) {
+                orders = purchaseOrderRepository.findByStoreIdAndPoDateBetweenAndStatus(
+                        storeId, startDate, endDate, status);
+            } else {
+                orders = purchaseOrderRepository.findByStoreIdAndPoDateBetween(
+                        storeId, startDate, endDate);
+            }
+        } else if (status != null) {
             orders = purchaseOrderRepository.findByStoreIdAndStatusOrderByPoDateDesc(storeId, status);
         } else {
             orders = purchaseOrderRepository.findByStoreIdOrderByPoDateDesc(storeId);
         }
+
         return orders.stream()
                 .map(this::toSummaryDto)
                 .collect(Collectors.toList());
@@ -60,11 +71,32 @@ public class PurchaseOrderService {
                 .build();
     }
 
+    public PurchaseOrderStatsDto getStats(UUID storeId, LocalDate startDate, LocalDate endDate) {
+        if (startDate == null || endDate == null) {
+            return getStats(storeId);
+        }
+        return PurchaseOrderStatsDto.builder()
+                .draft(getStatusStats(storeId, PurchaseOrderStatus.DRAFT, startDate, endDate))
+                .ordered(getStatusStats(storeId, PurchaseOrderStatus.ORDERED, startDate, endDate))
+                .shipped(getStatusStats(storeId, PurchaseOrderStatus.SHIPPED, startDate, endDate))
+                .closed(getStatusStats(storeId, PurchaseOrderStatus.CLOSED, startDate, endDate))
+                .build();
+    }
+
     private PurchaseOrderStatsDto.StatusStats getStatusStats(UUID storeId, PurchaseOrderStatus status) {
         return PurchaseOrderStatsDto.StatusStats.builder()
                 .count(purchaseOrderRepository.countByStoreIdAndStatus(storeId, status))
                 .totalCost(purchaseOrderRepository.sumTotalCostByStoreIdAndStatus(storeId, status))
                 .totalUnits(purchaseOrderRepository.sumTotalUnitsByStoreIdAndStatus(storeId, status))
+                .build();
+    }
+
+    private PurchaseOrderStatsDto.StatusStats getStatusStats(UUID storeId, PurchaseOrderStatus status,
+                                                              LocalDate startDate, LocalDate endDate) {
+        return PurchaseOrderStatsDto.StatusStats.builder()
+                .count(purchaseOrderRepository.countByStoreIdAndStatusAndDateRange(storeId, status, startDate, endDate))
+                .totalCost(purchaseOrderRepository.sumTotalCostByStoreIdAndStatusAndDateRange(storeId, status, startDate, endDate))
+                .totalUnits(purchaseOrderRepository.sumTotalUnitsByStoreIdAndStatusAndDateRange(storeId, status, startDate, endDate))
                 .build();
     }
 
@@ -465,7 +497,8 @@ public class PurchaseOrderService {
     // === Advanced Search/Filter ===
 
     public List<PurchaseOrderSummaryDto> searchPurchaseOrders(UUID storeId, String search,
-                                                              PurchaseOrderStatus status, Long supplierId) {
+                                                              PurchaseOrderStatus status, Long supplierId,
+                                                              LocalDate startDate, LocalDate endDate) {
         List<PurchaseOrder> orders;
 
         if (search != null && !search.isEmpty()) {
@@ -479,10 +512,34 @@ public class PurchaseOrderService {
                         .filter(po -> po.getSupplier() != null && po.getSupplier().getId().equals(supplierId))
                         .collect(Collectors.toList());
             }
+            // Apply date filter in-memory
+            if (startDate != null && endDate != null) {
+                orders = orders.stream()
+                        .filter(po -> !po.getPoDate().isBefore(startDate) && !po.getPoDate().isAfter(endDate))
+                        .collect(Collectors.toList());
+            }
         } else if (supplierId != null && status != null) {
             orders = purchaseOrderRepository.findByStoreIdAndSupplierIdAndStatus(storeId, supplierId, status);
+            // Apply date filter in-memory for combined filters
+            if (startDate != null && endDate != null) {
+                orders = orders.stream()
+                        .filter(po -> !po.getPoDate().isBefore(startDate) && !po.getPoDate().isAfter(endDate))
+                        .collect(Collectors.toList());
+            }
         } else if (supplierId != null) {
             orders = purchaseOrderRepository.findByStoreIdAndSupplierIdOrderByPoDateDesc(storeId, supplierId);
+            if (startDate != null && endDate != null) {
+                orders = orders.stream()
+                        .filter(po -> !po.getPoDate().isBefore(startDate) && !po.getPoDate().isAfter(endDate))
+                        .collect(Collectors.toList());
+            }
+        } else if (startDate != null && endDate != null) {
+            if (status != null) {
+                orders = purchaseOrderRepository.findByStoreIdAndPoDateBetweenAndStatus(
+                        storeId, startDate, endDate, status);
+            } else {
+                orders = purchaseOrderRepository.findByStoreIdAndPoDateBetween(storeId, startDate, endDate);
+            }
         } else if (status != null) {
             orders = purchaseOrderRepository.findByStoreIdAndStatusOrderByPoDateDesc(storeId, status);
         } else {

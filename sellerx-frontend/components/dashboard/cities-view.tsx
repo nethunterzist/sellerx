@@ -12,11 +12,25 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { MapPin, TrendingUp, Package, AlertCircle } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { Button } from "@/components/ui/button";
+import { MapPin, TrendingUp, AlertCircle, CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { format, subDays, subMonths, startOfMonth, endOfMonth } from "date-fns";
+import { tr } from "date-fns/locale";
 import type { CityStats, CityStatsResponse } from "@/types/city-stats";
 import { CITY_NAME_TO_CODE } from "@/types/city-stats";
 import { useCurrency } from "@/lib/contexts/currency-context";
+import { useCityStats } from "@/hooks/queries/use-city-stats";
+import type { DateRange } from "react-day-picker";
 
 // Dynamically import TurkeyMap to avoid SSR issues
 const TurkeyMap = dynamic(() => import("turkey-map-react").then((mod) => mod.default), {
@@ -28,9 +42,49 @@ const TurkeyMap = dynamic(() => import("turkey-map-react").then((mod) => mod.def
   ),
 });
 
+// Dönem seçenekleri
+const CITIES_PERIOD_PRESETS = [
+  { id: "today", label: "Bugün" },
+  { id: "yesterday", label: "Dün" },
+  { id: "last7days", label: "Son 7 gün" },
+  { id: "thisMonth", label: "Bu ay" },
+  { id: "lastMonth", label: "Geçen ay" },
+  { id: "last3months", label: "Son 3 ay" },
+  { id: "last12months", label: "Son 12 ay" },
+  { id: "custom", label: "Özel tarih" },
+] as const;
+
+type CitiesPeriodPreset = typeof CITIES_PERIOD_PRESETS[number]["id"];
+
+// Dönem preset'ine göre tarih aralığı hesapla
+function calculateDateRange(preset: CitiesPeriodPreset): { startDate: string; endDate: string } {
+  const today = new Date();
+  const formatDate = (d: Date) => format(d, "yyyy-MM-dd");
+
+  switch (preset) {
+    case "today":
+      return { startDate: formatDate(today), endDate: formatDate(today) };
+    case "yesterday":
+      const yesterday = subDays(today, 1);
+      return { startDate: formatDate(yesterday), endDate: formatDate(yesterday) };
+    case "last7days":
+      return { startDate: formatDate(subDays(today, 6)), endDate: formatDate(today) };
+    case "thisMonth":
+      return { startDate: formatDate(startOfMonth(today)), endDate: formatDate(today) };
+    case "lastMonth":
+      const lastMonth = subMonths(today, 1);
+      return { startDate: formatDate(startOfMonth(lastMonth)), endDate: formatDate(endOfMonth(lastMonth)) };
+    case "last3months":
+      return { startDate: formatDate(subMonths(today, 3)), endDate: formatDate(today) };
+    case "last12months":
+      return { startDate: formatDate(subMonths(today, 12)), endDate: formatDate(today) };
+    default:
+      return { startDate: formatDate(subDays(today, 29)), endDate: formatDate(today) };
+  }
+}
+
 interface CitiesViewProps {
-  cityStats: CityStatsResponse | undefined;
-  isLoading: boolean;
+  storeId: string | undefined;
 }
 
 function formatNumber(value: number): string {
@@ -57,12 +111,60 @@ function getColorForValue(value: number, maxValue: number): string {
   return "#0D47A1"; // Darkest blue
 }
 
-export function CitiesView({ cityStats, isLoading }: CitiesViewProps) {
+export function CitiesView({ storeId }: CitiesViewProps) {
   const { formatCurrency } = useCurrency();
   const [hoveredCity, setHoveredCity] = useState<string | null>(null);
   const [showAllCities, setShowAllCities] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [isHoveringMap, setIsHoveringMap] = useState(false);
+
+  // Dönem state'i
+  const [selectedPeriod, setSelectedPeriod] = useState<CitiesPeriodPreset>("last7days");
+  const [customDateRange, setCustomDateRange] = useState<DateRange | undefined>(undefined);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+
+  // Tarih aralığını hesapla
+  const dateRange = useMemo(() => {
+    if (selectedPeriod === "custom" && customDateRange?.from && customDateRange?.to) {
+      return {
+        startDate: format(customDateRange.from, "yyyy-MM-dd"),
+        endDate: format(customDateRange.to, "yyyy-MM-dd"),
+      };
+    }
+    return calculateDateRange(selectedPeriod);
+  }, [selectedPeriod, customDateRange]);
+
+  // Hook'u içeride çağır
+  const { data: cityStats, isLoading } = useCityStats({
+    storeId,
+    startDate: dateRange.startDate,
+    endDate: dateRange.endDate,
+  });
+
+  // Dönem seçimi değiştiğinde
+  const handlePeriodChange = (value: string) => {
+    setSelectedPeriod(value as CitiesPeriodPreset);
+    if (value !== "custom") {
+      setCustomDateRange(undefined);
+    }
+  };
+
+  // Özel tarih seçimi değiştiğinde
+  const handleCustomDateSelect = (range: DateRange | undefined) => {
+    setCustomDateRange(range);
+    if (range?.from && range?.to) {
+      setIsCalendarOpen(false);
+    }
+  };
+
+  // Seçili dönemin label'ını al
+  const getSelectedPeriodLabel = () => {
+    if (selectedPeriod === "custom" && customDateRange?.from && customDateRange?.to) {
+      return `${format(customDateRange.from, "d MMM", { locale: tr })} - ${format(customDateRange.to, "d MMM yyyy", { locale: tr })}`;
+    }
+    const preset = CITIES_PERIOD_PRESETS.find(p => p.id === selectedPeriod);
+    return preset?.label || "Son 7 gün";
+  };
 
   // Create a map of city name to stats
   const cityStatsMap = useMemo(() => {
@@ -155,13 +257,62 @@ export function CitiesView({ cityStats, isLoading }: CitiesViewProps) {
     <div className="space-y-6">
       {/* Map Card */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-4">
           <CardTitle className="text-lg flex items-center gap-2">
             <MapPin className="h-5 w-5 text-[#1D70F1]" />
             Türkiye Sipariş Haritası
           </CardTitle>
-          <div className="text-sm text-muted-foreground">
-            {cityStats.totalCities} şehirden sipariş
+          <div className="flex items-center gap-3">
+            {/* Dönem Seçici */}
+            <div className="flex items-center gap-2">
+              <Select value={selectedPeriod} onValueChange={handlePeriodChange}>
+                <SelectTrigger className="w-[160px] h-9">
+                  <SelectValue placeholder="Dönem seçin" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CITIES_PERIOD_PRESETS.map((preset) => (
+                    <SelectItem key={preset.id} value={preset.id}>
+                      {preset.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {/* Özel Tarih Seçici */}
+              {selectedPeriod === "custom" && (
+                <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-[220px] h-9 justify-start text-left font-normal",
+                        !customDateRange && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {customDateRange?.from && customDateRange?.to ? (
+                        `${format(customDateRange.from, "d MMM", { locale: tr })} - ${format(customDateRange.to, "d MMM", { locale: tr })}`
+                      ) : (
+                        "Tarih seçin"
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="end">
+                    <Calendar
+                      mode="range"
+                      selected={customDateRange}
+                      onSelect={handleCustomDateSelect}
+                      numberOfMonths={2}
+                      locale="tr"
+                    />
+                  </PopoverContent>
+                </Popover>
+              )}
+            </div>
+
+            <div className="text-sm text-muted-foreground">
+              {cityStats.totalCities} şehirden sipariş
+            </div>
           </div>
         </CardHeader>
         <CardContent>

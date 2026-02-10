@@ -1,8 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { ChevronRight, ChevronDown, Store, ExternalLink } from "lucide-react";
+import { ChevronRight, ChevronDown, Store, ExternalLink, X, Loader2, FileText } from "lucide-react";
+import { useProductCommissionBreakdown, useProductCargoBreakdown } from "@/hooks/queries/use-invoices";
+import { useSelectedStore } from "@/hooks/queries/use-stores";
+import { Button } from "@/components/ui/button";
 import {
   Sheet,
   SheetContent,
@@ -101,12 +104,21 @@ interface ProductDetailData {
   productUrl?: string;
   status?: ProductStatus;
   costHistory?: CostHistoryItem[];
+
+  // ============== REKLAM METRİKLERİ ==============
+  cpc?: number;                    // Cost Per Click (TL)
+  cvr?: number;                    // Conversion Rate (örn: 0.018 = %1.8)
+  advertisingCostPerSale?: number; // Reklam Maliyeti = CPC / CVR
+  acos?: number;                   // ACOS = (advertisingCostPerSale / salePrice) * 100
+  totalAdvertisingCost?: number;   // Toplam reklam maliyeti
 }
 
 interface ProductDetailPanelProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   product: ProductDetailData | null;
+  startDate?: string; // ISO date for invoice queries
+  endDate?: string;   // ISO date for invoice queries
 }
 
 function formatPercentage(value: number): string {
@@ -247,12 +259,63 @@ function SubRow({
   );
 }
 
+const COST_HISTORY_PAGE_SIZE = 20;
+
 export function ProductDetailPanel({
   open,
   onOpenChange,
   product,
+  startDate,
+  endDate,
 }: ProductDetailPanelProps) {
   const { formatCurrency } = useCurrency();
+  const [costHistoryLimit, setCostHistoryLimit] = useState(COST_HISTORY_PAGE_SIZE);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+
+  // Get store ID for invoice queries
+  const { data: selectedStoreData } = useSelectedStore();
+  const storeId = selectedStoreData?.selectedStoreId;
+
+  // Fetch invoice data for the product (cargo and commission breakdowns)
+  const { data: commissionData, isLoading: isLoadingCommission } = useProductCommissionBreakdown(
+    storeId,
+    product?.barcode,
+    startDate,
+    endDate
+  );
+
+  const { data: cargoData, isLoading: isLoadingCargo } = useProductCargoBreakdown(
+    storeId,
+    product?.barcode,
+    startDate,
+    endDate
+  );
+
+  // Frontend slice pagination for cost history
+  const costHistoryData = useMemo(() => {
+    if (!product?.costHistory) return { visible: [], total: 0, hasMore: false };
+    const total = product.costHistory.length;
+    const visible = product.costHistory.slice(0, costHistoryLimit);
+    return {
+      visible,
+      total,
+      hasMore: costHistoryLimit < total,
+    };
+  }, [product?.costHistory, costHistoryLimit]);
+
+  const handleLoadMoreCostHistory = () => {
+    setIsLoadingMore(true);
+    // Simulate async for UX (instant feels jarring)
+    setTimeout(() => {
+      setCostHistoryLimit((prev) => prev + COST_HISTORY_PAGE_SIZE);
+      setIsLoadingMore(false);
+    }, 150);
+  };
+
+  // Reset pagination when product changes
+  useEffect(() => {
+    setCostHistoryLimit(COST_HISTORY_PAGE_SIZE);
+  }, [product?.id]);
 
   if (!product) return null;
 
@@ -264,7 +327,7 @@ export function ProductDetailPanel({
 
         {/* Header */}
         <div className="sticky top-0 z-10 border-b border-border bg-[#565d6a]">
-          <div className="flex items-start gap-3 p-4">
+          <div className="flex items-start gap-3 p-4 relative">
             {product.image ? (
               <a
                 href={product.productUrl || "#"}
@@ -314,6 +377,14 @@ export function ProductDetailPanel({
               )}
               <StatusBadges status={product.status} />
             </div>
+            {/* Close Button */}
+            <button
+              onClick={() => onOpenChange(false)}
+              className="absolute right-4 top-4 p-1.5 rounded-md hover:bg-white/20 transition-colors text-white"
+              title="Kapat"
+            >
+              <X className="h-5 w-5" />
+            </button>
           </div>
         </div>
 
@@ -383,7 +454,25 @@ export function ProductDetailPanel({
             label="Kargo Maliyeti"
             value={formatCurrency(-(product.shippingCost || 0))}
             isNegative={(product.shippingCost || 0) > 0}
-          />
+          >
+            {/* Fatura Kargo Verisi */}
+            {isLoadingCargo ? (
+              <div className="flex items-center gap-2 py-2 px-4 pl-10 text-sm text-muted-foreground">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                Fatura verisi yükleniyor...
+              </div>
+            ) : cargoData && cargoData.totalShipmentCount > 0 ? (
+              <SubRow
+                label={`📄 Fatura Kargo (${cargoData.totalShipmentCount} gönderi)`}
+                value={formatCurrency(-cargoData.totalAmount)}
+                isNegative={cargoData.totalAmount > 0}
+              />
+            ) : startDate && endDate ? (
+              <div className="py-2 px-4 pl-10 text-xs text-muted-foreground">
+                Fatura verisi bulunamadı
+              </div>
+            ) : null}
+          </ExpandableRow>
 
           {/* Divider */}
           <div className="h-1 bg-muted" />
@@ -394,7 +483,54 @@ export function ProductDetailPanel({
             label="Komisyon"
             value={formatCurrency(-product.commission)}
             isNegative={product.commission > 0}
-          />
+          >
+            {/* Fatura Komisyon Kırılımı */}
+            {isLoadingCommission ? (
+              <div className="flex items-center gap-2 py-2 px-4 pl-10 text-sm text-muted-foreground">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                Fatura verisi yükleniyor...
+              </div>
+            ) : commissionData && commissionData.totalItemCount > 0 ? (
+              <>
+                {/* Satış Komisyonu */}
+                {commissionData.saleCommission !== undefined && commissionData.saleCommission !== 0 && (
+                  <SubRow
+                    label="📄 Satış Komisyonu"
+                    value={formatCurrency(-commissionData.saleCommission)}
+                    isNegative={commissionData.saleCommission > 0}
+                  />
+                )}
+                {/* İndirim Komisyonu (genellikle pozitif - satıcıya geri ödeme) */}
+                {commissionData.discountCommission !== undefined && commissionData.discountCommission !== 0 && (
+                  <SubRow
+                    label="📄 İndirim Komisyonu"
+                    value={formatCurrency(commissionData.discountCommission)}
+                    isNegative={commissionData.discountCommission < 0}
+                  />
+                )}
+                {/* Kupon Komisyonu (genellikle pozitif - satıcıya geri ödeme) */}
+                {commissionData.couponCommission !== undefined && commissionData.couponCommission !== 0 && (
+                  <SubRow
+                    label="📄 Kupon Komisyonu"
+                    value={formatCurrency(commissionData.couponCommission)}
+                    isNegative={commissionData.couponCommission < 0}
+                  />
+                )}
+                {/* İade Komisyonu */}
+                {commissionData.returnCommission !== undefined && commissionData.returnCommission !== 0 && (
+                  <SubRow
+                    label="📄 İade Komisyonu"
+                    value={formatCurrency(commissionData.returnCommission)}
+                    isNegative={commissionData.returnCommission < 0}
+                  />
+                )}
+              </>
+            ) : startDate && endDate ? (
+              <div className="py-2 px-4 pl-10 text-xs text-muted-foreground">
+                Fatura verisi bulunamadı
+              </div>
+            ) : null}
+          </ExpandableRow>
 
           {/* Divider */}
           <div className="h-1 bg-muted" />
@@ -442,6 +578,64 @@ export function ProductDetailPanel({
             isNegative={product.roi < 0}
           />
 
+          {/* ========== REKLAM METRİKLERİ ========== */}
+          {(product.acos != null || product.advertisingCostPerSale != null || product.cpc != null) && (
+            <>
+              <div className="h-1 bg-muted" />
+
+              {/* ACOS - Renkli gösterim */}
+              {product.acos != null && (
+                <div className="flex items-center justify-between py-2.5 px-4 border-b border-border">
+                  <span className="text-sm text-muted-foreground font-semibold">ACOS</span>
+                  <span
+                    className={cn(
+                      "text-sm font-semibold",
+                      product.acos <= 15
+                        ? "text-green-600"
+                        : product.acos <= 30
+                        ? "text-yellow-600"
+                        : "text-red-600"
+                    )}
+                  >
+                    {formatPercentage(product.acos)}
+                  </span>
+                </div>
+              )}
+
+              {/* Reklam Maliyeti (birim başı) */}
+              {product.advertisingCostPerSale != null && (
+                <ExpandableRow
+                  label="Reklam Maliyeti"
+                  value={`${formatCurrency(product.advertisingCostPerSale)}/satış`}
+                  isNegative
+                >
+                  {/* CPC ve CVR alt satırları */}
+                  {product.cpc != null && (
+                    <SubRow
+                      label="CPC (Tıklama Başı Maliyet)"
+                      value={formatCurrency(product.cpc)}
+                    />
+                  )}
+                  {product.cvr != null && (
+                    <SubRow
+                      label="CVR (Dönüşüm Oranı)"
+                      value={`%${(product.cvr * 100).toFixed(2)}`}
+                    />
+                  )}
+                </ExpandableRow>
+              )}
+
+              {/* Toplam Reklam Maliyeti */}
+              {product.totalAdvertisingCost != null && product.totalAdvertisingCost > 0 && (
+                <ExpandableRow
+                  label="Toplam Reklam Maliyeti"
+                  value={formatCurrency(-product.totalAdvertisingCost)}
+                  isNegative
+                />
+              )}
+            </>
+          )}
+
           {/* Fiyat Bilgileri - sadece varsa göster */}
           {(product.salePrice != null || product.vatRate != null || product.commissionRate != null) && (
             <>
@@ -478,15 +672,17 @@ export function ProductDetailPanel({
           )}
 
           {/* Maliyet Geçmişi */}
-          {product.costHistory && product.costHistory.length > 0 && (
+          {costHistoryData.total > 0 && (
             <>
               <div className="h-1 bg-muted" />
 
               <ExpandableRow
                 label="Maliyet Geçmişi"
-                value={`${product.costHistory.length} kayıt`}
+                value={costHistoryData.hasMore
+                  ? `${costHistoryData.visible.length} / ${costHistoryData.total} kayıt`
+                  : `${costHistoryData.total} kayıt`}
               >
-                {product.costHistory.map((item, index) => (
+                {costHistoryData.visible.map((item, index) => (
                   <div
                     key={index}
                     className="flex items-center justify-between py-2 px-4 pl-10 border-b border-border text-xs"
@@ -511,6 +707,27 @@ export function ProductDetailPanel({
                     </div>
                   </div>
                 ))}
+                {/* Load More Button */}
+                {costHistoryData.hasMore && (
+                  <div className="flex justify-center py-3 px-4 pl-10 border-b border-border">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleLoadMoreCostHistory}
+                      disabled={isLoadingMore}
+                      className="text-xs h-7"
+                    >
+                      {isLoadingMore ? (
+                        <>
+                          <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                          Yükleniyor...
+                        </>
+                      ) : (
+                        `Daha Fazla Yükle (${costHistoryData.total - costHistoryData.visible.length} kayıt)`
+                      )}
+                    </Button>
+                  </div>
+                )}
               </ExpandableRow>
             </>
           )}

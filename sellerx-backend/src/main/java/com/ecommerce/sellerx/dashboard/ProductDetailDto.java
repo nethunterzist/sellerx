@@ -48,4 +48,14 @@ public class ProductDetailDto {
     private BigDecimal netProfit;            // Net kar
     private BigDecimal profitMargin;         // Kar marjı (%)
     private BigDecimal roi;                  // ROI (%)
+
+    // Sipariş Sayısı
+    private Integer orderCount;              // Bu ürünü içeren sipariş sayısı
+
+    // ============== REKLAM METRİKLERİ (Excel C23, C24) ==============
+    private BigDecimal cpc;                  // Cost Per Click (TL)
+    private BigDecimal cvr;                  // Conversion Rate (örn: 0.018 = %1.8)
+    private BigDecimal advertisingCostPerSale; // Reklam Maliyeti = CPC / CVR
+    private BigDecimal acos;                 // ACOS = (advertisingCostPerSale / salePrice) * 100
+    private BigDecimal totalAdvertisingCost; // Toplam reklam maliyeti = advertisingCostPerSale × satış adedi
 }

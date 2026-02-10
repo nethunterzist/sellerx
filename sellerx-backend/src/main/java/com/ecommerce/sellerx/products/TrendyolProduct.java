@@ -100,7 +100,25 @@ public class TrendyolProduct {
 
     @Column(name = "shipping_volume_weight", precision = 5, scale = 2)
     private BigDecimal shippingVolumeWeight;
-    
+
+    // ============== Reklam Metrikleri (Excel C23, C24) ==============
+    @Column(name = "cpc", precision = 10, scale = 2)
+    private BigDecimal cpc; // Cost Per Click (TL) - tıklama başı maliyet
+
+    @Column(name = "cvr", precision = 5, scale = 4)
+    private BigDecimal cvr; // Conversion Rate (örn: 0.0180 = %1.8)
+
+    // ============== Varsayılan Döviz Kuru (Excel F1) ==============
+    @Column(name = "default_currency", length = 3)
+    private String defaultCurrency; // "TRY", "USD", "EUR"
+
+    @Column(name = "default_exchange_rate", precision = 10, scale = 4)
+    private BigDecimal defaultExchangeRate; // Varsayılan döviz kuru
+
+    // ============== ÖTV Oranı (Excel F5) ==============
+    @Column(name = "otv_rate", precision = 5, scale = 4)
+    private BigDecimal otvRate; // Özel Tüketim Vergisi oranı (örn: 0.20 = %20)
+
     @Column(name = "approved")
     @Builder.Default
     private Boolean approved = false;

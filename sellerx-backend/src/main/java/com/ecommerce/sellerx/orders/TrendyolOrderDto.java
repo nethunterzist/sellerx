@@ -39,7 +39,10 @@ public record TrendyolOrderDto(
     
     @JsonProperty("estimatedCommission")
     BigDecimal estimatedCommission,
-    
+
+    @JsonProperty("estimatedShippingCost")
+    BigDecimal estimatedShippingCost,
+
     @JsonProperty("orderItems")
     List<OrderItem> orderItems,
     

@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { ChevronRight, ChevronDown, Package, ShoppingCart, Calendar } from "lucide-react";
+import { ChevronRight, ChevronDown, Package, ShoppingCart, Calendar, Loader2, FileText, AlertCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   Sheet,
   SheetContent,
@@ -14,6 +15,8 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { useCurrency } from "@/lib/contexts/currency-context";
+import { useSelectedStore } from "@/hooks/queries/use-stores";
+import { useOrderInvoiceItems } from "@/hooks/queries/use-invoices";
 import type { OrderDetailPanelData, OrderProductDetail } from "@/types/dashboard";
 
 interface OrderDetailPanelProps {
@@ -152,12 +155,54 @@ function ProductRow({ product, formatCurrency }: { product: OrderProductDetail; 
   );
 }
 
+const PRODUCTS_PAGE_SIZE = 20;
+
 export function OrderDetailPanel({
   open,
   onOpenChange,
   order,
 }: OrderDetailPanelProps) {
   const { formatCurrency } = useCurrency();
+  const { data: selectedStoreData } = useSelectedStore();
+  const storeId = selectedStoreData?.selectedStoreId;
+  const [productsLimit, setProductsLimit] = useState(PRODUCTS_PAGE_SIZE);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+
+  // Fetch invoice items for this order
+  const {
+    data: invoiceItems,
+    isLoading: isLoadingInvoice,
+    error: invoiceError,
+  } = useOrderInvoiceItems(
+    storeId ?? undefined,
+    order?.orderNumber,
+    open && !!order?.orderNumber && !!storeId // Only fetch when panel is open
+  );
+
+  // Frontend slice pagination for products
+  const productsData = useMemo(() => {
+    if (!order?.products) return { visible: [], total: 0, hasMore: false };
+    const total = order.products.length;
+    const visible = order.products.slice(0, productsLimit);
+    return {
+      visible,
+      total,
+      hasMore: productsLimit < total,
+    };
+  }, [order?.products, productsLimit]);
+
+  const handleLoadMoreProducts = () => {
+    setIsLoadingMore(true);
+    setTimeout(() => {
+      setProductsLimit((prev) => prev + PRODUCTS_PAGE_SIZE);
+      setIsLoadingMore(false);
+    }, 150);
+  };
+
+  // Reset pagination when order changes
+  useEffect(() => {
+    setProductsLimit(PRODUCTS_PAGE_SIZE);
+  }, [order?.orderNumber]);
 
   if (!order) return null;
 
@@ -202,13 +247,36 @@ export function OrderDetailPanel({
           {/* ========== ÜRÜNLER ========== */}
           <ExpandableRow
             label="Ürünler"
-            value={`${order.products.length} kalem`}
+            value={productsData.hasMore
+              ? `${productsData.visible.length} / ${productsData.total} kalem`
+              : `${productsData.total} kalem`}
             isBold
             defaultOpen={true}
           >
-            {order.products.map((product, index) => (
+            {productsData.visible.map((product, index) => (
               <ProductRow key={index} product={product} formatCurrency={formatCurrency} />
             ))}
+            {/* Load More Button */}
+            {productsData.hasMore && (
+              <div className="flex justify-center py-3 px-4 pl-10 border-b border-border">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleLoadMoreProducts}
+                  disabled={isLoadingMore}
+                  className="text-xs h-7"
+                >
+                  {isLoadingMore ? (
+                    <>
+                      <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                      Yükleniyor...
+                    </>
+                  ) : (
+                    `Daha Fazla Yükle (${productsData.total - productsData.visible.length} kalem)`
+                  )}
+                </Button>
+              </div>
+            )}
           </ExpandableRow>
 
           {/* Divider */}
@@ -269,6 +337,131 @@ export function OrderDetailPanel({
           {/* Divider */}
           <div className="h-2 bg-muted" />
 
+          {/* ========== FATURA GİDERLERİ ========== */}
+          <ExpandableRow
+            label="Fatura Giderleri"
+            value={
+              isLoadingInvoice
+                ? "Yükleniyor..."
+                : invoiceItems?.hasInvoiceData
+                  ? formatCurrency(-invoiceItems.grandTotal)
+                  : "-"
+            }
+            isNegative={invoiceItems?.hasInvoiceData && invoiceItems.grandTotal > 0}
+          >
+            {isLoadingInvoice ? (
+              <div className="flex items-center justify-center py-4 px-4 pl-10 gap-2 text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="text-sm">Fatura verileri yükleniyor...</span>
+              </div>
+            ) : invoiceError ? (
+              <div className="flex items-center gap-2 py-3 px-4 pl-10 text-red-600">
+                <AlertCircle className="h-4 w-4" />
+                <span className="text-sm">Fatura verileri yüklenemedi</span>
+              </div>
+            ) : !invoiceItems?.hasInvoiceData ? (
+              <div className="py-3 px-4 pl-10">
+                <div className="flex items-start gap-2 text-muted-foreground">
+                  <FileText className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm">Fatura verisi bekleniyor...</p>
+                    <p className="text-xs mt-0.5 text-muted-foreground/70">
+                      Faturalar genellikle siparişten 1-2 ay sonra kesilir
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* Kargo Faturaları */}
+                {invoiceItems.cargoItems && invoiceItems.cargoItems.length > 0 && (
+                  <>
+                    <SubRow
+                      label={`Kargo Faturaları (${invoiceItems.cargoItems.length})`}
+                      value={formatCurrency(-invoiceItems.totalCargoAmount)}
+                      isNegative
+                    />
+                    {invoiceItems.cargoItems.map((item, index) => (
+                      <div
+                        key={`cargo-${index}`}
+                        className="flex items-center justify-between py-1.5 px-4 pl-14 text-xs text-muted-foreground"
+                      >
+                        <span className="truncate pr-2">
+                          {item.invoiceSerialNumber || `Gönderi #${index + 1}`}
+                        </span>
+                        <span className="text-red-600">
+                          {formatCurrency(-item.amount)}
+                        </span>
+                      </div>
+                    ))}
+                  </>
+                )}
+
+                {/* Komisyon İşlemleri */}
+                {invoiceItems.commissionItems && invoiceItems.commissionItems.length > 0 && (
+                  <>
+                    <SubRow
+                      label={`Komisyon İşlemleri (${invoiceItems.commissionItems.length})`}
+                      value={formatCurrency(-invoiceItems.totalCommissionAmount)}
+                      isNegative
+                    />
+                    {invoiceItems.commissionItems.map((item, index) => {
+                      const amount = item.commissionAmount ?? item.totalAmount ?? 0;
+                      return (
+                        <div
+                          key={`comm-${index}`}
+                          className="flex items-center justify-between py-1.5 px-4 pl-14 text-xs text-muted-foreground"
+                        >
+                          <span className="truncate pr-2">{item.transactionType || "Komisyon"}</span>
+                          <span className={amount < 0 ? "text-green-600" : "text-red-600"}>
+                            {formatCurrency(-amount)}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </>
+                )}
+
+                {/* Diğer Kesintiler */}
+                {invoiceItems.deductionItems && invoiceItems.deductionItems.length > 0 && (
+                  <>
+                    <SubRow
+                      label={`Diğer Kesintiler (${invoiceItems.deductionItems.length})`}
+                      value={formatCurrency(-invoiceItems.totalDeductionAmount)}
+                      isNegative
+                    />
+                    {invoiceItems.deductionItems.map((item, index) => (
+                      <div
+                        key={`ded-${index}`}
+                        className="flex items-center justify-between py-1.5 px-4 pl-14 text-xs text-muted-foreground"
+                      >
+                        <span className="truncate pr-2">{item.description || item.transactionType || "Kesinti"}</span>
+                        <span className="text-red-600">
+                          {formatCurrency(-item.amount)}
+                        </span>
+                      </div>
+                    ))}
+                  </>
+                )}
+
+                {/* Toplam (sadece birden fazla kategori varsa göster) */}
+                {((invoiceItems.cargoItems?.length || 0) > 0 ? 1 : 0) +
+                  ((invoiceItems.commissionItems?.length || 0) > 0 ? 1 : 0) +
+                  ((invoiceItems.deductionItems?.length || 0) > 0 ? 1 : 0) > 1 && (
+                  <div className="flex items-center justify-between py-2 px-4 pl-10 border-t border-border bg-muted/30">
+                    <span className="text-sm font-medium text-foreground">Toplam Fatura Gideri</span>
+                    <span className="text-sm font-semibold text-red-600">
+                      {formatCurrency(-invoiceItems.grandTotal)}
+                    </span>
+                  </div>
+                )}
+              </>
+            )}
+          </ExpandableRow>
+
+          {/* Divider */}
+          <div className="h-2 bg-muted" />
+
           {/* ========== KÂR METRİKLERİ ========== */}
           <ExpandableRow
             label="Brüt Kâr"
@@ -309,9 +502,11 @@ export function OrderDetailPanel({
 
           <ExpandableRow
             label="Ürün Bazlı Kârlılık"
-            value={`${order.products.length} ürün`}
+            value={productsData.hasMore
+              ? `${productsData.visible.length} / ${productsData.total} ürün`
+              : `${productsData.total} ürün`}
           >
-            {order.products.map((product, index) => (
+            {productsData.visible.map((product, index) => (
               <div
                 key={index}
                 className="flex items-center justify-between py-2 px-4 pl-10 border-b border-border text-xs"
@@ -329,6 +524,27 @@ export function OrderDetailPanel({
                 </div>
               </div>
             ))}
+            {/* Load More Button */}
+            {productsData.hasMore && (
+              <div className="flex justify-center py-3 px-4 pl-10 border-b border-border">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleLoadMoreProducts}
+                  disabled={isLoadingMore}
+                  className="text-xs h-7"
+                >
+                  {isLoadingMore ? (
+                    <>
+                      <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                      Yükleniyor...
+                    </>
+                  ) : (
+                    `Daha Fazla Yükle (${productsData.total - productsData.visible.length} ürün)`
+                  )}
+                </Button>
+              </div>
+            )}
           </ExpandableRow>
 
           {/* Kargo Bilgileri (varsa) */}

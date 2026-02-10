@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/api/client";
 import type {
   CustomerAnalyticsResponse,
@@ -10,6 +10,10 @@ import type {
   CohortData,
   FrequencyDistributionData,
   ClvSummaryData,
+  CustomerOrderDto,
+  ProductDetailData,
+  ProductBuyersPageResponse,
+  CustomerOrdersPageResponse,
 } from "@/types/customer-analytics";
 
 // Query Keys
@@ -18,8 +22,14 @@ export const customerAnalyticsKeys = {
   summary: (storeId: string) => [...customerAnalyticsKeys.all, "summary", storeId] as const,
   customers: (storeId: string, page: number, size: number, search: string) =>
     [...customerAnalyticsKeys.all, "customers", storeId, page, size, search] as const,
+  customerOrders: (storeId: string, customerId: string) =>
+    [...customerAnalyticsKeys.all, "customer-orders", storeId, customerId] as const,
   productRepeat: (storeId: string) =>
     [...customerAnalyticsKeys.all, "product-repeat", storeId] as const,
+  productDetail: (storeId: string, barcode: string) =>
+    [...customerAnalyticsKeys.all, "product-detail", storeId, barcode] as const,
+  productBuyers: (storeId: string, barcode: string) =>
+    [...customerAnalyticsKeys.all, "product-buyers", storeId, barcode] as const,
   crossSell: (storeId: string) =>
     [...customerAnalyticsKeys.all, "cross-sell", storeId] as const,
   backfillStatus: (storeId: string) =>
@@ -66,6 +76,42 @@ export function useCustomerList(
   });
 }
 
+// Get all orders for a specific customer
+export function useCustomerOrders(
+  storeId: string | undefined,
+  customerId: string | undefined
+) {
+  return useQuery({
+    queryKey: customerAnalyticsKeys.customerOrders(storeId!, customerId!),
+    queryFn: () =>
+      apiRequest<CustomerOrderDto[]>(
+        `/stores/${storeId}/customer-analytics/customers/${customerId}/orders`
+      ),
+    enabled: !!storeId && !!customerId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+}
+
+// Get paginated customer orders with infinite scroll
+export function useCustomerOrdersInfinite(
+  storeId: string | undefined,
+  customerId: string | undefined,
+  pageSize: number = 20
+) {
+  return useInfiniteQuery({
+    queryKey: [...customerAnalyticsKeys.customerOrders(storeId!, customerId!), "infinite"] as const,
+    queryFn: ({ pageParam = 0 }) =>
+      apiRequest<CustomerOrdersPageResponse>(
+        `/stores/${storeId}/customer-analytics/customers/${customerId}/orders?page=${pageParam}&size=${pageSize}`
+      ),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) =>
+      lastPage.hasNext ? lastPage.page + 1 : undefined,
+    enabled: !!storeId && !!customerId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+}
+
 // Get product repeat analysis
 export function useProductRepeatAnalysis(storeId: string | undefined) {
   return useQuery({
@@ -76,6 +122,42 @@ export function useProductRepeatAnalysis(storeId: string | undefined) {
       ),
     enabled: !!storeId,
     staleTime: 5 * 60 * 1000,
+  });
+}
+
+// Get product detail with buyers list
+export function useProductDetail(
+  storeId: string | undefined,
+  barcode: string | undefined
+) {
+  return useQuery({
+    queryKey: customerAnalyticsKeys.productDetail(storeId!, barcode!),
+    queryFn: () =>
+      apiRequest<ProductDetailData>(
+        `/stores/${storeId}/customer-analytics/products/${encodeURIComponent(barcode!)}`
+      ),
+    enabled: !!storeId && !!barcode,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+}
+
+// Get paginated product buyers with infinite scroll
+export function useProductBuyersInfinite(
+  storeId: string | undefined,
+  barcode: string | undefined,
+  pageSize: number = 20
+) {
+  return useInfiniteQuery({
+    queryKey: customerAnalyticsKeys.productBuyers(storeId!, barcode!),
+    queryFn: ({ pageParam = 0 }) =>
+      apiRequest<ProductBuyersPageResponse>(
+        `/stores/${storeId}/customer-analytics/products/${encodeURIComponent(barcode!)}/buyers?page=${pageParam}&size=${pageSize}`
+      ),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) =>
+      lastPage.hasNext ? lastPage.page + 1 : undefined,
+    enabled: !!storeId && !!barcode,
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 }
 

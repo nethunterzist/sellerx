@@ -74,7 +74,7 @@ export default function NewStorePage() {
 
   // Poll for store updates while sync is in progress
   useEffect(() => {
-    if (!createdStoreId || !createdStore) return;
+    if (!createdStoreId || !createdStore) return undefined;
 
     const isInProgress = isSyncInProgress(createdStore.syncStatus);
 
@@ -85,6 +85,7 @@ export default function NewStorePage() {
 
       return () => clearInterval(interval);
     }
+    return undefined;
   }, [createdStoreId, createdStore, queryClient]);
 
   // Handle sync completion

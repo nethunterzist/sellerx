@@ -157,7 +157,7 @@ export function useGlobalSync() {
       if (isDev && syncInterval === 0) {
         console.log("[GlobalSync] Auto-refresh disabled by user preference");
       }
-      return;
+      return undefined;
     }
 
     if (isDev) {

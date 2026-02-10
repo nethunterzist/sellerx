@@ -17,7 +17,7 @@ export async function POST(
     }
 
     const response = await fetch(
-      `${API_BASE_URL}/orders/stores/${storeId}/sync`,
+      `${API_BASE_URL}/api/orders/stores/${storeId}/sync`,
       {
         method: "POST",
         headers,

@@ -41,7 +41,7 @@ export function SyncStatusDisplay({
       if (syncStatus === "COMPLETED" && onComplete) {
         onComplete();
       }
-      return;
+      return undefined;
     }
 
     const interval = setInterval(() => {

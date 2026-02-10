@@ -4,10 +4,12 @@ export interface CustomerAnalyticsSummary {
   repeatRate: number;
   avgOrdersPerCustomer: number;
   avgItemsPerCustomer: number;
+  avgItemsPerOrder: number;
   avgRepeatIntervalDays: number;
   repeatCustomerRevenue: number;
   totalRevenue: number;
   repeatRevenueShare: number;
+  avgOrderValue: number;
 }
 
 export interface SegmentData {
@@ -66,6 +68,7 @@ export interface CustomerListItem {
   recencyScore: number;
   frequencyScore: number;
   monetaryScore: number;
+  avgRepeatIntervalDays: number | null;  // null if only 1 order
 }
 
 export interface CustomerListResponse {
@@ -128,4 +131,62 @@ export interface ClvSummaryData {
   medianClv: number;
   top10PercentClv: number;
   top10PercentRevenueShare: number;
+}
+
+// ============== Customer Order Types ==============
+
+export interface CustomerOrderItemDto {
+  barcode: string;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+  discount: number;
+  price: number;
+  image?: string;
+  productUrl?: string;
+}
+
+export interface CustomerOrderDto {
+  orderId: string;
+  tyOrderNumber: string;
+  orderDate: string;
+  status: string;
+  totalPrice: number;
+  totalDiscount: number;
+  shipmentCity: string;
+  items: CustomerOrderItemDto[];
+}
+
+// ============== Product Detail Types ==============
+
+export interface ProductBuyer {
+  customerId: number;
+  customerName: string;
+  city: string;
+  purchaseCount: number;
+  totalSpend: number;
+}
+
+export interface ProductDetailData extends ProductRepeatData {
+  buyers: ProductBuyer[];
+}
+
+// ============== Paginated Response Types ==============
+
+export interface ProductBuyersPageResponse {
+  content: ProductBuyer[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  hasNext: boolean;
+}
+
+export interface CustomerOrdersPageResponse {
+  content: CustomerOrderDto[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  hasNext: boolean;
 }

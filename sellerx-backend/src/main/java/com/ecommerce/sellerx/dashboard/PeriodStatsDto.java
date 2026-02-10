@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.util.Map;
 
 /**
  * Statistics for a single period (month, week, or day)
@@ -68,4 +69,19 @@ public class PeriodStatsDto {
     // Expense stats
     private Integer totalExpenseNumber;
     private BigDecimal totalExpenseAmount;
+
+    // Kargo Maliyeti
+    private BigDecimal totalShippingCost;
+
+    // Kesilen Faturalar (Invoiced Fees)
+    private BigDecimal platformServiceFee;
+    private BigDecimal azPlatformServiceFee;
+    private BigDecimal invoicedAdvertisingFees;
+    private BigDecimal invoicedPenaltyFees;
+    private BigDecimal invoicedInternationalFees;
+    private BigDecimal invoicedOtherFees;
+    private BigDecimal invoicedRefunds;
+
+    // Gider Kategorileri (Expense Categories)
+    private Map<String, BigDecimal> expensesByCategory;
 }

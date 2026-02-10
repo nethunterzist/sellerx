@@ -1,12 +1,15 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useSelectedStore } from "@/hooks/queries/use-stores";
+import { useOrdersByDateRange, useOrdersByStatus } from "@/hooks/queries/use-orders";
+import type { DateRange } from "react-day-picker";
+import { format } from "date-fns";
 import {
-  useOrdersByStore,
-  useOrdersByStatus,
-  useSyncOrders,
-} from "@/hooks/queries/use-orders";
+  OrderDateFilter,
+  getOrderPresetRange,
+  type OrderDatePreset,
+} from "@/components/orders/order-date-filter";
 import { OrderStatsCards } from "@/components/orders/order-stats-cards";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,7 +29,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  RefreshCw,
   Search,
   ChevronLeft,
   ChevronRight,
@@ -125,7 +127,7 @@ function OrdersPageSkeleton() {
         ))}
       </div>
       <FilterBarSkeleton showSearch={true} buttonCount={3} />
-      <TableSkeleton columns={8} rows={10} />
+      <TableSkeleton columns={10} rows={10} />
       <PaginationSkeleton />
     </div>
   );
@@ -140,32 +142,51 @@ export default function OrdersPage() {
     undefined
   );
 
+  // Date filter state - default to last 7 days
+  const [datePreset, setDatePreset] = useState<OrderDatePreset>("last7days");
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(() =>
+    getOrderPresetRange("last7days")
+  );
+
   const { data: selectedStore, isLoading: storeLoading } = useSelectedStore();
   const storeId = selectedStore?.selectedStoreId;
 
-  // Use filtered query if status is selected, otherwise use all orders
-  const allOrdersQuery = useOrdersByStore(
-    statusFilter ? undefined : storeId,
+  // Format dates for API (ISO datetime format)
+  const { startDate, endDate } = useMemo(() => {
+    if (!dateRange?.from || !dateRange?.to) {
+      return { startDate: undefined, endDate: undefined };
+    }
+    // Set start to beginning of day
+    const start = new Date(dateRange.from);
+    start.setHours(0, 0, 0, 0);
+    // Set end to end of day
+    const end = new Date(dateRange.to);
+    end.setHours(23, 59, 59, 999);
+    return {
+      startDate: format(start, "yyyy-MM-dd'T'HH:mm:ss"),
+      endDate: format(end, "yyyy-MM-dd'T'HH:mm:ss"),
+    };
+  }, [dateRange]);
+
+  // Fetch orders by date range (when no status filter)
+  const dateRangeQuery = useOrdersByDateRange(
+    storeId,
+    startDate,
+    endDate,
     page,
     20
   );
-  const filteredOrdersQuery = useOrdersByStatus(
-    statusFilter ? storeId : undefined,
+
+  // Fetch orders by status (when status filter is active)
+  const statusQuery = useOrdersByStatus(
+    storeId,
     statusFilter,
     page,
     20
   );
 
-  const activeQuery = statusFilter ? filteredOrdersQuery : allOrdersQuery;
-  const { data, isLoading, error } = activeQuery;
-
-  const syncMutation = useSyncOrders();
-
-  const handleSync = () => {
-    if (storeId) {
-      syncMutation.mutate(storeId);
-    }
-  };
+  // Use status query when filter is active, otherwise use date range query
+  const { data, isLoading, error } = statusFilter ? statusQuery : dateRangeQuery;
 
   const toggleOrderExpand = (orderId: string) => {
     setExpandedOrders((prev) => {
@@ -188,23 +209,44 @@ export default function OrdersPage() {
     }
   };
 
-  const clearFilters = () => {
-    setStatusFilter(undefined);
-    setSearchQuery("");
+  const handleDateRangeChange = (
+    range: DateRange | undefined,
+    preset: OrderDatePreset
+  ) => {
+    setDateRange(range);
+    setDatePreset(preset);
     setPage(0);
   };
 
-  // Filter orders by search query (client-side)
-  const filteredOrders =
-    data?.content?.filter(
-      (o) =>
-        o.tyOrderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        o.orderItems.some((item) =>
-          item.productName.toLowerCase().includes(searchQuery.toLowerCase())
-        )
-    ) || [];
+  const clearFilters = () => {
+    setStatusFilter(undefined);
+    setSearchQuery("");
+    setDatePreset("last7days");
+    setDateRange(getOrderPresetRange("last7days"));
+    setPage(0);
+  };
 
-  const hasActiveFilters = statusFilter || searchQuery;
+  // Filter orders by search query only (status is handled server-side)
+  const filteredOrders =
+    data?.content?.filter((o) => {
+      // Search filter only (status filtering is now server-side)
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        const matchesOrderNumber = o.tyOrderNumber
+          .toLowerCase()
+          .includes(query);
+        const matchesProduct = o.orderItems.some((item) =>
+          item.productName.toLowerCase().includes(query)
+        );
+        if (!matchesOrderNumber && !matchesProduct) {
+          return false;
+        }
+      }
+      return true;
+    }) || [];
+
+  const hasActiveFilters =
+    statusFilter || searchQuery || datePreset !== "last7days";
 
   if (!storeId && !storeLoading) {
     return (
@@ -228,42 +270,14 @@ export default function OrdersPage() {
           </p>
         </div>
 
-        <Button
-          onClick={handleSync}
-          disabled={syncMutation.isPending || !storeId}
-          variant="outline"
-          className="gap-2"
-        >
-          <RefreshCw
-            className={cn("h-4 w-4", syncMutation.isPending && "animate-spin")}
-          />
-          {syncMutation.isPending
-            ? "Senkronize ediliyor..."
-            : "Trendyol'dan Senkronize Et"}
-        </Button>
+        <OrderDateFilter
+          dateRange={dateRange}
+          onDateRangeChange={handleDateRangeChange}
+        />
       </div>
 
       {/* Statistics Cards */}
       <OrderStatsCards storeId={storeId} />
-
-      {/* Sync Result */}
-      {syncMutation.isSuccess && (
-        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
-          <p className="text-green-800 dark:text-green-200 text-sm">
-            Senkronizasyon tamamlandı! Çekilen: {syncMutation.data.totalFetched}
-            , Kaydedilen: {syncMutation.data.totalSaved}, Güncellenen:{" "}
-            {syncMutation.data.totalUpdated}
-          </p>
-        </div>
-      )}
-
-      {syncMutation.isError && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-          <p className="text-red-800 dark:text-red-200 text-sm">
-            Senkronizasyon başarısız: {syncMutation.error.message}
-          </p>
-        </div>
-      )}
 
       {/* Error State */}
       {error && (
@@ -341,6 +355,8 @@ export default function OrdersPage() {
                 <TableHead className="text-right">Toplam</TableHead>
                 <TableHead className="text-right">Komisyon</TableHead>
                 <TableHead className="text-right">Stopaj</TableHead>
+                <TableHead className="text-right">Kargo</TableHead>
+                <TableHead className="text-right">Kar Marjı</TableHead>
                 <TableHead className="text-center">Durum</TableHead>
                 <TableHead className="text-center">Kalem</TableHead>
               </TableRow>
@@ -349,7 +365,7 @@ export default function OrdersPage() {
               {filteredOrders.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={8}
+                    colSpan={10}
                     className="h-24 text-center text-muted-foreground"
                   >
                     <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
@@ -405,6 +421,36 @@ export default function OrdersPage() {
                           {formatCurrency(order.stoppage)}
                         </span>
                       </TableCell>
+                      <TableCell className="text-right">
+                        <span className="text-sm text-blue-600">
+                          {formatCurrency(order.estimatedShippingCost || 0)}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {(() => {
+                          // Calculate profit margin
+                          const totalCost = order.orderItems.reduce(
+                            (sum, item) => sum + (item.cost || 0) * item.quantity,
+                            0
+                          );
+                          const expenses =
+                            (order.estimatedCommission || 0) +
+                            (order.stoppage || 0) +
+                            (order.estimatedShippingCost || 0);
+                          const netProfit = order.totalPrice - totalCost - expenses;
+                          const margin =
+                            order.totalPrice > 0
+                              ? (netProfit / order.totalPrice) * 100
+                              : 0;
+                          return (
+                            <span
+                              className={`text-sm font-medium ${margin >= 0 ? "text-green-600" : "text-red-600"}`}
+                            >
+                              %{margin.toFixed(1)}
+                            </span>
+                          );
+                        })()}
+                      </TableCell>
                       <TableCell className="text-center">
                         <span
                           className={cn(
@@ -424,7 +470,7 @@ export default function OrdersPage() {
                     </TableRow>
                     {expandedOrders.has(order.id) && (
                       <TableRow>
-                        <TableCell colSpan={8} className="p-0">
+                        <TableCell colSpan={10} className="p-0">
                           <div className="px-4 pb-4">
                             <OrderItemsRow items={order.orderItems} />
                           </div>

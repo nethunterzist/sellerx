@@ -57,6 +57,7 @@
     "turkey-map-react": "^2.0.3",
     "tw-animate-css": "^1.2.9",
     "uuid": "^11.1.0",
+    "xlsx": "^0.18.5",
     "zod": "^3.24.4"
   },
   "devDependencies": {

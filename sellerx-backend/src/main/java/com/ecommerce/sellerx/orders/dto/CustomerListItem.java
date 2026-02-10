@@ -26,4 +26,5 @@ public class CustomerListItem {
     private int recencyScore;
     private int frequencyScore;
     private int monetaryScore;
+    private Double avgRepeatIntervalDays;  // Average days between repeat purchases (null if only 1 order)
 }

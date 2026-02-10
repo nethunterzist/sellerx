@@ -34,20 +34,25 @@ public class PurchaseOrderController {
             @PathVariable UUID storeId,
             @RequestParam(required = false) PurchaseOrderStatus status,
             @RequestParam(required = false) String search,
-            @RequestParam(required = false) Long supplierId) {
+            @RequestParam(required = false) Long supplierId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
         List<PurchaseOrderSummaryDto> orders;
         if (search != null || supplierId != null) {
-            orders = purchaseOrderService.searchPurchaseOrders(storeId, search, status, supplierId);
+            orders = purchaseOrderService.searchPurchaseOrders(storeId, search, status, supplierId, startDate, endDate);
         } else {
-            orders = purchaseOrderService.getPurchaseOrders(storeId, status);
+            orders = purchaseOrderService.getPurchaseOrders(storeId, status, startDate, endDate);
         }
         return ResponseEntity.ok(orders);
     }
 
     @PreAuthorize("@userSecurityRules.canAccessStore(authentication, #storeId)")
     @GetMapping("/stats")
-    public ResponseEntity<PurchaseOrderStatsDto> getStats(@PathVariable UUID storeId) {
-        PurchaseOrderStatsDto stats = purchaseOrderService.getStats(storeId);
+    public ResponseEntity<PurchaseOrderStatsDto> getStats(
+            @PathVariable UUID storeId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        PurchaseOrderStatsDto stats = purchaseOrderService.getStats(storeId, startDate, endDate);
         return ResponseEntity.ok(stats);
     }
 

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { ChevronRight, ChevronDown, AlertTriangle, Calendar } from "lucide-react";
+import { ChevronRight, ChevronDown, AlertTriangle, Calendar, X } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -235,7 +235,7 @@ export function PeriodDetailModal({
 
         {/* Header */}
         <div className={cn("sticky top-0 z-10 border-b border-border", headerColor)}>
-          <div className="flex items-center gap-3 p-4">
+          <div className="flex items-center gap-3 p-4 relative">
             <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0">
               <Calendar className="h-5 w-5 text-white" />
             </div>
@@ -247,6 +247,14 @@ export function PeriodDetailModal({
                 {dateRange}
               </p>
             </div>
+            {/* Close Button */}
+            <button
+              onClick={() => onOpenChange(false)}
+              className="absolute right-4 top-4 p-1.5 rounded-md hover:bg-white/20 transition-colors text-white"
+              title="Kapat"
+            >
+              <X className="h-5 w-5" />
+            </button>
           </div>
         </div>
 

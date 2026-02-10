@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { useSelectedStore } from "@/hooks/queries/use-stores";
 import {
   useProductsByStorePaginatedFull,
@@ -25,8 +25,9 @@ import { Search, ChevronLeft, ChevronRight, Coins, Download, Upload, FileSpreads
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 import { cn } from "@/lib/utils";
-import type { TrendyolProduct } from "@/types/product";
+import type { TrendyolProduct, ProductFilters } from "@/types/product";
 import { CostEditModal } from "@/components/products/cost-edit-modal";
+import { ProductFiltersPopover } from "@/components/products/product-filters";
 import { useCurrency } from "@/lib/contexts/currency-context";
 import {
   FilterBarSkeleton,
@@ -67,17 +68,41 @@ export default function ProductsPage() {
   const { formatCurrency } = useCurrency();
   const [page, setPage] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
+  const [filters, setFilters] = useState<ProductFilters>({});
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [costModalOpen, setCostModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<TrendyolProduct | null>(null);
   const { data: selectedStore, isLoading: storeLoading } = useSelectedStore();
   const storeId = selectedStore?.selectedStoreId;
+
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+      setPage(0); // Reset page when search changes
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Combine search with other filters - memoized for stable React Query key
+  const activeFilters = useMemo<ProductFilters>(() => ({
+    ...filters,
+    search: debouncedSearch || undefined,
+  }), [filters, debouncedSearch]);
 
   const { data, isLoading, error } = useProductsByStorePaginatedFull(storeId || undefined, {
     page,
     size: 50,
     sortBy: "onSale",
     sortDirection: "desc",
+    filters: activeFilters,
   });
+
+  // Handle filter changes - reset to page 0
+  const handleFiltersChange = useCallback((newFilters: ProductFilters) => {
+    setFilters(newFilters);
+    setPage(0);
+  }, []);
 
   const bulkCostMutation = useBulkUpdateCosts();
 
@@ -224,12 +249,8 @@ export default function ProductsPage() {
     event.target.value = "";
   };
 
-  // Filter products by search query
-  const filteredProducts = data?.products?.filter(
-    (p) =>
-      p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.barcode.toLowerCase().includes(searchQuery.toLowerCase())
-  ) || [];
+  // Products are now filtered server-side
+  const products = data?.products || [];
 
   if (!storeId && !storeLoading) {
     return (
@@ -257,6 +278,12 @@ export default function ProductsPage() {
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
+          {/* Filter Popover */}
+          <ProductFiltersPopover
+            filters={filters}
+            onFiltersChange={handleFiltersChange}
+          />
+
           {/* Excel Export */}
           <Button
             onClick={handleExportExcel}
@@ -340,14 +367,14 @@ export default function ProductsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredProducts.length === 0 ? (
+              {products.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
                     Ürün bulunamadı
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredProducts.map((product: TrendyolProduct) => (
+                products.map((product: TrendyolProduct) => (
                   <TableRow key={product.id} className="hover:bg-muted/50">
                     <TableCell>
                       {/* Product Image - Trendyol Link */}

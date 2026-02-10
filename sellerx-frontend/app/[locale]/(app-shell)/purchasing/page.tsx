@@ -15,8 +15,11 @@ import {
   MonthlySummaryCard,
   RecentOrdersList,
 } from "@/components/purchasing/dashboard";
+import type { PurchasingDatePreset } from "@/components/purchasing/purchasing-date-filter";
 import { Plus, Loader2, Package, Warehouse } from "lucide-react";
 import type { PurchaseOrderStatus } from "@/types/purchasing";
+import type { DateRange } from "react-day-picker";
+import { format } from "date-fns";
 import {
   StatCardSkeleton,
   FilterBarSkeleton,
@@ -43,6 +46,17 @@ export default function PurchasingPage() {
   const router = useRouter();
   const { formatCurrency } = useCurrency();
   const [activeStatus, setActiveStatus] = useState<PurchaseOrderStatus | null>(null);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  const [, setDatePreset] = useState<PurchasingDatePreset | undefined>(undefined);
+
+  // Format dates for API
+  const startDate = dateRange?.from ? format(dateRange.from, "yyyy-MM-dd") : undefined;
+  const endDate = dateRange?.to ? format(dateRange.to, "yyyy-MM-dd") : undefined;
+
+  const handleDateRangeChange = (range: DateRange | undefined, preset: PurchasingDatePreset | undefined) => {
+    setDateRange(range);
+    setDatePreset(preset);
+  };
 
   const { data: selectedStore, isLoading: storeLoading } = useSelectedStore();
   const storeId = selectedStore?.selectedStoreId;
@@ -86,21 +100,23 @@ export default function PurchasingPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          Mal alımınızı takip edin ve karlılık analizlerinizi görüntüleyin
+          Mal alimlarinizi takip edin ve karlilik analizlerinizi goruntuley
         </p>
-        <Button
-          onClick={handleCreatePO}
-          disabled={createMutation.isPending}
-          size="lg"
-          className="gap-2"
-        >
-          {createMutation.isPending ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Plus className="h-4 w-4" />
-          )}
-          Yeni Sipariş
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button
+            onClick={handleCreatePO}
+            disabled={createMutation.isPending}
+            size="lg"
+            className="gap-2"
+          >
+            {createMutation.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Plus className="h-4 w-4" />
+            )}
+            Yeni Siparis
+          </Button>
+        </div>
       </div>
 
       {/* Status Cards */}
@@ -112,12 +128,19 @@ export default function PurchasingPage() {
       />
 
       {/* Orders Table - directly below status cards */}
-      <RecentOrdersList storeId={storeId || undefined} activeStatus={activeStatus} />
+      <RecentOrdersList
+        storeId={storeId || undefined}
+        activeStatus={activeStatus}
+        startDate={startDate}
+        endDate={endDate}
+        dateRange={dateRange}
+        onDateRangeChange={handleDateRangeChange}
+      />
 
       {/* Summary Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Monthly Summary */}
-        <MonthlySummaryCard storeId={storeId || undefined} />
+        {/* Summary Card - shows date range if selected, otherwise current month */}
+        <MonthlySummaryCard storeId={storeId || undefined} startDate={startDate} endDate={endDate} />
 
         {/* Stock Valuation Summary */}
         <div className="bg-card rounded-xl border border-border p-6">

@@ -58,7 +58,7 @@ export function LoadingDialog({ isOpen, onClose }: LoadingDialogProps) {
       setCurrentStep(0);
       setProgress(0);
       setIsCompleted(false);
-      return;
+      return undefined;
     }
 
     let timer: NodeJS.Timeout;

@@ -6,7 +6,6 @@ import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
-import { CurrencyProvider } from "@/lib/contexts/currency-context";
 import { ErrorBoundary } from "@/components/providers/error-boundary";
 import { Open_Sans } from "next/font/google";
 
@@ -38,11 +37,9 @@ export default async function RootLayout({
       <body className={`${openSans.variable} font-sans antialiased`}>
         <QueryProvider>
           <ThemeProvider>
-            <CurrencyProvider>
-              <NextIntlClientProvider>
-                <ErrorBoundary>{children}</ErrorBoundary>
-              </NextIntlClientProvider>
-            </CurrencyProvider>
+            <NextIntlClientProvider>
+              <ErrorBoundary>{children}</ErrorBoundary>
+            </NextIntlClientProvider>
           </ThemeProvider>
         </QueryProvider>
         <Toaster position="top-center" richColors={true} />

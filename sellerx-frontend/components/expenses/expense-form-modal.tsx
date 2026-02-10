@@ -31,7 +31,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Receipt } from "lucide-react";
 import {
-  useExpenseCategories,
+  useStoreExpenseCategories,
   useCreateExpense,
   useUpdateExpense,
 } from "@/hooks/queries/use-expenses";
@@ -82,7 +82,7 @@ export function ExpenseFormModal({
   onOpenChange,
 }: ExpenseFormModalProps) {
   const isEditing = !!expense;
-  const { data: categories, isLoading: categoriesLoading } = useExpenseCategories();
+  const { data: categories, isLoading: categoriesLoading } = useStoreExpenseCategories(storeId);
   const createMutation = useCreateExpense();
   const updateMutation = useUpdateExpense();
   const { formatCurrency } = useCurrency();
@@ -107,6 +107,10 @@ export function ExpenseFormModal({
   const watchedAmount = useWatch({ control: form.control, name: "amount" });
   const watchedVatOption = useWatch({ control: form.control, name: "vatOption" });
   const watchedCustomRate = useWatch({ control: form.control, name: "customVatRate" });
+  const watchedFrequency = useWatch({ control: form.control, name: "frequency" });
+
+  // Check if this is a recurring expense
+  const isRecurring = watchedFrequency !== "ONE_TIME";
 
   const vatCalculation = useMemo(() => {
     const amount = Number(watchedAmount) || 0;
@@ -131,6 +135,7 @@ export function ExpenseFormModal({
     if (open) {
       if (expense) {
         const dateStr = expense.date ? expense.date.split("T")[0] : today;
+        const endDateStr = expense.endDate ? expense.endDate.split("T")[0] : "";
         const vatOpt = vatRateToOption(expense.vatRate);
         form.reset({
           name: expense.name || "",
@@ -139,7 +144,7 @@ export function ExpenseFormModal({
           frequency: expense.frequency,
           description: "",
           startDate: dateStr,
-          endDate: "",
+          endDate: endDateStr,
           vatOption: vatOpt,
           customVatRate: vatOpt === "custom" ? (expense.vatRate ?? 0) : 0,
         });
@@ -176,6 +181,7 @@ export function ExpenseFormModal({
       amount: values.amount,
       frequency: values.frequency as ExpenseFrequency,
       date: values.startDate ? `${values.startDate}T00:00:00` : undefined,
+      endDate: values.endDate ? `${values.endDate}T23:59:59` : null,
       productId: null,
       vatRate,
     };
@@ -227,7 +233,11 @@ export function ExpenseFormModal({
                 <FormItem>
                   <FormLabel>Gider Adı</FormLabel>
                   <FormControl>
-                    <Input placeholder="Örn: Ofis Kirası" className="border border-gray-300 dark:border-gray-600 rounded-lg" {...field} />
+                    <Input
+                      placeholder="Örn: Ofis Kirası"
+                      className="border border-gray-300 dark:border-gray-600 rounded-lg"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -238,7 +248,7 @@ export function ExpenseFormModal({
               control={form.control}
               name="categoryId"
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="w-full">
                   <FormLabel>Kategori</FormLabel>
                   <Select
                     onValueChange={field.onChange}
@@ -246,7 +256,7 @@ export function ExpenseFormModal({
                     disabled={categoriesLoading}
                   >
                     <FormControl>
-                      <SelectTrigger className="border border-gray-300 dark:border-gray-600 rounded-lg">
+                      <SelectTrigger className="w-full border border-gray-300 dark:border-gray-600 rounded-lg">
                         <SelectValue placeholder="Kategori seçin" />
                       </SelectTrigger>
                     </FormControl>
@@ -289,11 +299,11 @@ export function ExpenseFormModal({
                 control={form.control}
                 name="frequency"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="w-full">
                     <FormLabel>Sıklık</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <SelectTrigger className="border border-gray-300 dark:border-gray-600 rounded-lg">
+                        <SelectTrigger className="w-full border border-gray-300 dark:border-gray-600 rounded-lg">
                           <SelectValue placeholder="Sıklık seçin" />
                         </SelectTrigger>
                       </FormControl>
@@ -323,11 +333,11 @@ export function ExpenseFormModal({
                   control={form.control}
                   name="vatOption"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="w-full">
                       <FormLabel>KDV Oranı</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
-                          <SelectTrigger className="border border-gray-300 dark:border-gray-600 rounded-lg">
+                          <SelectTrigger className="w-full border border-gray-300 dark:border-gray-600 rounded-lg">
                             <SelectValue placeholder="KDV seçin" />
                           </SelectTrigger>
                         </FormControl>
@@ -380,13 +390,13 @@ export function ExpenseFormModal({
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className={isRecurring ? "grid grid-cols-2 gap-4" : ""}>
               <FormField
                 control={form.control}
                 name="startDate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Başlangıç Tarihi</FormLabel>
+                    <FormLabel>{isRecurring ? "Başlangıç Tarihi" : "Gider Tarihi"}</FormLabel>
                     <FormControl>
                       <Input type="date" className="border border-gray-300 dark:border-gray-600 rounded-lg" {...field} />
                     </FormControl>
@@ -395,20 +405,33 @@ export function ExpenseFormModal({
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="endDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Bitiş Tarihi (Opsiyonel)</FormLabel>
-                    <FormControl>
-                      <Input type="date" className="border border-gray-300 dark:border-gray-600 rounded-lg" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {isRecurring && (
+                <FormField
+                  control={form.control}
+                  name="endDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Bitiş Tarihi (Opsiyonel)</FormLabel>
+                      <FormControl>
+                        <Input type="date" className="border border-gray-300 dark:border-gray-600 rounded-lg" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
             </div>
+
+            {/* Tekrarlayan gider bilgisi */}
+            {isRecurring && (
+              <div className="flex items-start gap-2 text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-3 py-2 rounded-md">
+                <span className="text-base">🔄</span>
+                <span>
+                  Bu gider <strong>{frequencyLabels[watchedFrequency as ExpenseFrequency]}</strong> olarak tekrarlanacak.
+                  {!form.getValues("endDate") && " Bitiş tarihi belirlenmediği için süresiz tekrarlanır."}
+                </span>
+              </div>
+            )}
 
             <FormField
               control={form.control}

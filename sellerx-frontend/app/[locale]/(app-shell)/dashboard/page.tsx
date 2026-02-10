@@ -6,7 +6,7 @@ import { useSelectedStore } from "@/hooks/queries/use-stores";
 import { useDashboardStats, useDashboardStatsByRange, useDashboardStatsByPreset } from "@/hooks/useDashboardStats";
 import { useProductsByStorePaginatedFull } from "@/hooks/queries/use-products";
 import { useDashboardFilters } from "@/hooks/useDashboardFilters";
-import { format } from "date-fns";
+import { format, startOfDay, endOfDay, startOfMonth, endOfMonth, subDays, subMonths } from "date-fns";
 import { tr } from "date-fns/locale";
 import {
   PeriodCards,
@@ -18,11 +18,12 @@ import {
   CitiesView,
 } from "@/components/dashboard";
 import { StockDepletionBanner } from "@/components/dashboard/stock-depletion-banner";
-import { useCityStats } from "@/hooks/queries/use-city-stats";
+// useCityStats moved to CitiesView component
 import type { DashboardViewType } from "@/components/dashboard/dashboard-tabs";
 import type { ProductItem } from "@/components/dashboard/dashboard-filters";
 import type { ProductDetail } from "@/types/dashboard";
 import type { TrendyolProduct } from "@/types/product";
+import { filterStatsByProducts, filterStatsResponseByProducts } from "@/lib/utils/dashboard-stats-filter";
 
 export default function DashboardPage() {
   const searchParams = useSearchParams();
@@ -69,6 +70,7 @@ export default function DashboardPage() {
   // Fetch multi-period stats for preset period groups (weeks, months, quarters, etc.)
   const {
     data: presetStats,
+    periodRanges,
     isLoading: presetStatsLoading,
     error: presetStatsError,
     isMultiPeriod,
@@ -85,17 +87,7 @@ export default function DashboardPage() {
     setSelectedDynamicIndex(0);
   }, [selectedPeriodGroup]);
 
-  // City stats for the cities view - defaults to last 30 days if no custom range
-  const cityStatsStartDate = customDateRange?.startDate || format(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), "yyyy-MM-dd");
-  const cityStatsEndDate = customDateRange?.endDate || format(new Date(), "yyyy-MM-dd");
-  // Use first selected product barcode for city stats filtering (single product filter)
-  const cityStatsProductBarcode = selectedProducts.length === 1 ? selectedProducts[0] : undefined;
-  const { data: cityStats, isLoading: cityStatsLoading } = useCityStats({
-    storeId,
-    startDate: cityStatsStartDate,
-    endDate: cityStatsEndDate,
-    productBarcode: cityStatsProductBarcode,
-  });
+  // City stats logic moved to CitiesView component for independent period selection
 
   // Fetch full product data from TrendyolProduct for additional details
   // Reduced from 500 to 100 for performance - dashboard only shows top 10 products
@@ -142,6 +134,25 @@ export default function DashboardPage() {
 
     return Array.from(productMap.values());
   }, [stats]);
+
+  // Filter stats by selected products for period cards
+  const filteredStats = useMemo(
+    () => filterStatsResponseByProducts(stats, selectedProducts),
+    [stats, selectedProducts]
+  );
+
+  const filteredCustomStats = useMemo(
+    () => filterStatsByProducts(customStats, selectedProducts),
+    [customStats, selectedProducts]
+  );
+
+  const filteredPresetStats = useMemo(() => {
+    if (!presetStats || selectedProducts.length === 0) return presetStats;
+    return presetStats.map((p) => ({
+      ...p,
+      stats: filterStatsByProducts(p.stats, selectedProducts),
+    }));
+  }, [presetStats, selectedProducts]);
 
   // Transform dashboard products to table format with TrendyolProduct enrichment
   const transformProducts = (products: ProductDetail[] | undefined) => {
@@ -221,10 +232,7 @@ export default function DashboardPage() {
   const getProductsForPeriod = () => {
     // If multi-period preset is active, use the selected period's products
     if (isMultiPeriod && presetStats && presetStats.length > 0) {
-      console.log('[DEBUG] Dynamic mode - selectedDynamicIndex:', selectedDynamicIndex);
-      console.log('[DEBUG] presetStats length:', presetStats.length);
       const selectedStats = presetStats[selectedDynamicIndex]?.stats;
-      console.log('[DEBUG] selectedStats products count:', selectedStats?.products?.length);
       return selectedStats?.products;
     }
 
@@ -303,6 +311,64 @@ export default function DashboardPage() {
     return `${format(start, "d MMM", { locale: tr })} - ${format(end, "d MMM yyyy", { locale: tr })}`;
   };
 
+  // Calculate current period's start and end dates for invoice queries
+  const currentPeriodDateRange = useMemo(() => {
+    const formatISODate = (date: Date) => format(date, "yyyy-MM-dd");
+    const today = new Date();
+
+    // If multi-period preset is active, use the selected period's dates from periodRanges
+    if (isMultiPeriod && periodRanges && periodRanges.length > 0) {
+      const selectedRange = periodRanges[selectedDynamicIndex];
+      if (selectedRange) {
+        return {
+          startDate: selectedRange.startDate,
+          endDate: selectedRange.endDate,
+        };
+      }
+    }
+
+    // If custom date range is selected, use those dates
+    if (isCustomRange && customDateRange) {
+      return {
+        startDate: customDateRange.startDate,
+        endDate: customDateRange.endDate,
+      };
+    }
+
+    // Otherwise use default 4-period stats based on selectedPeriod
+    switch (selectedPeriod) {
+      case "today":
+        return {
+          startDate: formatISODate(startOfDay(today)),
+          endDate: formatISODate(endOfDay(today)),
+        };
+      case "yesterday": {
+        const yesterday = subDays(today, 1);
+        return {
+          startDate: formatISODate(startOfDay(yesterday)),
+          endDate: formatISODate(endOfDay(yesterday)),
+        };
+      }
+      case "thisMonth":
+        return {
+          startDate: formatISODate(startOfMonth(today)),
+          endDate: formatISODate(endOfDay(today)),
+        };
+      case "lastMonth": {
+        const lastMonth = subMonths(today, 1);
+        return {
+          startDate: formatISODate(startOfMonth(lastMonth)),
+          endDate: formatISODate(endOfMonth(lastMonth)),
+        };
+      }
+      default:
+        return {
+          startDate: formatISODate(startOfDay(today)),
+          endDate: formatISODate(endOfDay(today)),
+        };
+    }
+  }, [isMultiPeriod, periodRanges, selectedDynamicIndex, isCustomRange, customDateRange, selectedPeriod]);
+
   // Combined loading state - check multi-period, custom range, or default
   const isLoading = isMultiPeriod
     ? presetStatsLoading
@@ -323,10 +389,10 @@ export default function DashboardPage() {
           <>
             {/* Period Cards - Dynamic mode for presets, Single mode for custom range, Multi mode for default */}
             <section>
-              {isMultiPeriod && presetStats ? (
+              {isMultiPeriod && filteredPresetStats ? (
                 <PeriodCards
                   mode="dynamic"
-                  periodData={presetStats.map((p) => ({
+                  periodData={filteredPresetStats.map((p) => ({
                     stats: p.stats,
                     label: p.label,
                     shortLabel: p.shortLabel,
@@ -340,7 +406,7 @@ export default function DashboardPage() {
               ) : isCustomRange ? (
                 <PeriodCards
                   mode="single"
-                  customStats={customStats}
+                  customStats={filteredCustomStats}
                   customTitle={customDateRange?.label}
                   customDateRange={getCustomDateRangeDisplay()}
                   isLoading={customStatsLoading}
@@ -348,7 +414,7 @@ export default function DashboardPage() {
               ) : (
                 <PeriodCards
                   mode="multi"
-                  stats={stats}
+                  stats={filteredStats}
                   isLoading={statsLoading}
                   selectedPeriod={selectedPeriod}
                   onPeriodSelect={setSelectedPeriod}
@@ -362,6 +428,8 @@ export default function DashboardPage() {
                 products={tableProducts}
                 orders={periodOrders}
                 isLoading={isLoading || storeLoading}
+                startDate={currentPeriodDateRange.startDate}
+                endDate={currentPeriodDateRange.endDate}
               />
             </section>
           </>
@@ -383,7 +451,7 @@ export default function DashboardPage() {
         return (
           <section>
             {/* P&L view uses multi-period stats */}
-            <PLView storeId={storeId} />
+            <PLView storeId={storeId} selectedProducts={selectedProducts} />
           </section>
         );
 
@@ -391,7 +459,12 @@ export default function DashboardPage() {
         return (
           <section>
             {/* Trends view uses 4-period stats for comparison */}
-            <TrendsView stats={stats} isLoading={statsLoading} trendyolProductMap={trendyolProductMap} />
+            <TrendsView
+              stats={stats}
+              isLoading={statsLoading}
+              trendyolProductMap={trendyolProductMap}
+              selectedProducts={selectedProducts}
+            />
           </section>
         );
 
@@ -399,7 +472,7 @@ export default function DashboardPage() {
         return (
           <section>
             {/* Cities view shows Turkey map with order distribution */}
-            <CitiesView cityStats={cityStats} isLoading={cityStatsLoading} />
+            <CitiesView storeId={storeId} />
           </section>
         );
 
@@ -420,23 +493,25 @@ export default function DashboardPage() {
         </p>
       )}
 
-      {/* Dashboard Filters */}
-      <section>
-        <DashboardFilters
-          products={allProducts}
-          selectedProducts={selectedProducts}
-          onProductsChange={setSelectedProducts}
-          selectedPeriodGroup={selectedPeriodGroup}
-          onPeriodGroupChange={setSelectedPeriodGroup}
-          onDateRangeChange={handleDateRangeChange}
-          onDefaultViewChange={handleDefaultViewChange}
-          selectedComparison={selectedComparison}
-          onComparisonChange={setSelectedComparison}
-          selectedCurrency={selectedCurrency}
-          onCurrencyChange={setSelectedCurrency}
-          filterConfig={filterConfig}
-        />
-      </section>
+      {/* Dashboard Filters - Cities view has its own period selector */}
+      {activeView !== "cities" && (
+        <section>
+          <DashboardFilters
+            products={allProducts}
+            selectedProducts={selectedProducts}
+            onProductsChange={setSelectedProducts}
+            selectedPeriodGroup={selectedPeriodGroup}
+            onPeriodGroupChange={setSelectedPeriodGroup}
+            onDateRangeChange={handleDateRangeChange}
+            onDefaultViewChange={handleDefaultViewChange}
+            selectedComparison={selectedComparison}
+            onComparisonChange={setSelectedComparison}
+            selectedCurrency={selectedCurrency}
+            onCurrencyChange={setSelectedCurrency}
+            filterConfig={filterConfig}
+          />
+        </section>
+      )}
 
       {/* View Content - Tab navigation is in header */}
       {renderViewContent()}

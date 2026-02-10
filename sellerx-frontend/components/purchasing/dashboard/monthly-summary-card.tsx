@@ -1,23 +1,48 @@
 "use client";
 
+import { useMemo } from "react";
 import { useCurrency } from "@/lib/contexts/currency-context";
 import { usePurchaseSummary } from "@/hooks/queries/use-purchasing";
 import { Package, TrendingUp, Calculator, Archive } from "lucide-react";
+import { format } from "date-fns";
+import { tr } from "date-fns/locale";
 
 interface MonthlySummaryCardProps {
   storeId: string | undefined;
+  startDate?: string;
+  endDate?: string;
 }
 
-export function MonthlySummaryCard({ storeId }: MonthlySummaryCardProps) {
+export function MonthlySummaryCard({ storeId, startDate: propStartDate, endDate: propEndDate }: MonthlySummaryCardProps) {
   const { formatCurrency } = useCurrency();
 
-  // Get current month date range
-  const now = new Date();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-
-  const startDate = startOfMonth.toISOString().split("T")[0];
-  const endDate = endOfMonth.toISOString().split("T")[0];
+  // If no date range provided, use current month
+  const { startDate, endDate, displayTitle, displayBadge } = useMemo(() => {
+    if (propStartDate && propEndDate) {
+      // Format the date range for display
+      const fromDate = new Date(propStartDate);
+      const toDate = new Date(propEndDate);
+      const fromStr = format(fromDate, "d MMM", { locale: tr });
+      const toStr = format(toDate, "d MMM yyyy", { locale: tr });
+      return {
+        startDate: propStartDate,
+        endDate: propEndDate,
+        displayTitle: `${fromStr} - ${toStr} Ozeti`,
+        displayBadge: "Secilen Tarih",
+      };
+    }
+    // Default: current month
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const monthName = now.toLocaleDateString("tr-TR", { month: "long", year: "numeric" });
+    return {
+      startDate: startOfMonth.toISOString().split("T")[0],
+      endDate: endOfMonth.toISOString().split("T")[0],
+      displayTitle: `${monthName} Ozeti`,
+      displayBadge: "Bu Ay",
+    };
+  }, [propStartDate, propEndDate]);
 
   const { data: summary, isLoading } = usePurchaseSummary(storeId, startDate, endDate);
 
@@ -64,14 +89,12 @@ export function MonthlySummaryCard({ storeId }: MonthlySummaryCardProps) {
     },
   ];
 
-  const monthName = now.toLocaleDateString("tr-TR", { month: "long", year: "numeric" });
-
   return (
     <div className="bg-card rounded-xl border border-border p-6">
       <div className="flex items-center justify-between mb-6">
-        <h3 className="font-semibold text-foreground">{monthName} Ozeti</h3>
+        <h3 className="font-semibold text-foreground">{displayTitle}</h3>
         <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">
-          Bu Ay
+          {displayBadge}
         </span>
       </div>
 

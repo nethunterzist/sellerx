@@ -43,6 +43,10 @@ app:
     api-key: ${WEBHOOK_API_KEY:sellerx-webhook-key}
     signature-secret: ${WEBHOOK_SIGNATURE_SECRET:}
     signature-validation-enabled: false # Disable for development, enable in production
+  # Credentials encryption (AES-256-GCM)
+  encryption:
+    enabled: ${ENCRYPTION_ENABLED:false} # Disable for development
+    key: ${ENCRYPTION_KEY:}
 
 # Currency configuration
   currency:

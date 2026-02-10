@@ -15,6 +15,7 @@ public class CustomerAnalyticsProjections {
         BigDecimal getRepeatRevenue();
         Double getAvgOrdersPerCustomer();
         Double getAvgItemsPerCustomer();
+        Double getAvgItemsPerOrder();
     }
 
     public interface SegmentProjection {
@@ -112,5 +113,38 @@ public class CustomerAnalyticsProjections {
         BigDecimal getMedianClv();
         BigDecimal getTop10PercentClv();
         BigDecimal getTop10PercentRevenueShare();
+    }
+
+    /**
+     * Per-customer average repeat interval in days.
+     */
+    public interface CustomerRepeatIntervalProjection {
+        Long getCustomerId();
+        Double getAvgDays();
+    }
+
+    /**
+     * Product buyer projection: customers who bought a specific product.
+     */
+    public interface ProductBuyerProjection {
+        Long getCustomerId();
+        String getCustomerName();
+        String getCity();
+        Integer getPurchaseCount();
+        java.math.BigDecimal getTotalSpend();
+    }
+
+    /**
+     * Summary stats with total order count for avgOrderValue calculation.
+     */
+    public interface SummaryWithOrderCountProjection {
+        Integer getTotalCustomers();
+        Integer getRepeatCustomers();
+        BigDecimal getTotalRevenue();
+        BigDecimal getRepeatRevenue();
+        Double getAvgOrdersPerCustomer();
+        Double getAvgItemsPerCustomer();
+        Double getAvgItemsPerOrder();
+        Long getTotalOrders();
     }
 }

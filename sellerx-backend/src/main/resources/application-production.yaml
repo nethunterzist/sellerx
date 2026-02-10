@@ -46,6 +46,10 @@ app:
     api-key: ${WEBHOOK_API_KEY}
     signature-validation-enabled: true
     signature-secret: ${WEBHOOK_SIGNATURE_SECRET}
+  # Credentials encryption - ENABLED for production (AES-256-GCM)
+  encryption:
+    enabled: true
+    key: ${ENCRYPTION_KEY}
 
 # iyzico - no defaults in production
 iyzico:

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import {
   Table,
@@ -24,8 +24,10 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Search, ChevronDown, ChevronUp, Download, MoreHorizontal, ArrowUpDown, ExternalLink, LayoutGrid } from "lucide-react";
+import { Search, ChevronDown, ChevronUp, Download, MoreHorizontal, ArrowUpDown, ExternalLink, LayoutGrid, Filter } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Tooltip,
   TooltipContent,
@@ -34,82 +36,29 @@ import {
 import { ProductDetailPanel, type ProductDetailData } from "./product-detail-panel";
 import { OrderDetailPanel } from "./order-detail-panel";
 import { useCurrency } from "@/lib/contexts/currency-context";
+import * as XLSX from "xlsx";
 import type { OrderDetail, OrderDetailPanelData } from "@/types/dashboard";
 
-interface ProductStatus {
-  onSale: boolean;
-  approved: boolean;
-  hasActiveCampaign: boolean;
-  archived: boolean;
-  blacklisted: boolean;
-  rejected?: boolean;
-}
+// Import types and configs from modular structure
+import type {
+  Product,
+  ProductsTableProps,
+  ColumnConfig,
+  SortField,
+  OrderSortField,
+  SortDirection,
+} from "./products-table/types";
+import {
+  PRODUCT_COLUMN_CONFIG,
+  ORDER_COLUMN_CONFIG,
+  COLUMN_CONFIG,
+  PRODUCTS_PER_PAGE,
+  PRODUCT_NAME_LIMIT,
+  getDefaultVisibleColumns,
+} from "./products-table/column-config";
 
-interface CostHistoryItem {
-  stockDate: string;
-  quantity: number;
-  unitCost: number;
-  costVatRate?: number;
-  usedQuantity?: number;
-}
-
-interface Product {
-  id: string;
-  name: string;
-  sku: string;
-  image?: string;
-  cogs: number;
-  stock: number;
-  marketplace: "trendyol" | "hepsiburada";
-  unitsSold: number;
-  refunds: number;
-  sales: number;
-  grossProfit: number;
-  netProfit: number;
-  margin: number;
-  roi: number;
-  commission?: number;
-
-  // ============== YENİ: 32 Metrik Alanları ==============
-
-  // İndirimler & Kuponlar
-  sellerDiscount?: number;
-  platformDiscount?: number;
-  couponDiscount?: number;
-  totalDiscount?: number;
-
-  // Net Ciro
-  netRevenue?: number;
-
-  // Maliyetler
-  productCost?: number;
-  shippingCost?: number;
-  refundCost?: number;
-
-  // Oranlar
-  refundRate?: number;
-  profitMargin?: number;
-
-  // İade detayları
-  returnQuantity?: number;
-
-  // TrendyolProduct'tan gelen ek veriler
-  categoryName?: string;
-  brand?: string;
-  salePrice?: number;
-  vatRate?: number;
-  commissionRate?: number;
-  trendyolQuantity?: number;
-  productUrl?: string;
-  status?: ProductStatus;
-  costHistory?: CostHistoryItem[];
-}
-
-interface ProductsTableProps {
-  products?: Product[];
-  orders?: OrderDetail[];
-  isLoading?: boolean;
-}
+// Re-export types for external usage
+export type { Product, ProductsTableProps } from "./products-table/types";
 
 // Demo products data
 const demoProducts: Product[] = [
@@ -190,8 +139,6 @@ const demoProducts: Product[] = [
   },
 ];
 
-const PRODUCT_NAME_LIMIT = 40;
-
 function truncateText(text: string, limit: number): string {
   if (text.length <= limit) return text;
   return text.slice(0, limit) + "...";
@@ -268,63 +215,9 @@ function OrderItemRowSkeleton({ visibleColumns }: { visibleColumns: Set<string> 
   );
 }
 
-const PRODUCTS_PER_PAGE = 50;
+// Column configs and constants are imported from ./products-table/column-config
 
-// Column visibility configuration
-interface ColumnConfig {
-  id: string;
-  label: string;
-  defaultVisible: boolean;
-  alwaysVisible?: boolean;
-}
-
-// Products tab column config
-const PRODUCT_COLUMN_CONFIG: ColumnConfig[] = [
-  { id: "product", label: "Ürün", defaultVisible: true, alwaysVisible: true },
-  { id: "unitsSold", label: "Satılan", defaultVisible: true },
-  { id: "refunds", label: "İade", defaultVisible: true },
-  { id: "sales", label: "Satış", defaultVisible: true },
-  { id: "commission", label: "Komisyon", defaultVisible: true },
-  { id: "grossProfit", label: "Brüt Kâr", defaultVisible: true },
-  { id: "netProfit", label: "Net Kâr", defaultVisible: true },
-  { id: "margin", label: "Marj", defaultVisible: true },
-  { id: "roi", label: "ROI", defaultVisible: true },
-  { id: "action", label: "Detay", defaultVisible: true, alwaysVisible: true },
-];
-
-// Order Items tab column config
-const ORDER_COLUMN_CONFIG: ColumnConfig[] = [
-  { id: "order", label: "Sipariş", defaultVisible: true, alwaysVisible: true },
-  { id: "orderProduct", label: "Ürün", defaultVisible: true, alwaysVisible: true },
-  { id: "quantity", label: "Adet", defaultVisible: true },
-  { id: "orderSales", label: "Satış", defaultVisible: true },
-  { id: "cost", label: "Maliyet", defaultVisible: true },
-  { id: "orderCommission", label: "Komisyon", defaultVisible: true },
-  { id: "orderGrossProfit", label: "Brüt Kâr", defaultVisible: true },
-  { id: "orderMargin", label: "Marj", defaultVisible: true },
-  { id: "orderRoi", label: "ROI", defaultVisible: true },
-  { id: "orderAction", label: "Detay", defaultVisible: true, alwaysVisible: true },
-];
-
-// Backward compatibility alias
-const COLUMN_CONFIG = PRODUCT_COLUMN_CONFIG;
-
-// Get default visible columns from localStorage or use defaults
-const getDefaultVisibleColumns = (storageKey: string, config: ColumnConfig[]): Set<string> => {
-  if (typeof window !== "undefined") {
-    const saved = localStorage.getItem(storageKey);
-    if (saved) {
-      try {
-        return new Set(JSON.parse(saved));
-      } catch {
-        // Invalid JSON, use defaults
-      }
-    }
-  }
-  return new Set(config.filter(c => c.defaultVisible).map(c => c.id));
-};
-
-export function ProductsTable({ products, orders, isLoading }: ProductsTableProps) {
+export function ProductsTable({ products, orders, isLoading, startDate, endDate }: ProductsTableProps) {
   const { formatCurrency } = useCurrency();
   const [activeTab, setActiveTab] = useState<"products" | "orders">("products");
   const [searchQuery, setSearchQuery] = useState("");
@@ -338,7 +231,7 @@ export function ProductsTable({ products, orders, isLoading }: ProductsTableProp
 
   // ========== PRODUCTS TAB STATES ==========
   // Sorting state for products
-  type ProductSortField = "name" | "sku" | "brand" | "unitsSold" | "refunds" | "sales" | "commission" | "grossProfit" | "netProfit" | "margin" | "roi";
+  type ProductSortField = "name" | "sku" | "brand" | "unitsSold" | "refunds" | "sales" | "commission" | "grossProfit" | "netProfit" | "margin" | "roi" | "acos";
   type SortDirection = "asc" | "desc";
   const [productSortField, setProductSortField] = useState<ProductSortField>("sales");
   const [productSortDirection, setProductSortDirection] = useState<SortDirection>("desc");
@@ -358,6 +251,12 @@ export function ProductsTable({ products, orders, isLoading }: ProductsTableProp
   const [orderVisibleColumns, setOrderVisibleColumns] = useState<Set<string>>(() =>
     getDefaultVisibleColumns("dashboard-order-columns", ORDER_COLUMN_CONFIG)
   );
+
+  // ========== FILTER STATES ==========
+  const [selectedBrands, setSelectedBrands] = useState<Set<string>>(new Set());
+  const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
+  const [filterSearchQuery, setFilterSearchQuery] = useState("");
+  const [activeFilterTab, setActiveFilterTab] = useState<"brand" | "category">("brand");
 
   // ========== BACKWARD COMPATIBILITY ==========
   // Alias for backward compatibility
@@ -429,6 +328,67 @@ export function ProductsTable({ products, orders, isLoading }: ProductsTableProp
 
   // Backward compatibility alias
   const toggleColumn = toggleProductColumn;
+
+  // ========== FILTER FUNCTIONS ==========
+  // Extract unique brands and categories from products
+  const { uniqueBrands, uniqueCategories } = useMemo(() => {
+    const brandCounts = new Map<string, number>();
+    const categoryCounts = new Map<string, number>();
+
+    (products || []).forEach(p => {
+      if (p.brand) {
+        brandCounts.set(p.brand, (brandCounts.get(p.brand) || 0) + 1);
+      }
+      if (p.categoryName) {
+        categoryCounts.set(p.categoryName, (categoryCounts.get(p.categoryName) || 0) + 1);
+      }
+    });
+
+    return {
+      uniqueBrands: Array.from(brandCounts.entries())
+        .sort((a, b) => b[1] - a[1])
+        .map(([name, count]) => ({ name, count })),
+      uniqueCategories: Array.from(categoryCounts.entries())
+        .sort((a, b) => b[1] - a[1])
+        .map(([name, count]) => ({ name, count })),
+    };
+  }, [products]);
+
+  // Toggle brand filter
+  const toggleBrand = (brand: string) => {
+    setSelectedBrands(prev => {
+      const next = new Set(prev);
+      if (next.has(brand)) {
+        next.delete(brand);
+      } else {
+        next.add(brand);
+      }
+      return next;
+    });
+  };
+
+  // Toggle category filter
+  const toggleCategory = (category: string) => {
+    setSelectedCategories(prev => {
+      const next = new Set(prev);
+      if (next.has(category)) {
+        next.delete(category);
+      } else {
+        next.add(category);
+      }
+      return next;
+    });
+  };
+
+  // Clear all filters
+  const clearAllFilters = () => {
+    setSelectedBrands(new Set());
+    setSelectedCategories(new Set());
+    setFilterSearchQuery("");
+  };
+
+  // Active filter count for badge
+  const activeFilterCount = selectedBrands.size + selectedCategories.size;
 
   // Calculate visible column count for colSpan
   const visibleColumnCount = PRODUCT_COLUMN_CONFIG.filter(c =>
@@ -512,17 +472,37 @@ export function ProductsTable({ products, orders, isLoading }: ProductsTableProp
       productUrl: product.productUrl,
       status: product.status,
       costHistory: product.costHistory,
+
+      // ============== REKLAM METRİKLERİ ==============
+      cpc: product.cpc,
+      cvr: product.cvr,
+      advertisingCostPerSale: product.advertisingCostPerSale,
+      acos: product.acos,
+      totalAdvertisingCost: product.totalAdvertisingCost,
     };
     setSelectedProduct(detailData);
     setDetailPanelOpen(true);
   };
 
   // Don't use demo data - only show real data or empty/loading state
-  const filteredProducts = (products?.filter(
-    (p) =>
+  const filteredProducts = (products?.filter((p) => {
+    // Text search (name, SKU, brand)
+    const matchesSearch = searchQuery === "" ||
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.sku.toLowerCase().includes(searchQuery.toLowerCase())
-  ) || []).sort((a, b) => {
+      p.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (p.brand?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
+
+    // Brand filter (OR within brands)
+    const matchesBrand = selectedBrands.size === 0 ||
+      (p.brand && selectedBrands.has(p.brand));
+
+    // Category filter (OR within categories)
+    const matchesCategory = selectedCategories.size === 0 ||
+      (p.categoryName && selectedCategories.has(p.categoryName));
+
+    // All conditions must match (AND between different filter types)
+    return matchesSearch && matchesBrand && matchesCategory;
+  }) || []).sort((a, b) => {
     let comparison = 0;
 
     // String fields - alphabetical sorting
@@ -695,6 +675,106 @@ export function ProductsTable({ products, orders, isLoading }: ProductsTableProp
     }
   };
 
+  // XLSX Download handler for products
+  const handleDownloadProductsXLSX = () => {
+    const headers = ["Ürün", "SKU", "Marka", "Kategori", "Satılan", "İade", "Satış", "Komisyon", "Brüt Kâr", "Net Kâr", "Marj (%)", "ROI (%)", "ACOS (%)", "Reklam Maliyeti", "CPC", "CVR (%)"];
+    const rows = filteredProducts.map(p => [
+      p.name,
+      p.sku,
+      p.brand || "",
+      p.categoryName || "",
+      p.unitsSold,
+      p.refunds,
+      p.sales,
+      p.commission || 0,
+      p.grossProfit,
+      p.netProfit,
+      p.margin,
+      p.roi,
+      p.acos != null ? p.acos.toFixed(2) : "-",
+      p.totalAdvertisingCost != null ? p.totalAdvertisingCost.toFixed(2) : "-",
+      p.cpc != null ? p.cpc.toFixed(2) : "-",
+      p.cvr != null ? (p.cvr * 100).toFixed(2) : "-"
+    ]);
+
+    // Create worksheet
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+
+    // Set column widths
+    ws["!cols"] = [
+      { wch: 40 }, // Ürün
+      { wch: 15 }, // SKU
+      { wch: 20 }, // Marka
+      { wch: 25 }, // Kategori
+      { wch: 10 }, // Satılan
+      { wch: 8 },  // İade
+      { wch: 12 }, // Satış
+      { wch: 12 }, // Komisyon
+      { wch: 12 }, // Brüt Kâr
+      { wch: 12 }, // Net Kâr
+      { wch: 10 }, // Marj
+      { wch: 10 }, // ROI
+      { wch: 10 }, // ACOS
+      { wch: 15 }, // Reklam Maliyeti
+      { wch: 8 },  // CPC
+      { wch: 10 }, // CVR
+    ];
+
+    // Create workbook
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Ürünler");
+
+    // Download
+    XLSX.writeFile(wb, `urunler_${new Date().toISOString().split('T')[0]}.xlsx`);
+  };
+
+  // XLSX Download handler for order items
+  const handleDownloadOrdersXLSX = () => {
+    const headers = ["Sipariş No", "Tarih", "Ürün", "Barkod", "Adet", "Satış", "Maliyet", "Komisyon", "Kâr", "Marj (%)", "ROI (%)"];
+    const rows = filteredOrderItems.map(item => {
+      const margin = item.totalPrice > 0 ? Math.round((item.profit / item.totalPrice) * 100) : 0;
+      const roi = item.cost > 0 ? Math.round((item.profit / item.cost) * 100) : 0;
+      return [
+        item.orderNumber,
+        formatDate(item.orderDate),
+        item.productName,
+        item.barcode,
+        item.quantity,
+        item.totalPrice,
+        item.cost,
+        item.commission,
+        item.profit,
+        margin,
+        roi
+      ];
+    });
+
+    // Create worksheet
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+
+    // Set column widths
+    ws["!cols"] = [
+      { wch: 15 }, // Sipariş No
+      { wch: 20 }, // Tarih
+      { wch: 40 }, // Ürün
+      { wch: 15 }, // Barkod
+      { wch: 8 },  // Adet
+      { wch: 12 }, // Satış
+      { wch: 12 }, // Maliyet
+      { wch: 12 }, // Komisyon
+      { wch: 12 }, // Kâr
+      { wch: 10 }, // Marj
+      { wch: 10 }, // ROI
+    ];
+
+    // Create workbook
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Siparişler");
+
+    // Download
+    XLSX.writeFile(wb, `siparisler_${new Date().toISOString().split('T')[0]}.xlsx`);
+  };
+
   return (
     <div className="bg-card rounded-lg border border-border">
       {/* Header */}
@@ -722,21 +802,137 @@ export function ProductsTable({ products, orders, isLoading }: ProductsTableProp
           {activeTab === "products" ? (
             /* Products Tab Actions */
             <>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
+              {/* Filter Popover */}
+              <Popover>
+                <PopoverTrigger asChild>
                   <Button variant="outline" size="sm" className="h-8 gap-1.5">
-                    Grupla: {productSortField === "name" ? "Ürün" : productSortField === "sku" ? "SKU" : productSortField === "brand" ? "Marka" : ""}
-                    <ChevronDown className="h-3.5 w-3.5" />
+                    <Filter className="h-3.5 w-3.5" />
+                    Filtrele
+                    {activeFilterCount > 0 && (
+                      <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                        {activeFilterCount}
+                      </Badge>
+                    )}
                   </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => handleColumnSort("name")}>Ürün</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleColumnSort("sku")}>SKU</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleColumnSort("brand")}>Marka</DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                </PopoverTrigger>
+                <PopoverContent className="w-80" align="end">
+                  <div className="space-y-3">
+                    {/* Header with clear button */}
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium">Filtrele</p>
+                      {activeFilterCount > 0 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 text-xs text-destructive hover:text-destructive"
+                          onClick={clearAllFilters}
+                        >
+                          Tümünü Temizle
+                        </Button>
+                      )}
+                    </div>
 
-              <Button variant="outline" size="icon" className="h-8 w-8">
+                    {/* Filter Tabs */}
+                    <div className="flex gap-1 border-b">
+                      <button
+                        onClick={() => {
+                          setActiveFilterTab("brand");
+                          setFilterSearchQuery("");
+                        }}
+                        className={cn(
+                          "px-3 py-1.5 text-sm font-medium border-b-2 -mb-px transition-colors",
+                          activeFilterTab === "brand"
+                            ? "border-[#1D70F1] text-[#1D70F1]"
+                            : "border-transparent text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        Marka {selectedBrands.size > 0 && `(${selectedBrands.size})`}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setActiveFilterTab("category");
+                          setFilterSearchQuery("");
+                        }}
+                        className={cn(
+                          "px-3 py-1.5 text-sm font-medium border-b-2 -mb-px transition-colors",
+                          activeFilterTab === "category"
+                            ? "border-[#1D70F1] text-[#1D70F1]"
+                            : "border-transparent text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        Kategori {selectedCategories.size > 0 && `(${selectedCategories.size})`}
+                      </button>
+                    </div>
+
+                    {/* Search within current tab */}
+                    <div className="relative">
+                      <Search className="absolute left-2 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                      <Input
+                        placeholder={activeFilterTab === "brand" ? "Marka ara..." : "Kategori ara..."}
+                        value={filterSearchQuery}
+                        onChange={(e) => setFilterSearchQuery(e.target.value)}
+                        className="h-8 pl-7 text-sm"
+                      />
+                    </div>
+
+                    {/* List based on active tab */}
+                    <ScrollArea className="h-52">
+                      <div className="space-y-1">
+                        {activeFilterTab === "brand" ? (
+                          uniqueBrands.length === 0 ? (
+                            <p className="text-sm text-muted-foreground text-center py-4">Marka bulunamadı</p>
+                          ) : (
+                            uniqueBrands
+                              .filter(b => b.name.toLowerCase().includes(filterSearchQuery.toLowerCase()))
+                              .map(({ name, count }) => (
+                                <label key={name} className="flex items-center gap-2 px-1 py-1.5 hover:bg-muted/50 rounded cursor-pointer">
+                                  <Checkbox
+                                    checked={selectedBrands.has(name)}
+                                    onCheckedChange={() => toggleBrand(name)}
+                                    className={cn(
+                                      "border-2",
+                                      selectedBrands.has(name)
+                                        ? "border-[#1D70F1] bg-[#1D70F1] data-[state=checked]:bg-[#1D70F1] data-[state=checked]:border-[#1D70F1]"
+                                        : "border-gray-300 dark:border-gray-600 bg-transparent"
+                                    )}
+                                  />
+                                  <span className="text-sm flex-1 truncate">{name}</span>
+                                  <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{count}</span>
+                                </label>
+                              ))
+                          )
+                        ) : (
+                          uniqueCategories.length === 0 ? (
+                            <p className="text-sm text-muted-foreground text-center py-4">Kategori bulunamadı</p>
+                          ) : (
+                            uniqueCategories
+                              .filter(c => c.name.toLowerCase().includes(filterSearchQuery.toLowerCase()))
+                              .map(({ name, count }) => (
+                                <label key={name} className="flex items-center gap-2 px-1 py-1.5 hover:bg-muted/50 rounded cursor-pointer">
+                                  <Checkbox
+                                    checked={selectedCategories.has(name)}
+                                    onCheckedChange={() => toggleCategory(name)}
+                                    className={cn(
+                                      "border-2",
+                                      selectedCategories.has(name)
+                                        ? "border-[#1D70F1] bg-[#1D70F1] data-[state=checked]:bg-[#1D70F1] data-[state=checked]:border-[#1D70F1]"
+                                        : "border-gray-300 dark:border-gray-600 bg-transparent"
+                                    )}
+                                  />
+                                  <span className="text-sm flex-1 truncate">{name}</span>
+                                  <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{count}</span>
+                                </label>
+                              ))
+                          )
+                        )}
+                      </div>
+                    </ScrollArea>
+                  </div>
+                </PopoverContent>
+              </Popover>
+
+              {/* Download Button */}
+              <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleDownloadProductsXLSX}>
                 <Download className="h-4 w-4" />
               </Button>
 
@@ -795,7 +991,7 @@ export function ProductsTable({ products, orders, isLoading }: ProductsTableProp
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              <Button variant="outline" size="icon" className="h-8 w-8">
+              <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleDownloadOrdersXLSX}>
                 <Download className="h-4 w-4" />
               </Button>
 
@@ -949,6 +1145,27 @@ export function ProductsTable({ products, orders, isLoading }: ProductsTableProp
                         sortDirection === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />
                       ) : <ArrowUpDown className="h-3 w-3 opacity-30" />}
                     </div>
+                  </TableHead>
+                )}
+                {visibleColumns.has("acos") && (
+                  <TableHead
+                    className="text-right cursor-pointer hover:bg-muted/50 select-none"
+                    onClick={() => handleColumnSort("acos")}
+                  >
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex items-center justify-end gap-1">
+                          ACOS
+                          {sortField === "acos" ? (
+                            sortDirection === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />
+                          ) : <ArrowUpDown className="h-3 w-3 opacity-30" />}
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Advertising Cost of Sale</p>
+                        <p className="text-xs text-muted-foreground">= (CPC / CVR) / Satış Fiyatı × 100</p>
+                      </TooltipContent>
+                    </Tooltip>
                   </TableHead>
                 )}
                 <TableHead className="w-[50px]"></TableHead>
@@ -1145,6 +1362,29 @@ export function ProductsTable({ products, orders, isLoading }: ProductsTableProp
                         <span className={product.roi >= 0 ? "text-green-600" : "text-red-600"}>
                           {product.roi}%
                         </span>
+                      </TableCell>
+                    )}
+                    {visibleColumns.has("acos") && (
+                      <TableCell className="text-right">
+                        {product.acos != null ? (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className={product.acos <= 15 ? "text-green-600" : product.acos <= 30 ? "text-yellow-600" : "text-red-600"}>
+                                {product.acos.toFixed(1)}%
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Reklam Maliyeti: {product.advertisingCostPerSale?.toFixed(2)} TL/satış</p>
+                              {product.cpc && product.cvr && (
+                                <p className="text-xs text-muted-foreground">
+                                  CPC: {product.cpc.toFixed(2)} TL | CVR: {(product.cvr * 100).toFixed(2)}%
+                                </p>
+                              )}
+                            </TooltipContent>
+                          </Tooltip>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
                       </TableCell>
                     )}
                     <TableCell>
@@ -1385,6 +1625,8 @@ export function ProductsTable({ products, orders, isLoading }: ProductsTableProp
         open={detailPanelOpen}
         onOpenChange={setDetailPanelOpen}
         product={selectedProduct}
+        startDate={startDate}
+        endDate={endDate}
       />
 
       {/* Order Detail Panel */}

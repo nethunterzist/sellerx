@@ -7,5 +7,6 @@ public record ExpenseCategoryDto(
     UUID id,
     String name,
     LocalDateTime createdAt,
-    LocalDateTime updatedAt
+    LocalDateTime updatedAt,
+    long expenseCount  // Used to determine if category can be deleted
 ) {}

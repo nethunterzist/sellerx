@@ -1,15 +1,35 @@
 "use client";
 
+import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { usePurchaseOrders } from "@/hooks/queries/use-purchasing";
 import { useCurrency } from "@/lib/contexts/currency-context";
 import { cn } from "@/lib/utils";
-import { ChevronRight, Package, FileText, Truck, CheckCircle } from "lucide-react";
+import { ChevronRight, Package, FileText, Truck, CheckCircle, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { PurchasingDateFilter, type PurchasingDatePreset } from "@/components/purchasing/purchasing-date-filter";
 import type { PurchaseOrderStatus, PurchaseOrderSummary } from "@/types/purchasing";
+import type { DateRange } from "react-day-picker";
+
+// Custom hook for debounced value
+function useDebouncedValue<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+
+  return debouncedValue;
+}
 
 interface RecentOrdersListProps {
   storeId: string | undefined;
   activeStatus?: PurchaseOrderStatus | null;
+  startDate?: string;
+  endDate?: string;
+  dateRange?: DateRange;
+  onDateRangeChange?: (range: DateRange | undefined, preset: PurchasingDatePreset | undefined) => void;
 }
 
 const statusConfig: Record<
@@ -49,13 +69,19 @@ function formatDate(dateString: string): string {
   });
 }
 
-export function RecentOrdersList({ storeId, activeStatus }: RecentOrdersListProps) {
+export function RecentOrdersList({ storeId, activeStatus, startDate, endDate, dateRange, onDateRangeChange }: RecentOrdersListProps) {
   const router = useRouter();
   const { formatCurrency } = useCurrency();
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search, 300);
 
   const { data: orders, isLoading } = usePurchaseOrders(
     storeId,
-    activeStatus || undefined
+    activeStatus || undefined,
+    debouncedSearch || undefined,
+    undefined, // supplierId
+    startDate,
+    endDate
   );
 
   if (isLoading) {
@@ -81,13 +107,26 @@ export function RecentOrdersList({ storeId, activeStatus }: RecentOrdersListProp
         <h3 className="font-semibold text-foreground">
           {activeStatus ? `${statusConfig[activeStatus].label} Siparisler` : "Son Siparisler"}
         </h3>
-        <button
-          onClick={() => router.push("/purchasing")}
-          className="text-xs text-primary hover:underline flex items-center gap-1"
-        >
-          Tumunu Gor
-          <ChevronRight className="h-3 w-3" />
-        </button>
+        {onDateRangeChange && (
+          <PurchasingDateFilter
+            dateRange={dateRange}
+            onDateRangeChange={onDateRangeChange}
+          />
+        )}
+      </div>
+
+      {/* Search Input */}
+      <div className="p-4 border-b border-border">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="text"
+            placeholder="Siparis veya tedarikci ara..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9 h-9"
+          />
+        </div>
       </div>
 
       {recentOrders.length === 0 ? (
@@ -150,6 +189,19 @@ export function RecentOrdersList({ storeId, activeStatus }: RecentOrdersListProp
               </button>
             );
           })}
+        </div>
+      )}
+
+      {/* Footer with "Tümünü Gör" */}
+      {(orders || []).length > 0 && (
+        <div className="p-4 border-t border-border flex justify-end">
+          <button
+            onClick={() => router.push("/purchasing/orders")}
+            className="text-xs text-primary hover:underline flex items-center gap-1"
+          >
+            Tumunu Gor
+            <ChevronRight className="h-3 w-3" />
+          </button>
         </div>
       )}
     </div>

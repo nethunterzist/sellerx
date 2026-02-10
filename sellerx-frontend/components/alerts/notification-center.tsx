@@ -281,7 +281,7 @@ export function NotificationCenter() {
         {/* Footer */}
         <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-800">
           <Link
-            href="/settings/alerts"
+            href="/notifications"
             className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400"
             onClick={() => setOpen(false)}
           >

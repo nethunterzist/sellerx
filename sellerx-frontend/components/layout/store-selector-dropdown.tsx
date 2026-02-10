@@ -98,7 +98,7 @@ export function StoreSelectorDropdown({
 
   // Poll for sync updates when sync is in progress
   useEffect(() => {
-    if (!isInProgress || !selectedStoreId) return;
+    if (!isInProgress || !selectedStoreId) return undefined;
 
     const interval = setInterval(() => {
       queryClient.invalidateQueries({ queryKey: storeKeys.detail(selectedStoreId) });

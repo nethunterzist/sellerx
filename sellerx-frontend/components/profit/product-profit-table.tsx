@@ -32,6 +32,7 @@ import type { ProfitFilter } from "./profit-filters";
 export interface ProductProfitData {
   productName: string;
   barcode: string;
+  brand?: string;
   image?: string;
   categoryName?: string;
   revenue: number;
@@ -41,6 +42,12 @@ export interface ProductProfitData {
   estimatedCommission?: number;
   productCost?: number;
   productUrl?: string;
+  // ============== REKLAM METRİKLERİ ==============
+  cpc?: number;                    // Cost Per Click (TL)
+  cvr?: number;                    // Conversion Rate (örn: 0.018 = %1.8)
+  advertisingCostPerSale?: number; // Reklam Maliyeti = CPC / CVR
+  acos?: number;                   // ACOS = (advertisingCostPerSale / salePrice) * 100
+  totalAdvertisingCost?: number;   // Toplam reklam maliyeti
 }
 
 interface ProductProfitTableProps {
@@ -51,6 +58,7 @@ interface ProductProfitTableProps {
   searchQuery?: string;
   profitFilter?: ProfitFilter;
   selectedCategory?: string | null;
+  customMarginThreshold?: number | null; // Custom margin filter (e.g., 20 for >= 20%)
 }
 
 // Skeleton row for loading state
@@ -79,6 +87,7 @@ function ProductRowSkeleton() {
           <Skeleton className="h-4 w-12" />
         </div>
       </TableCell>
+      <TableCell><Skeleton className="h-4 w-12 ml-auto" /></TableCell>
     </TableRow>
   );
 }
@@ -92,7 +101,7 @@ function truncateText(text: string, limit: number): string {
 }
 
 // Sort fields
-type SortField = "productName" | "categoryName" | "totalSoldQuantity" | "revenue" | "productCost" | "estimatedCommission" | "grossProfit" | "netProfit" | "margin";
+type SortField = "productName" | "categoryName" | "totalSoldQuantity" | "revenue" | "productCost" | "estimatedCommission" | "grossProfit" | "netProfit" | "margin" | "acos";
 type SortDirection = "asc" | "desc";
 
 export function ProductProfitTable({
@@ -102,6 +111,7 @@ export function ProductProfitTable({
   searchQuery = "",
   profitFilter = "all",
   selectedCategory = null,
+  customMarginThreshold = null,
 }: ProductProfitTableProps) {
   const [visibleCount, setVisibleCount] = useState(PRODUCTS_PER_PAGE);
   const [sortField, setSortField] = useState<SortField>("margin");
@@ -132,18 +142,25 @@ export function ProductProfitTable({
         };
       })
       .filter((p) => {
-        // Search filter
+        // Search filter - searches in productName, barcode, and brand
+        // Using Turkish locale for proper İ/ı character handling
         if (searchQuery) {
-          const query = searchQuery.toLowerCase();
+          const query = searchQuery.toLocaleLowerCase('tr-TR');
           const matchesSearch =
-            p.productName.toLowerCase().includes(query) ||
-            p.barcode.toLowerCase().includes(query);
+            p.productName.toLocaleLowerCase('tr-TR').includes(query) ||
+            p.barcode.toLocaleLowerCase('tr-TR').includes(query) ||
+            (p.brand?.toLocaleLowerCase('tr-TR').includes(query) ?? false);
           if (!matchesSearch) return false;
         }
 
         // Profit/Loss filter
         if (profitFilter === "profit" && p.grossProfit < 0) return false;
         if (profitFilter === "loss" && p.grossProfit >= 0) return false;
+
+        // Custom margin threshold filter
+        if (profitFilter === "custom" && customMarginThreshold !== null) {
+          if (p.margin < customMarginThreshold) return false;
+        }
 
         // Category filter
         if (selectedCategory && p.categoryName !== selectedCategory) return false;
@@ -168,7 +185,7 @@ export function ProductProfitTable({
 
         return sortDirection === "asc" ? comparison : -comparison;
       });
-  }, [products, searchQuery, profitFilter, selectedCategory, sortField, sortDirection]);
+  }, [products, searchQuery, profitFilter, selectedCategory, customMarginThreshold, sortField, sortDirection]);
 
   // Lazy loading
   const visibleProducts = processedProducts.slice(0, visibleCount);
@@ -214,6 +231,7 @@ export function ProductProfitTable({
                 <TableHead className="text-right">Brut Kar</TableHead>
                 <TableHead className="text-right">Net Kar</TableHead>
                 <TableHead className="w-[150px]">Kar Marji</TableHead>
+                <TableHead className="text-right">ACOS</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -365,6 +383,23 @@ export function ProductProfitTable({
                     Kar Marji
                     {renderSortIcon("margin")}
                   </div>
+                </TableHead>
+                <TableHead
+                  className="text-right cursor-pointer hover:bg-muted/50 select-none"
+                  onClick={() => handleColumnSort("acos")}
+                >
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex items-center justify-end gap-1">
+                        ACOS
+                        {renderSortIcon("acos")}
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Advertising Cost of Sale</p>
+                      <p className="text-xs text-muted-foreground">= (CPC / CVR) / Satış Fiyatı × 100</p>
+                    </TooltipContent>
+                  </Tooltip>
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -533,6 +568,33 @@ export function ProductProfitTable({
                         {product.margin.toFixed(1)}%
                       </span>
                     </div>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {product.acos != null ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span
+                            className={cn(
+                              "font-medium",
+                              product.acos <= 15
+                                ? "text-green-600 dark:text-green-400"
+                                : product.acos <= 30
+                                ? "text-yellow-600 dark:text-yellow-400"
+                                : "text-red-600 dark:text-red-400"
+                            )}
+                          >
+                            {product.acos.toFixed(1)}%
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Reklam Maliyeti: {product.advertisingCostPerSale?.toFixed(2)} TL/satış</p>
+                          {product.cpc != null && <p>CPC: {product.cpc.toFixed(2)} TL</p>}
+                          {product.cvr != null && <p>CVR: {(product.cvr * 100).toFixed(2)}%</p>}
+                        </TooltipContent>
+                      </Tooltip>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}

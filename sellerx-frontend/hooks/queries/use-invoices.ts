@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/api/client";
 import type {
   InvoiceSummary,
@@ -13,6 +13,11 @@ import type {
   AggregatedProductsResponse,
   ProductCommissionBreakdown,
   ProductCargoBreakdown,
+  CargoInvoiceItemsPage,
+  InvoiceItemsPage,
+  CommissionInvoiceItemsPage,
+  OrderInvoiceItemsResponse,
+  StoppageSummary,
 } from "@/types/invoice";
 
 // Re-export types for convenience
@@ -72,6 +77,16 @@ export const invoiceKeys = {
   commissionItems: () => [...invoiceKeys.all, "commission-items"] as const,
   storeCommissionItems: (storeId: string, invoiceSerialNumber: string) =>
     [...invoiceKeys.commissionItems(), storeId, invoiceSerialNumber] as const,
+  // Paginated keys for infinite scroll
+  cargoItemsPaginated: () => [...invoiceKeys.all, "cargo-items-paginated"] as const,
+  storeCargoItemsPaginated: (storeId: string, invoiceSerialNumber: string) =>
+    [...invoiceKeys.cargoItemsPaginated(), storeId, invoiceSerialNumber] as const,
+  invoiceItemsPaginated: () => [...invoiceKeys.all, "items-paginated"] as const,
+  storeInvoiceItemsPaginated: (storeId: string, invoiceSerialNumber: string) =>
+    [...invoiceKeys.invoiceItemsPaginated(), storeId, invoiceSerialNumber] as const,
+  commissionItemsPaginated: () => [...invoiceKeys.all, "commission-items-paginated"] as const,
+  storeCommissionItemsPaginated: (storeId: string, invoiceSerialNumber: string) =>
+    [...invoiceKeys.commissionItemsPaginated(), storeId, invoiceSerialNumber] as const,
   // Category-level queries (all items in date range, not per invoice)
   categoryCargoItems: () => [...invoiceKeys.all, "category-cargo-items"] as const,
   storeCategoryCargoItems: (
@@ -115,6 +130,23 @@ export const invoiceKeys = {
     endDate: string
   ) =>
     [...invoiceKeys.productCargoBreakdown(), storeId, barcode, startDate, endDate] as const,
+  // Order-level invoice items (all invoices for a specific order)
+  orderInvoiceItems: () => [...invoiceKeys.all, "order-invoice-items"] as const,
+  storeOrderInvoiceItems: (storeId: string, orderNumber: string) =>
+    [...invoiceKeys.orderInvoiceItems(), storeId, orderNumber] as const,
+  // Stoppage (Stopaj/Tevkifat) queries
+  stoppages: () => [...invoiceKeys.all, "stoppages"] as const,
+  storeStoppages: (
+    storeId: string,
+    startDate: string,
+    endDate: string,
+    page: number,
+    size: number
+  ) =>
+    [...invoiceKeys.stoppages(), storeId, startDate, endDate, page, size] as const,
+  stoppageSummary: () => [...invoiceKeys.all, "stoppage-summary"] as const,
+  storeStoppageSummary: (storeId: string, startDate: string, endDate: string) =>
+    [...invoiceKeys.stoppageSummary(), storeId, startDate, endDate] as const,
 };
 
 /**
@@ -337,6 +369,80 @@ export function useCommissionInvoiceItems(
 }
 
 // ========================================
+// Infinite Query Hooks (Lazy Loading)
+// Used for infinite scroll in invoice detail panel
+// ========================================
+
+/**
+ * Get cargo invoice items with infinite scroll pagination
+ */
+export function useCargoInvoiceItemsInfinite(
+  storeId: string | undefined,
+  invoiceSerialNumber: string | undefined,
+  pageSize: number = 20,
+  enabled = true
+) {
+  return useInfiniteQuery<CargoInvoiceItemsPage>({
+    queryKey: invoiceKeys.storeCargoItemsPaginated(storeId || "", invoiceSerialNumber || ""),
+    queryFn: ({ pageParam = 0 }) =>
+      apiRequest<CargoInvoiceItemsPage>(
+        `/invoices/stores/${storeId}/cargo-items/${invoiceSerialNumber}/paginated?page=${pageParam}&size=${pageSize}`
+      ),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => (lastPage.hasNext ? lastPage.page + 1 : undefined),
+    enabled: enabled && !!storeId && !!invoiceSerialNumber,
+    staleTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+}
+
+/**
+ * Get generic invoice items with infinite scroll pagination
+ */
+export function useInvoiceItemsInfinite(
+  storeId: string | undefined,
+  invoiceSerialNumber: string | undefined,
+  pageSize: number = 20,
+  enabled = true
+) {
+  return useInfiniteQuery<InvoiceItemsPage>({
+    queryKey: invoiceKeys.storeInvoiceItemsPaginated(storeId || "", invoiceSerialNumber || ""),
+    queryFn: ({ pageParam = 0 }) =>
+      apiRequest<InvoiceItemsPage>(
+        `/invoices/stores/${storeId}/items/${invoiceSerialNumber}/paginated?page=${pageParam}&size=${pageSize}`
+      ),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => (lastPage.hasNext ? lastPage.page + 1 : undefined),
+    enabled: enabled && !!storeId && !!invoiceSerialNumber,
+    staleTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+}
+
+/**
+ * Get commission invoice items with infinite scroll pagination
+ */
+export function useCommissionInvoiceItemsInfinite(
+  storeId: string | undefined,
+  invoiceSerialNumber: string | undefined,
+  pageSize: number = 20,
+  enabled = true
+) {
+  return useInfiniteQuery<CommissionInvoiceItemsPage>({
+    queryKey: invoiceKeys.storeCommissionItemsPaginated(storeId || "", invoiceSerialNumber || ""),
+    queryFn: ({ pageParam = 0 }) =>
+      apiRequest<CommissionInvoiceItemsPage>(
+        `/invoices/stores/${storeId}/commission-items/${invoiceSerialNumber}/paginated?page=${pageParam}&size=${pageSize}`
+      ),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => (lastPage.hasNext ? lastPage.page + 1 : undefined),
+    enabled: enabled && !!storeId && !!invoiceSerialNumber,
+    staleTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+}
+
+// ========================================
 // Category-Level Hooks (All items in date range, not per invoice)
 // Used for "Fatura Kalemleri" and "Ürünler" tabs in category view
 // ========================================
@@ -480,6 +586,84 @@ export function useProductCargoBreakdown(
         `/invoices/stores/${storeId}/products/${encodeURIComponent(barcode || "")}/cargo-breakdown?startDate=${startDate}&endDate=${endDate}`
       ),
     enabled: enabled && !!storeId && !!barcode && !!startDate && !!endDate,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: false,
+  });
+}
+
+// ========================================
+// Order-Level Invoice Items Hook
+// Used for showing all invoice items (cargo, commission, deductions)
+// linked to a specific order in the order detail panel
+// ========================================
+
+/**
+ * Get all invoice items for a specific order
+ * Returns cargo, commission, and deduction invoice items linked to the order
+ * Used to show actual invoiced expenses in order detail panel
+ */
+export function useOrderInvoiceItems(
+  storeId: string | undefined,
+  orderNumber: string | undefined,
+  enabled = true
+) {
+  return useQuery<OrderInvoiceItemsResponse>({
+    queryKey: invoiceKeys.storeOrderInvoiceItems(storeId || "", orderNumber || ""),
+    queryFn: () =>
+      apiRequest<OrderInvoiceItemsResponse>(
+        `/invoices/stores/${storeId}/by-order/${orderNumber}`
+      ),
+    enabled: enabled && !!storeId && !!orderNumber,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: false,
+  });
+}
+
+// ========================================
+// Stoppage (Stopaj/Tevkifat) Hooks
+// Withholding tax records from Trendyol
+// ========================================
+
+/**
+ * Get stoppage summary for a store
+ * Returns total amount and count of stoppage records
+ */
+export function useStoppageSummary(
+  storeId: string | undefined,
+  startDate: string,
+  endDate: string,
+  enabled = true
+) {
+  return useQuery<StoppageSummary>({
+    queryKey: invoiceKeys.storeStoppageSummary(storeId || "", startDate, endDate),
+    queryFn: () =>
+      apiRequest<StoppageSummary>(
+        `/invoices/stores/${storeId}/stoppages/summary?startDate=${startDate}&endDate=${endDate}`
+      ),
+    enabled: enabled && !!storeId && !!startDate && !!endDate,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: false,
+  });
+}
+
+/**
+ * Get stoppages with pagination
+ */
+export function useStoppages(
+  storeId: string | undefined,
+  startDate: string,
+  endDate: string,
+  page: number = 0,
+  size: number = 20,
+  enabled = true
+) {
+  return useQuery<StoppageSummary>({
+    queryKey: invoiceKeys.storeStoppages(storeId || "", startDate, endDate, page, size),
+    queryFn: () =>
+      apiRequest<StoppageSummary>(
+        `/invoices/stores/${storeId}/stoppages?startDate=${startDate}&endDate=${endDate}&page=${page}&size=${size}`
+      ),
+    enabled: enabled && !!storeId && !!startDate && !!endDate,
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,
   });

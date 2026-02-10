@@ -32,6 +32,31 @@ public interface PurchaseOrderRepository extends JpaRepository<PurchaseOrder, Lo
     @Query("SELECT COALESCE(SUM(po.totalUnits), 0) FROM PurchaseOrder po WHERE po.store.id = :storeId AND po.status = :status")
     Long sumTotalUnitsByStoreIdAndStatus(@Param("storeId") UUID storeId, @Param("status") PurchaseOrderStatus status);
 
+    // Stats queries with date range
+    @Query("SELECT COUNT(po) FROM PurchaseOrder po WHERE po.store.id = :storeId AND po.status = :status " +
+           "AND po.poDate BETWEEN :startDate AND :endDate")
+    Long countByStoreIdAndStatusAndDateRange(
+            @Param("storeId") UUID storeId,
+            @Param("status") PurchaseOrderStatus status,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate);
+
+    @Query("SELECT COALESCE(SUM(po.totalCost), 0) FROM PurchaseOrder po WHERE po.store.id = :storeId AND po.status = :status " +
+           "AND po.poDate BETWEEN :startDate AND :endDate")
+    BigDecimal sumTotalCostByStoreIdAndStatusAndDateRange(
+            @Param("storeId") UUID storeId,
+            @Param("status") PurchaseOrderStatus status,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate);
+
+    @Query("SELECT COALESCE(SUM(po.totalUnits), 0) FROM PurchaseOrder po WHERE po.store.id = :storeId AND po.status = :status " +
+           "AND po.poDate BETWEEN :startDate AND :endDate")
+    Long sumTotalUnitsByStoreIdAndStatusAndDateRange(
+            @Param("storeId") UUID storeId,
+            @Param("status") PurchaseOrderStatus status,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate);
+
     // For generating PO number
     @Query("SELECT COUNT(po) FROM PurchaseOrder po WHERE po.store.id = :storeId")
     Long countByStoreId(@Param("storeId") UUID storeId);
@@ -71,4 +96,13 @@ public interface PurchaseOrderRepository extends JpaRepository<PurchaseOrder, Lo
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate,
             @Param("status") PurchaseOrderStatus status);
+
+    // Date range query without status filter
+    @Query("SELECT po FROM PurchaseOrder po WHERE po.store.id = :storeId " +
+           "AND po.poDate BETWEEN :startDate AND :endDate " +
+           "ORDER BY po.poDate DESC")
+    List<PurchaseOrder> findByStoreIdAndPoDateBetween(
+            @Param("storeId") UUID storeId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate);
 }

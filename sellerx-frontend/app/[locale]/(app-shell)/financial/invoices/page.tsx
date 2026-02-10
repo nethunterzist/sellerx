@@ -6,6 +6,7 @@ import {
   useInvoiceSummary,
   useInvoicesByCategory,
   useAllInvoices,
+  useStoppages,
 } from "@/hooks/queries/use-invoices";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -14,7 +15,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Calendar as CalendarIcon, FileText } from "lucide-react";
+import { Calendar as CalendarIcon, FileText, Percent, Loader2 } from "lucide-react";
+import { useCurrency } from "@/lib/contexts/currency-context";
 import {
   InvoiceSummaryCards,
   InvoiceTable,
@@ -24,10 +26,10 @@ import {
 } from "@/components/financial";
 import { format, subDays, startOfMonth, endOfMonth, subMonths, startOfYear, endOfYear, subYears } from "date-fns";
 import { tr } from "date-fns/locale";
-import type { InvoiceDetail } from "@/types/invoice";
+import type { InvoiceDetail, StoppageItem } from "@/types/invoice";
 
 // Category type matching summary cards
-type CategoryKey = "KOMISYON" | "KARGO" | "ULUSLARARASI" | "CEZA" | "REKLAM" | "IADE" | "DIGER" | "ALL" | "KESINTI";
+type CategoryKey = "KOMISYON" | "KARGO" | "ULUSLARARASI" | "CEZA" | "REKLAM" | "IADE" | "DIGER" | "ALL" | "KESINTI" | "STOPAJ" | "HIZMET_BEDELI";
 
 // Predefined date ranges
 const DATE_PRESETS = [
@@ -71,6 +73,110 @@ function getDateRange(preset: DatePreset): { start: Date; end: Date } {
 
 const INVOICES_PER_PAGE = 50;
 
+// Stoppage Table Component
+interface StoppageTableProps {
+  stoppages: StoppageItem[];
+  isLoading: boolean;
+  totalElements: number;
+  onLoadMore: () => void;
+  hasMore: boolean;
+}
+
+function StoppageTable({ stoppages, isLoading, totalElements, onLoadMore, hasMore }: StoppageTableProps) {
+  const { formatCurrency } = useCurrency();
+
+  if (isLoading && stoppages.length === 0) {
+    return (
+      <div className="bg-card border border-border rounded-lg p-8 text-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mx-auto mb-4" />
+        <p className="text-muted-foreground">Stopaj verileri yükleniyor...</p>
+      </div>
+    );
+  }
+
+  if (stoppages.length === 0) {
+    return (
+      <div className="bg-card border border-border rounded-lg p-8 text-center">
+        <Percent className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+        <h3 className="text-lg font-medium text-foreground mb-2">Stopaj kaydı bulunamadı</h3>
+        <p className="text-muted-foreground">Seçilen tarih aralığında stopaj kesintisi yok.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-card border border-border rounded-lg overflow-hidden">
+      {/* Header */}
+      <div className="px-4 py-3 bg-indigo-500 text-white">
+        <div className="flex items-center gap-2">
+          <Percent className="h-4 w-4" />
+          <h3 className="font-semibold">Stopaj Kesintileri</h3>
+          <span className="text-indigo-100 text-sm ml-auto">
+            {totalElements} kayıt
+          </span>
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead className="bg-muted/50">
+            <tr>
+              <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Tarih
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Fatura No
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Ödeme Emri
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Açıklama
+              </th>
+              <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Tutar
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {stoppages.map((stoppage) => (
+              <tr key={stoppage.id} className="hover:bg-muted/30 transition-colors">
+                <td className="px-4 py-3 text-sm text-foreground whitespace-nowrap">
+                  {stoppage.transactionDate
+                    ? format(new Date(stoppage.transactionDate), "dd MMM yyyy HH:mm", { locale: tr })
+                    : "-"}
+                </td>
+                <td className="px-4 py-3 text-sm text-foreground">
+                  {stoppage.invoiceSerialNumber || "-"}
+                </td>
+                <td className="px-4 py-3 text-sm text-foreground">
+                  {stoppage.paymentOrderId || "-"}
+                </td>
+                <td className="px-4 py-3 text-sm text-muted-foreground max-w-[300px] truncate">
+                  {stoppage.description || "-"}
+                </td>
+                <td className="px-4 py-3 text-sm text-right font-medium text-red-600 whitespace-nowrap">
+                  -{formatCurrency(Math.abs(stoppage.amount))}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Load More */}
+      {hasMore && (
+        <div className="px-4 py-3 border-t border-border text-center">
+          <Button variant="outline" size="sm" onClick={onLoadMore}>
+            Daha Fazla Yükle
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function InvoicesPage() {
   const { data: selectedStore, isLoading: storeLoading } = useSelectedStore();
   const storeId = selectedStore?.selectedStoreId;
@@ -89,6 +195,7 @@ export default function InvoicesPage() {
   // Pagination state for lazy loading
   const [page, setPage] = useState(0);
   const [allInvoices, setAllInvoices] = useState<InvoiceDetail[]>([]);
+  const [allStoppages, setAllStoppages] = useState<StoppageItem[]>([]);
 
   // Detail panel state
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceDetail | null>(null);
@@ -114,10 +221,12 @@ export default function InvoicesPage() {
 
   // Fetch invoices based on category selection
   // KESINTI is a special pseudo-category that shows all deductions (isDeduction=true)
+  // STOPAJ uses separate endpoint (trendyol_stoppages table)
   // IADE uses backend filtering via getInvoicesByCategory (backend has special IADE handling)
   const isKesinti = selectedCategory === "KESINTI";
+  const isStopaj = selectedCategory === "STOPAJ";
   // IADE now uses shouldFetchByCategory - backend handles IADE filtering properly
-  const shouldFetchByCategory = selectedCategory && selectedCategory !== "ALL" && !isKesinti;
+  const shouldFetchByCategory = selectedCategory && selectedCategory !== "ALL" && !isKesinti && !isStopaj;
 
   const {
     data: categoryInvoices,
@@ -141,7 +250,20 @@ export default function InvoicesPage() {
     endDateStr,
     page,
     INVOICES_PER_PAGE,
-    !shouldFetchByCategory // Fetch all when ALL or KESINTI selected
+    !shouldFetchByCategory && !isStopaj // Fetch all when ALL or KESINTI selected (not STOPAJ)
+  );
+
+  // Fetch stoppages when STOPAJ is selected
+  const {
+    data: stoppagesData,
+    isLoading: stoppagesLoading,
+  } = useStoppages(
+    storeId || undefined,
+    startDateStr,
+    endDateStr,
+    page,
+    INVOICES_PER_PAGE,
+    isStopaj // Only fetch when STOPAJ category is selected
   );
 
   // Determine which data to use
@@ -166,6 +288,13 @@ export default function InvoicesPage() {
     };
   }, [rawInvoiceData, isKesinti]);
 
+  // Reset allInvoices and allStoppages when date range changes
+  useEffect(() => {
+    setAllInvoices([]);
+    setAllStoppages([]);
+    setPage(0);
+  }, [startDateStr, endDateStr]);
+
   // Accumulate invoices for lazy loading
   useEffect(() => {
     if (invoiceData?.content) {
@@ -180,12 +309,28 @@ export default function InvoicesPage() {
         });
       }
     }
-  }, [invoiceData, page]);
+  }, [invoiceData, page, startDateStr, endDateStr]);
+
+  // Accumulate stoppages for lazy loading
+  useEffect(() => {
+    if (stoppagesData?.items) {
+      if (page === 0) {
+        setAllStoppages(stoppagesData.items);
+      } else {
+        setAllStoppages((prev) => {
+          // Avoid duplicates
+          const newIds = new Set(stoppagesData.items.map((s) => s.id));
+          const filtered = prev.filter((s) => !newIds.has(s.id));
+          return [...filtered, ...stoppagesData.items];
+        });
+      }
+    }
+  }, [stoppagesData, page, startDateStr, endDateStr]);
 
   // Reset pagination when filters change
+  // Note: allInvoices is now reset by date change useEffect
   const resetPagination = useCallback(() => {
     setPage(0);
-    setAllInvoices([]);
   }, []);
 
   const handleCategorySelect = (category: CategoryKey | null) => {
@@ -212,15 +357,24 @@ export default function InvoicesPage() {
   };
 
   const handleLoadMore = () => {
-    if (invoiceData && !invoiceData.last) {
+    if (isStopaj) {
+      if (stoppagesData && stoppagesData.hasNext) {
+        setPage((prev) => prev + 1);
+      }
+    } else if (invoiceData && !invoiceData.last) {
       setPage((prev) => prev + 1);
     }
   };
 
-  const hasMore = invoiceData ? !invoiceData.last : false;
-  const totalElements = invoiceData?.totalElements || 0;
+  const hasMore = isStopaj
+    ? (stoppagesData?.hasNext ?? false)
+    : (invoiceData ? !invoiceData.last : false);
+  const totalElements = isStopaj
+    ? (stoppagesData?.totalElements || 0)
+    : (invoiceData?.totalElements || 0);
 
   const isLoading = storeLoading || summaryLoading;
+  const currentDataLoading = isStopaj ? stoppagesLoading : invoicesLoading;
 
   if (!storeId && !storeLoading) {
     return (
@@ -301,6 +455,7 @@ export default function InvoicesPage() {
           <InvoiceExportButton
             invoices={allInvoices}
             filename={`faturalar-${startDateStr}-${endDateStr}`}
+            isLoading={invoicesLoading}
           />
         </div>
       </div>
@@ -322,9 +477,17 @@ export default function InvoicesPage() {
         isLoading={isLoading}
       />
 
-      {/* Invoice Table - Show category table for KARGO/KOMISYON, otherwise regular table */}
-      {(summary || invoicesLoading) && (
-        selectedCategory === "KARGO" || selectedCategory === "KOMISYON" ? (
+      {/* Invoice Table - Show category table for KARGO/KOMISYON, stoppage table for STOPAJ, otherwise regular table */}
+      {(summary || currentDataLoading) && (
+        isStopaj ? (
+          <StoppageTable
+            stoppages={allStoppages}
+            isLoading={stoppagesLoading && page === 0}
+            totalElements={totalElements}
+            onLoadMore={handleLoadMore}
+            hasMore={hasMore}
+          />
+        ) : selectedCategory === "KARGO" || selectedCategory === "KOMISYON" ? (
           <InvoiceCategoryTable
             category={selectedCategory}
             invoices={allInvoices}

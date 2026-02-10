@@ -30,6 +30,7 @@ export interface TrendyolOrder {
   totalPrice: number;
   stoppage: number;
   estimatedCommission: number;
+  estimatedShippingCost: number;
   orderItems: OrderItem[];
   shipmentPackageStatus: string;
   status: string;

@@ -35,6 +35,20 @@ public class TrendyolProductDto {
     private Integer trendyolQuantity;
     private BigDecimal commissionRate;
     private BigDecimal shippingVolumeWeight;
+
+    // ============== Reklam Metrikleri (Excel C23, C24) ==============
+    private BigDecimal cpc; // Cost Per Click (TL)
+    private BigDecimal cvr; // Conversion Rate (örn: 0.018 = %1.8)
+    private BigDecimal advertisingCostPerSale; // Hesaplanan: cpc / cvr
+    private BigDecimal acos; // ACOS: advertisingCostPerSale / salePrice
+
+    // ============== Döviz Kuru (Excel F1) ==============
+    private String defaultCurrency; // "TRY", "USD", "EUR"
+    private BigDecimal defaultExchangeRate; // Varsayılan döviz kuru
+
+    // ============== ÖTV (Excel F5) ==============
+    private BigDecimal otvRate; // Özel Tüketim Vergisi oranı
+
     private Boolean approved;
     private Boolean archived;
     private Boolean blacklisted;

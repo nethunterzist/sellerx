@@ -73,7 +73,10 @@ import type {
   CohortData,
   FrequencyDistributionData,
   ClvSummaryData,
+  ProductRepeatData,
 } from "@/types/customer-analytics";
+import { CustomerDetailPanel } from "@/components/customer-analytics/customer-detail-panel";
+import { ProductRepeatDetailPanel } from "@/components/customer-analytics/product-repeat-detail-panel";
 
 type Tab = "overview" | "products" | "customers" | "cross-sell";
 
@@ -136,6 +139,14 @@ export default function CustomerAnalyticsPage() {
   const [customerPage, setCustomerPage] = useState(0);
   const [productSearch, setProductSearch] = useState("");
   const [customerSearch, setCustomerSearch] = useState("");
+
+  // Customer detail panel state
+  const [selectedCustomer, setSelectedCustomer] = useState<CustomerListItem | null>(null);
+  const [detailPanelOpen, setDetailPanelOpen] = useState(false);
+
+  // Product detail panel state
+  const [selectedProduct, setSelectedProduct] = useState<ProductRepeatData | null>(null);
+  const [productDetailPanelOpen, setProductDetailPanelOpen] = useState(false);
 
   const { data: selectedStore, isLoading: storeLoading } = useSelectedStore();
   const storeId = selectedStore?.selectedStoreId;
@@ -263,21 +274,21 @@ export default function CustomerAnalyticsPage() {
           </p>
         </div>
 
-        {/* Avg Items */}
+        {/* Avg Basket Size & Value */}
         <div className="bg-card rounded-xl border border-border p-4">
           <div className="flex items-center gap-2 mb-2">
             <div className="p-2 rounded-lg bg-purple-50 dark:bg-purple-900/20">
               <ShoppingBag className="h-4 w-4 text-purple-600 dark:text-purple-400" />
             </div>
             <span className="text-xs text-muted-foreground">
-              Ort. Urun Adedi
+              Ort. Sepet
             </span>
           </div>
           <p className="text-2xl font-bold text-foreground">
-            {(summary?.avgItemsPerCustomer || 0).toFixed(1)}
+            {(summary?.avgItemsPerOrder || 0).toFixed(1)} urun
           </p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Musteri basina urun
+          <p className="text-sm font-semibold text-purple-600 dark:text-purple-400 mt-1">
+            {formatCurrency(summary?.avgOrderValue || 0)}
           </p>
         </div>
 
@@ -940,13 +951,20 @@ export default function CustomerAnalyticsPage() {
                       <th className="text-right p-3 text-xs font-medium text-muted-foreground">
                         Satilan Adet
                       </th>
+                      <th className="text-center p-3 text-xs font-medium text-muted-foreground">
+                        Detay
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredProducts.map((p) => (
                       <tr
                         key={p.barcode}
-                        className="border-b border-border last:border-0 hover:bg-muted/20"
+                        className="border-b border-border last:border-0 hover:bg-muted/30 cursor-pointer transition-colors"
+                        onClick={() => {
+                          setSelectedProduct(p);
+                          setProductDetailPanelOpen(true);
+                        }}
                       >
                         <td className="p-3">
                           <div className="flex items-center gap-3">
@@ -1017,6 +1035,20 @@ export default function CustomerAnalyticsPage() {
                         </td>
                         <td className="p-3 text-sm text-muted-foreground text-right">
                           {p.totalQuantitySold.toLocaleString("tr-TR")}
+                        </td>
+                        <td className="p-3 text-center">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 text-[#1D70F1]"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedProduct(p);
+                              setProductDetailPanelOpen(true);
+                            }}
+                          >
+                            Detay
+                          </Button>
                         </td>
                       </tr>
                     ))}
@@ -1126,7 +1158,10 @@ export default function CustomerAnalyticsPage() {
                         RFM Segment
                       </th>
                       <th className="text-center p-3 text-xs font-medium text-muted-foreground">
-                        Skor
+                        Tekrar Sikligi
+                      </th>
+                      <th className="text-center p-3 text-xs font-medium text-muted-foreground">
+                        Detay
                       </th>
                     </tr>
                   </thead>
@@ -1135,7 +1170,11 @@ export default function CustomerAnalyticsPage() {
                       (c: CustomerListItem, idx: number) => (
                         <tr
                           key={`${c.customerKey}-${idx}`}
-                          className="border-b border-border last:border-0 hover:bg-muted/20"
+                          className="border-b border-border last:border-0 hover:bg-muted/30 cursor-pointer transition-colors"
+                          onClick={() => {
+                            setSelectedCustomer(c);
+                            setDetailPanelOpen(true);
+                          }}
                         >
                           <td className="p-3">
                             <p className="text-sm font-medium text-foreground">
@@ -1172,10 +1211,25 @@ export default function CustomerAnalyticsPage() {
                             </Badge>
                           </td>
                           <td className="p-3 text-center">
-                            <span className="text-xs font-mono text-muted-foreground">
-                              {c.recencyScore}-{c.frequencyScore}-
-                              {c.monetaryScore}
+                            <span className="text-xs font-medium text-foreground">
+                              {c.avgRepeatIntervalDays != null
+                                ? `${Math.round(c.avgRepeatIntervalDays)} gun`
+                                : "-"}
                             </span>
+                          </td>
+                          <td className="p-3 text-center">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 text-[#1D70F1]"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedCustomer(c);
+                                setDetailPanelOpen(true);
+                              }}
+                            >
+                              Detay
+                            </Button>
                           </td>
                         </tr>
                       )
@@ -1404,6 +1458,22 @@ export default function CustomerAnalyticsPage() {
           )}
         </div>
       )}
+
+      {/* Customer Detail Panel */}
+      <CustomerDetailPanel
+        open={detailPanelOpen}
+        onOpenChange={setDetailPanelOpen}
+        customer={selectedCustomer}
+        storeId={storeId || undefined}
+      />
+
+      {/* Product Detail Panel */}
+      <ProductRepeatDetailPanel
+        open={productDetailPanelOpen}
+        onOpenChange={setProductDetailPanelOpen}
+        product={selectedProduct}
+        storeId={storeId || undefined}
+      />
 
       {/* Info Box */}
       <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800 p-4">

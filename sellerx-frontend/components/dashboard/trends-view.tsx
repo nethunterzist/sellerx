@@ -20,6 +20,7 @@ interface TrendsViewProps {
   stats: DashboardStatsResponse | null | undefined;
   isLoading?: boolean;
   trendyolProductMap?: Map<string, TrendyolProduct>;
+  selectedProducts?: string[];
 }
 
 // Sellerboard-style metric tabs
@@ -60,7 +61,7 @@ export interface ProductPeriodMetrics {
   margin: number;
 }
 
-export function TrendsView({ stats, isLoading, trendyolProductMap }: TrendsViewProps) {
+export function TrendsView({ stats, isLoading, trendyolProductMap, selectedProducts }: TrendsViewProps) {
   const [selectedMetric, setSelectedMetric] = useState<TrendMetricType>("revenue");
 
   // Tüm dönemlerdeki ürünleri birleştir
@@ -104,13 +105,14 @@ export function TrendsView({ stats, isLoading, trendyolProductMap }: TrendsViewP
         const revenue = p.revenue || 0;
         const grossProfit = p.grossProfit || 0;
         const commission = p.estimatedCommission || 0;
-        const netProfit = grossProfit - commission;
-        const margin = revenue > 0 ? (grossProfit / revenue) * 100 : 0;
+        // Use backend-calculated values, fallback to estimation if not available
+        const netProfit = p.netProfit ?? (grossProfit - commission);
+        const margin = p.profitMargin ?? (revenue > 0 ? (grossProfit / revenue) * 100 : 0);
 
         product.periods[period] = {
           revenue,
           units: p.totalSoldQuantity || 0,
-          orders: p.orderCount || 1, // Default 1 if not available
+          orders: p.orderCount ?? 0, // Default 0 if null/undefined
           refunds: p.returnQuantity || 0,
           commission,
           profit: grossProfit,
@@ -120,13 +122,20 @@ export function TrendsView({ stats, isLoading, trendyolProductMap }: TrendsViewP
       });
     });
 
-    // Sort by total revenue (descending)
-    return Array.from(productMap.values()).sort((a, b) => {
-      const aTotal = Object.values(a.periods).reduce((sum, p) => sum + (p?.revenue || 0), 0);
-      const bTotal = Object.values(b.periods).reduce((sum, p) => sum + (p?.revenue || 0), 0);
-      return bTotal - aTotal;
-    });
-  }, [stats, trendyolProductMap]);
+    // Filter by selected products, then sort by total revenue (descending)
+    return Array.from(productMap.values())
+      .filter((product) => {
+        // If no products selected, show all
+        if (!selectedProducts || selectedProducts.length === 0) return true;
+        // Filter by selected product barcodes
+        return selectedProducts.includes(product.barcode);
+      })
+      .sort((a, b) => {
+        const aTotal = Object.values(a.periods).reduce((sum, p) => sum + (p?.revenue || 0), 0);
+        const bTotal = Object.values(b.periods).reduce((sum, p) => sum + (p?.revenue || 0), 0);
+        return bTotal - aTotal;
+      });
+  }, [stats, trendyolProductMap, selectedProducts]);
 
   return (
     <div className="bg-card rounded-lg border border-border overflow-hidden">

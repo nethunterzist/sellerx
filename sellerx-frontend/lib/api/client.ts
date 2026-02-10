@@ -402,16 +402,40 @@ export const productApiExtended = {
       size?: number;
       sortBy?: string;
       sortDirection?: "asc" | "desc";
+      filters?: {
+        search?: string;
+        minStock?: number;
+        maxStock?: number;
+        minPrice?: number;
+        maxPrice?: number;
+        minCommission?: number;
+        maxCommission?: number;
+        minCost?: number;
+        maxCost?: number;
+      };
     },
   ) => {
-    const {
-      page = 0,
-      size = 50,
-      sortBy = "onSale",
-      sortDirection = "desc",
-    } = options || {};
-    const query = `?page=${page}&size=${size}&sortBy=${sortBy}&sortDirection=${sortDirection}`;
-    return apiRequest<ProductListResponse>(`/products/store/${storeId}${query}`);
+    const params = new URLSearchParams();
+    params.set("page", String(options?.page ?? 0));
+    params.set("size", String(options?.size ?? 50));
+    params.set("sortBy", options?.sortBy ?? "onSale");
+    params.set("sortDirection", options?.sortDirection ?? "desc");
+
+    // Add filter parameters if provided
+    const filters = options?.filters;
+    if (filters) {
+      if (filters.search) params.set("search", filters.search);
+      if (filters.minStock !== undefined) params.set("minStock", String(filters.minStock));
+      if (filters.maxStock !== undefined) params.set("maxStock", String(filters.maxStock));
+      if (filters.minPrice !== undefined) params.set("minPrice", String(filters.minPrice));
+      if (filters.maxPrice !== undefined) params.set("maxPrice", String(filters.maxPrice));
+      if (filters.minCommission !== undefined) params.set("minCommission", String(filters.minCommission));
+      if (filters.maxCommission !== undefined) params.set("maxCommission", String(filters.maxCommission));
+      if (filters.minCost !== undefined) params.set("minCost", String(filters.minCost));
+      if (filters.maxCost !== undefined) params.set("maxCost", String(filters.maxCost));
+    }
+
+    return apiRequest<ProductListResponse>(`/products/store/${storeId}?${params.toString()}`);
   },
   updateCostAndStock: (
     productId: string,
@@ -434,6 +458,19 @@ export const productApiExtended = {
       method: "POST",
       body: JSON.stringify({ items }),
     }),
+  updateStockInfoByDate: (
+    productId: string,
+    stockDate: string,
+    data: { quantity: number; unitCost: number; costVatRate: number },
+  ) =>
+    apiRequest<TrendyolProduct>(`/products/${productId}/stock-info/${stockDate}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+  deleteStockInfoByDate: (productId: string, stockDate: string) =>
+    apiRequest<TrendyolProduct>(`/products/${productId}/stock-info/${stockDate}`, {
+      method: "DELETE",
+    }),
 };
 
 // Orders API
@@ -450,7 +487,7 @@ export const ordersApi = {
     size = 20,
   ) =>
     apiRequest<PagedResponse<TrendyolOrder>>(
-      `/orders/stores/${storeId}/by-date-range?startDate=${startDate}&endDate=${endDate}&page=${page}&size=${size}`,
+      `/orders/stores/${storeId}/by-date-range?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}&page=${page}&size=${size}`,
     ),
   sync: (storeId: string) =>
     apiRequest<SyncOrdersResponse>(`/orders/stores/${storeId}/sync`, {
@@ -819,19 +856,33 @@ import type {
 } from "@/types/purchasing";
 
 export const purchasingApi = {
-  // List purchase orders (with optional search, supplierId filters)
-  getOrders: (storeId: string, status?: PurchaseOrderStatus, search?: string, supplierId?: number) => {
+  // List purchase orders (with optional filters including date range)
+  getOrders: (
+    storeId: string,
+    status?: PurchaseOrderStatus,
+    search?: string,
+    supplierId?: number,
+    startDate?: string,
+    endDate?: string
+  ) => {
     const params = new URLSearchParams();
     if (status) params.set("status", status);
     if (search) params.set("search", search);
     if (supplierId) params.set("supplierId", supplierId.toString());
+    if (startDate) params.set("startDate", startDate);
+    if (endDate) params.set("endDate", endDate);
     const query = params.toString();
     return apiRequest<PurchaseOrderSummary[]>(`/purchasing/orders/${storeId}${query ? `?${query}` : ""}`);
   },
 
-  // Get purchase order stats
-  getStats: (storeId: string) =>
-    apiRequest<PurchaseOrderStats>(`/purchasing/orders/${storeId}/stats`),
+  // Get purchase order stats (with optional date filter)
+  getStats: (storeId: string, startDate?: string, endDate?: string) => {
+    const params = new URLSearchParams();
+    if (startDate) params.set("startDate", startDate);
+    if (endDate) params.set("endDate", endDate);
+    const query = params.toString();
+    return apiRequest<PurchaseOrderStats>(`/purchasing/orders/${storeId}/stats${query ? `?${query}` : ""}`);
+  },
 
   // Get single purchase order
   getOrder: (storeId: string, poId: number) =>

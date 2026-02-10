@@ -2,6 +2,8 @@ package com.ecommerce.sellerx.orders;
 
 import com.ecommerce.sellerx.orders.dto.*;
 import com.ecommerce.sellerx.orders.dto.CustomerAnalyticsProjections.*;
+import com.ecommerce.sellerx.products.TrendyolProduct;
+import com.ecommerce.sellerx.products.TrendyolProductRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -55,18 +57,25 @@ public class CustomerAnalyticsService {
 
     private final TrendyolOrderRepository orderRepository;
     private final TrendyolOrderService orderService;
+    private final TrendyolProductRepository productRepository;
 
     /**
      * Get full analytics summary: summary stats + segmentation + city analysis + monthly trend.
      */
     public CustomerAnalyticsResponse getAnalytics(UUID storeId) {
-        SummaryProjection summaryRaw = orderRepository.getCustomerAnalyticsSummary(storeId);
+        SummaryWithOrderCountProjection summaryRaw = orderRepository.getCustomerAnalyticsSummaryWithOrderCount(storeId);
         Double avgRepeatInterval = orderRepository.getAvgRepeatIntervalDays(storeId);
 
         int totalCustomers = summaryRaw.getTotalCustomers() != null ? summaryRaw.getTotalCustomers() : 0;
         int repeatCustomers = summaryRaw.getRepeatCustomers() != null ? summaryRaw.getRepeatCustomers() : 0;
         BigDecimal totalRevenue = summaryRaw.getTotalRevenue() != null ? summaryRaw.getTotalRevenue() : BigDecimal.ZERO;
         BigDecimal repeatRevenue = summaryRaw.getRepeatRevenue() != null ? summaryRaw.getRepeatRevenue() : BigDecimal.ZERO;
+        long totalOrders = summaryRaw.getTotalOrders() != null ? summaryRaw.getTotalOrders() : 0;
+
+        // Calculate average order value
+        BigDecimal avgOrderValue = totalOrders > 0
+                ? totalRevenue.divide(BigDecimal.valueOf(totalOrders), 2, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
 
         CustomerAnalyticsSummary summary = CustomerAnalyticsSummary.builder()
                 .totalCustomers(totalCustomers)
@@ -74,6 +83,7 @@ public class CustomerAnalyticsService {
                 .repeatRate(totalCustomers > 0 ? (double) repeatCustomers / totalCustomers * 100 : 0)
                 .avgOrdersPerCustomer(summaryRaw.getAvgOrdersPerCustomer() != null ? summaryRaw.getAvgOrdersPerCustomer() : 0)
                 .avgItemsPerCustomer(summaryRaw.getAvgItemsPerCustomer() != null ? summaryRaw.getAvgItemsPerCustomer() : 0)
+                .avgItemsPerOrder(summaryRaw.getAvgItemsPerOrder() != null ? summaryRaw.getAvgItemsPerOrder() : 0)
                 .avgRepeatIntervalDays(avgRepeatInterval != null ? avgRepeatInterval : 0)
                 .totalRevenue(totalRevenue)
                 .repeatCustomerRevenue(repeatRevenue)
@@ -81,6 +91,7 @@ public class CustomerAnalyticsService {
                         ? repeatRevenue.multiply(BigDecimal.valueOf(100))
                         .divide(totalRevenue, 2, RoundingMode.HALF_UP).doubleValue()
                         : 0)
+                .avgOrderValue(avgOrderValue)
                 .build();
 
         // Segmentation
@@ -142,6 +153,16 @@ public class CustomerAnalyticsService {
             totalCount = orderRepository.countDistinctCustomers(storeId);
         }
 
+        // Fetch per-customer repeat interval data
+        List<CustomerRepeatIntervalProjection> repeatIntervals = orderRepository.getPerCustomerRepeatIntervalDays(storeId);
+        Map<Long, Double> repeatIntervalMap = repeatIntervals.stream()
+                .filter(r -> r.getCustomerId() != null && r.getAvgDays() != null)
+                .collect(Collectors.toMap(
+                        CustomerRepeatIntervalProjection::getCustomerId,
+                        CustomerRepeatIntervalProjection::getAvgDays,
+                        (a, b) -> a  // In case of duplicates, keep first
+                ));
+
         // Calculate RFM scores for this page
         // RFM Frequency uses orderCount (number of orders placed) to measure return behavior
         List<CustomerListItem> items = customers.stream().map(c -> {
@@ -155,6 +176,10 @@ public class CustomerAnalyticsService {
             int frequencyScore = calculateFrequencyScore(orderCount);
             int monetaryScore = calculateMonetaryScore(totalSpend);
             String rfmSegment = determineRfmSegment(recencyScore, frequencyScore, monetaryScore);
+
+            // Get per-customer repeat interval (null if only 1 order)
+            Long customerId = c.getCustomerId();
+            Double avgRepeatIntervalDays = customerId != null ? repeatIntervalMap.get(customerId) : null;
 
             return CustomerListItem.builder()
                     .customerKey(c.getCustomerId() != null ? String.valueOf(c.getCustomerId()) : "")
@@ -172,6 +197,7 @@ public class CustomerAnalyticsService {
                     .recencyScore(recencyScore)
                     .frequencyScore(frequencyScore)
                     .monetaryScore(monetaryScore)
+                    .avgRepeatIntervalDays(avgRepeatIntervalDays)
                     .build();
         }).collect(Collectors.toList());
 
@@ -403,6 +429,206 @@ public class CustomerAnalyticsService {
                 .top10PercentRevenueShare(raw.getTop10PercentRevenueShare() != null
                         ? Math.round(raw.getTop10PercentRevenueShare().doubleValue() * 10.0) / 10.0
                         : 0)
+                .build();
+    }
+
+    /**
+     * Get all orders for a specific customer.
+     */
+    public List<CustomerOrderDto> getCustomerOrders(UUID storeId, Long customerId) {
+        List<TrendyolOrder> orders = orderRepository.findByStoreIdAndCustomerIdOrderByOrderDateDesc(storeId, customerId);
+
+        // Collect all unique barcodes from order items
+        List<String> allBarcodes = orders.stream()
+                .filter(o -> o.getOrderItems() != null)
+                .flatMap(o -> o.getOrderItems().stream())
+                .map(OrderItem::getBarcode)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+
+        // Batch fetch products by barcode for image and URL
+        Map<String, TrendyolProduct> productMap = new HashMap<>();
+        if (!allBarcodes.isEmpty()) {
+            productRepository.findByStoreIdAndBarcodeIn(storeId, allBarcodes)
+                    .forEach(p -> productMap.put(p.getBarcode(), p));
+        }
+
+        return orders.stream().map(order -> mapOrderToDto(order, productMap)).collect(Collectors.toList());
+    }
+
+    /**
+     * Get paginated orders for a specific customer.
+     * Used for lazy loading in customer detail panel.
+     */
+    public CustomerOrdersPageDto getCustomerOrdersPaginated(UUID storeId, Long customerId, int page, int size) {
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
+        List<TrendyolOrder> orders = orderRepository.findByStoreIdAndCustomerIdPaginated(storeId, customerId, pageable);
+        long totalCount = orderRepository.countByStoreIdAndCustomerId(storeId, customerId);
+
+        // Collect all unique barcodes from order items
+        List<String> allBarcodes = orders.stream()
+                .filter(o -> o.getOrderItems() != null)
+                .flatMap(o -> o.getOrderItems().stream())
+                .map(OrderItem::getBarcode)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+
+        // Batch fetch products by barcode for image and URL
+        Map<String, TrendyolProduct> productMap = new HashMap<>();
+        if (!allBarcodes.isEmpty()) {
+            productRepository.findByStoreIdAndBarcodeIn(storeId, allBarcodes)
+                    .forEach(p -> productMap.put(p.getBarcode(), p));
+        }
+
+        List<CustomerOrderDto> content = orders.stream().map(order -> mapOrderToDto(order, productMap)).collect(Collectors.toList());
+
+        return CustomerOrdersPageDto.builder()
+                .content(content)
+                .page(page)
+                .size(size)
+                .totalElements(totalCount)
+                .totalPages((int) Math.ceil((double) totalCount / size))
+                .hasNext((page + 1) * size < totalCount)
+                .build();
+    }
+
+    /**
+     * Map TrendyolOrder entity to CustomerOrderDto.
+     */
+    private CustomerOrderDto mapOrderToDto(TrendyolOrder order, Map<String, TrendyolProduct> productMap) {
+        // Parse order items from JSONB
+        List<CustomerOrderDto.CustomerOrderItemDto> items = order.getOrderItems() != null
+                ? order.getOrderItems().stream().map(item -> {
+                    // Calculate discount: unitPriceDiscount + unitPriceTyDiscount
+                    BigDecimal discount = BigDecimal.ZERO;
+                    if (item.getUnitPriceDiscount() != null) {
+                        discount = discount.add(item.getUnitPriceDiscount());
+                    }
+                    if (item.getUnitPriceTyDiscount() != null) {
+                        discount = discount.add(item.getUnitPriceTyDiscount());
+                    }
+
+                    // Look up product for image and URL
+                    TrendyolProduct product = productMap.get(item.getBarcode());
+
+                    return CustomerOrderDto.CustomerOrderItemDto.builder()
+                            .barcode(item.getBarcode())
+                            .productName(item.getProductName())
+                            .quantity(item.getQuantity())
+                            .unitPrice(item.getUnitPriceOrder())
+                            .discount(discount)
+                            .price(item.getPrice())
+                            .image(product != null ? product.getImage() : null)
+                            .productUrl(product != null ? product.getProductUrl() : null)
+                            .build();
+                }).collect(Collectors.toList())
+                : Collections.emptyList();
+
+        // Calculate total price and discount from items
+        BigDecimal totalPrice = items.stream()
+                .map(item -> item.getPrice() != null ? item.getPrice() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalDiscount = items.stream()
+                .map(item -> item.getDiscount() != null ? item.getDiscount() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        return CustomerOrderDto.builder()
+                .orderId(order.getId().toString())
+                .tyOrderNumber(order.getTyOrderNumber())
+                .orderDate(order.getOrderDate())
+                .status(order.getStatus())
+                .totalPrice(totalPrice)
+                .totalDiscount(totalDiscount)
+                .shipmentCity(order.getShipmentCity())
+                .items(items)
+                .build();
+    }
+
+    /**
+     * Get detailed product analytics for a specific product by barcode.
+     * Returns product info + list of buyers who purchased this product.
+     */
+    public ProductDetailDto getProductDetail(UUID storeId, String barcode) {
+        // Get product info from products table
+        Optional<TrendyolProduct> productOpt = productRepository.findByStoreIdAndBarcode(storeId, barcode);
+        String productName = productOpt.map(TrendyolProduct::getTitle).orElse("");
+        String image = productOpt.map(TrendyolProduct::getImage).orElse(null);
+        String productUrl = productOpt.map(TrendyolProduct::getProductUrl).orElse(null);
+
+        // Get repeat stats for this product
+        Object[] statsRaw = orderRepository.getProductRepeatStatsByBarcode(storeId, barcode);
+        int totalBuyers = 0;
+        int repeatBuyers = 0;
+        int totalQuantitySold = 0;
+
+        if (statsRaw != null && statsRaw.length > 0 && statsRaw[0] != null) {
+            Object[] stats = (Object[]) statsRaw[0];
+            if (stats.length >= 3) {
+                totalBuyers = stats[0] != null ? ((Number) stats[0]).intValue() : 0;
+                repeatBuyers = stats[1] != null ? ((Number) stats[1]).intValue() : 0;
+                totalQuantitySold = stats[2] != null ? ((Number) stats[2]).intValue() : 0;
+            }
+        }
+
+        // Get average repeat interval
+        Double avgDays = orderRepository.getProductAvgRepeatIntervalDaysByBarcode(storeId, barcode);
+        double avgDaysBetweenRepurchase = avgDays != null ? avgDays : 0.0;
+
+        // Calculate repeat rate
+        double repeatRate = totalBuyers > 0 ? (double) repeatBuyers / totalBuyers * 100 : 0;
+
+        // Get list of buyers
+        List<ProductBuyerProjection> buyersRaw = orderRepository.findProductBuyersByBarcode(storeId, barcode);
+        List<ProductBuyerDto> buyers = buyersRaw.stream().map(b -> ProductBuyerDto.builder()
+                .customerId(b.getCustomerId())
+                .customerName(b.getCustomerName() != null ? b.getCustomerName().trim() : "")
+                .city(b.getCity())
+                .purchaseCount(b.getPurchaseCount() != null ? b.getPurchaseCount() : 0)
+                .totalSpend(b.getTotalSpend() != null ? b.getTotalSpend() : BigDecimal.ZERO)
+                .build()
+        ).collect(Collectors.toList());
+
+        return ProductDetailDto.builder()
+                .barcode(barcode)
+                .productName(productName)
+                .totalBuyers(totalBuyers)
+                .repeatBuyers(repeatBuyers)
+                .repeatRate(Math.round(repeatRate * 10.0) / 10.0)
+                .avgDaysBetweenRepurchase(Math.round(avgDaysBetweenRepurchase * 10.0) / 10.0)
+                .totalQuantitySold(totalQuantitySold)
+                .image(image)
+                .productUrl(productUrl)
+                .buyers(buyers)
+                .build();
+    }
+
+    /**
+     * Get paginated list of buyers for a specific product.
+     * Used for lazy loading in product detail panel.
+     */
+    public ProductBuyersPageDto getProductBuyers(UUID storeId, String barcode, int page, int size) {
+        int offset = page * size;
+        List<ProductBuyerProjection> buyersRaw = orderRepository.findProductBuyersByBarcodePaginated(storeId, barcode, size, offset);
+        long totalCount = orderRepository.countProductBuyersByBarcode(storeId, barcode);
+
+        List<ProductBuyerDto> buyers = buyersRaw.stream().map(b -> ProductBuyerDto.builder()
+                .customerId(b.getCustomerId())
+                .customerName(b.getCustomerName() != null ? b.getCustomerName().trim() : "")
+                .city(b.getCity())
+                .purchaseCount(b.getPurchaseCount() != null ? b.getPurchaseCount() : 0)
+                .totalSpend(b.getTotalSpend() != null ? b.getTotalSpend() : BigDecimal.ZERO)
+                .build()
+        ).collect(Collectors.toList());
+
+        return ProductBuyersPageDto.builder()
+                .content(buyers)
+                .page(page)
+                .size(size)
+                .totalElements(totalCount)
+                .totalPages((int) Math.ceil((double) totalCount / size))
+                .hasNext((page + 1) * size < totalCount)
                 .build();
     }
 

@@ -21,11 +21,15 @@ export async function GET(
     const status = searchParams.get("status");
     const search = searchParams.get("search");
     const supplierId = searchParams.get("supplierId");
+    const startDate = searchParams.get("startDate");
+    const endDate = searchParams.get("endDate");
 
     const queryParams = new URLSearchParams();
     if (status) queryParams.set("status", status);
     if (search) queryParams.set("search", search);
     if (supplierId) queryParams.set("supplierId", supplierId);
+    if (startDate) queryParams.set("startDate", startDate);
+    if (endDate) queryParams.set("endDate", endDate);
     const query = queryParams.toString();
 
     const url = `${API_BASE_URL}/api/stores/${storeId}/purchase-orders${query ? `?${query}` : ""}`;

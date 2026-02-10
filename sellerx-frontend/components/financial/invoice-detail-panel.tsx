@@ -20,6 +20,8 @@ import {
   ListIcon,
   Copy,
   Printer,
+  X,
+  Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -38,10 +40,11 @@ import { useCurrency } from "@/lib/contexts/currency-context";
 import type { InvoiceDetail, CargoInvoiceItem, CommissionInvoiceItem, InvoiceItem, AggregatedInvoiceProduct } from "@/types/invoice";
 import { getCategoryDisplayName, isKargoType, isKomisyonType } from "@/types/invoice";
 import {
-  useCargoInvoiceItems,
-  useInvoiceItems,
-  useCommissionInvoiceItems,
+  useCargoInvoiceItemsInfinite,
+  useInvoiceItemsInfinite,
+  useCommissionInvoiceItemsInfinite,
 } from "@/hooks/queries/use-invoices";
+import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 
 // Category icons
 const categoryIcons: Record<string, React.ReactNode> = {
@@ -368,31 +371,93 @@ export function InvoiceDetailPanel({
   const isKargo = invoice ? isKargoType(invoice.invoiceTypeCode) : false;
   const isKomisyon = invoice ? isKomisyonType(invoice.invoiceTypeCode) : false;
 
-  const { data: cargoItems, isLoading: cargoLoading } = useCargoInvoiceItems(
+  // Infinite query hooks for lazy loading
+  const {
+    data: cargoData,
+    isLoading: cargoLoading,
+    hasNextPage: cargoHasNextPage,
+    isFetchingNextPage: cargoFetchingNext,
+    fetchNextPage: cargoFetchNextPage,
+  } = useCargoInvoiceItemsInfinite(
     storeId,
     invoice?.invoiceNumber,
+    20,
     open && isKargo
   );
 
-  const { data: commissionItems, isLoading: commissionLoading } = useCommissionInvoiceItems(
+  const {
+    data: commissionData,
+    isLoading: commissionLoading,
+    hasNextPage: commissionHasNextPage,
+    isFetchingNextPage: commissionFetchingNext,
+    fetchNextPage: commissionFetchNextPage,
+  } = useCommissionInvoiceItemsInfinite(
     storeId,
     invoice?.invoiceNumber,
+    20,
     open && isKomisyon
   );
 
-  const { data: genericItems, isLoading: genericLoading } = useInvoiceItems(
+  const {
+    data: genericData,
+    isLoading: genericLoading,
+    hasNextPage: genericHasNextPage,
+    isFetchingNextPage: genericFetchingNext,
+    fetchNextPage: genericFetchNextPage,
+  } = useInvoiceItemsInfinite(
     storeId,
     invoice?.invoiceNumber,
+    20,
     open && !isKargo && !isKomisyon
   );
 
+  // Infinite scroll refs
+  const cargoSentinelRef = useInfiniteScroll({
+    hasNextPage: cargoHasNextPage,
+    isFetchingNextPage: cargoFetchingNext,
+    fetchNextPage: cargoFetchNextPage,
+  });
+
+  const commissionSentinelRef = useInfiniteScroll({
+    hasNextPage: commissionHasNextPage,
+    isFetchingNextPage: commissionFetchingNext,
+    fetchNextPage: commissionFetchNextPage,
+  });
+
+  const genericSentinelRef = useInfiniteScroll({
+    hasNextPage: genericHasNextPage,
+    isFetchingNextPage: genericFetchingNext,
+    fetchNextPage: genericFetchNextPage,
+  });
+
+  // Flatten pages into single arrays
+  const cargoItems = useMemo(
+    () => cargoData?.pages.flatMap((page) => page.content) ?? [],
+    [cargoData]
+  );
+
+  const commissionItems = useMemo(
+    () => commissionData?.pages.flatMap((page) => page.content) ?? [],
+    [commissionData]
+  );
+
+  const genericItems = useMemo(
+    () => genericData?.pages.flatMap((page) => page.content) ?? [],
+    [genericData]
+  );
+
+  // Get total counts from first page
+  const cargoTotalCount = cargoData?.pages[0]?.totalElements ?? 0;
+  const commissionTotalCount = commissionData?.pages[0]?.totalElements ?? 0;
+  const genericTotalCount = genericData?.pages[0]?.totalElements ?? 0;
+
   // Aggregate cargo items by barcode (SKU)
   const aggregatedCargoProducts = useMemo<AggregatedInvoiceProduct[]>(() => {
-    if (!cargoItems?.items?.length) return [];
+    if (!cargoItems?.length) return [];
 
     const map = new Map<string, AggregatedInvoiceProduct>();
 
-    cargoItems.items.forEach((item) => {
+    cargoItems.forEach((item) => {
       const key = item.barcode || "unknown";
       const existing = map.get(key);
 
@@ -419,15 +484,15 @@ export function InvoiceDetailPanel({
     return Array.from(map.values()).sort(
       (a, b) => Math.abs(b.totalAmount) - Math.abs(a.totalAmount)
     );
-  }, [cargoItems?.items]);
+  }, [cargoItems]);
 
   // Aggregate commission items by barcode (SKU)
   const aggregatedCommissionProducts = useMemo<AggregatedInvoiceProduct[]>(() => {
-    if (!commissionItems?.items?.length) return [];
+    if (!commissionItems?.length) return [];
 
     const map = new Map<string, AggregatedInvoiceProduct>();
 
-    commissionItems.items.forEach((item) => {
+    commissionItems.forEach((item) => {
       const key = item.barcode || "unknown";
       const existing = map.get(key);
 
@@ -449,10 +514,10 @@ export function InvoiceDetailPanel({
     return Array.from(map.values()).sort(
       (a, b) => Math.abs(b.totalAmount) - Math.abs(a.totalAmount)
     );
-  }, [commissionItems?.items]);
+  }, [commissionItems]);
 
   // Determine if tabs should be shown (only for KARGO and KOMISYON with items)
-  const showTabs = (isKargo && cargoItems?.items?.length) || (isKomisyon && commissionItems?.items?.length);
+  const showTabs = (isKargo && cargoItems.length > 0) || (isKomisyon && commissionItems.length > 0);
   const aggregatedProducts = isKargo ? aggregatedCargoProducts : aggregatedCommissionProducts;
 
   if (!invoice) return null;
@@ -497,6 +562,13 @@ export function InvoiceDetailPanel({
                   title="Yazdir"
                 >
                   <Printer className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => onOpenChange(false)}
+                  className="p-2 rounded-md hover:bg-white/20 transition-colors text-white"
+                  title="Kapat"
+                >
+                  <X className="h-4 w-4" />
                 </button>
               </div>
             </div>
@@ -589,7 +661,7 @@ export function InvoiceDetailPanel({
                     <ListIcon className="h-4 w-4" />
                     Fatura Kalemleri
                     <Badge variant="secondary" className="ml-1 text-xs">
-                      {isKargo ? cargoItems?.itemCount || 0 : commissionItems?.itemCount || 0}
+                      {isKargo ? cargoTotalCount : commissionTotalCount}
                     </Badge>
                   </button>
                   <button
@@ -617,10 +689,19 @@ export function InvoiceDetailPanel({
                     <div className="divide-y divide-border">
                       {cargoLoading ? (
                         <ItemsLoadingSkeleton />
-                      ) : cargoItems?.items?.length ? (
-                        cargoItems.items.map((item, idx) => (
-                          <CargoItemRow key={item.id || idx} item={item} formatCurrency={formatCurrency} />
-                        ))
+                      ) : cargoItems.length > 0 ? (
+                        <>
+                          {cargoItems.map((item, idx) => (
+                            <CargoItemRow key={item.id || idx} item={item} formatCurrency={formatCurrency} />
+                          ))}
+                          {/* Infinite scroll sentinel */}
+                          <div ref={cargoSentinelRef} />
+                          {cargoFetchingNext && (
+                            <div className="flex items-center justify-center py-3">
+                              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                            </div>
+                          )}
+                        </>
                       ) : (
                         <div className="p-4 text-center text-sm text-muted-foreground">
                           Kalem bulunamadı
@@ -658,10 +739,19 @@ export function InvoiceDetailPanel({
                     <div className="divide-y divide-border">
                       {commissionLoading ? (
                         <ItemsLoadingSkeleton />
-                      ) : commissionItems?.items?.length ? (
-                        commissionItems.items.map((item, idx) => (
-                          <CommissionItemRow key={idx} item={item} formatCurrency={formatCurrency} />
-                        ))
+                      ) : commissionItems.length > 0 ? (
+                        <>
+                          {commissionItems.map((item, idx) => (
+                            <CommissionItemRow key={idx} item={item} formatCurrency={formatCurrency} />
+                          ))}
+                          {/* Infinite scroll sentinel */}
+                          <div ref={commissionSentinelRef} />
+                          {commissionFetchingNext && (
+                            <div className="flex items-center justify-center py-3">
+                              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                            </div>
+                          )}
+                        </>
                       ) : (
                         <div className="p-4 text-center text-sm text-muted-foreground">
                           Kalem bulunamadı
@@ -693,18 +783,27 @@ export function InvoiceDetailPanel({
               )}
 
               {/* Generic Items (for non-kargo, non-komisyon types) */}
-              {!isKargo && !isKomisyon && genericItems?.items?.length > 0 && (
+              {!isKargo && !isKomisyon && (genericLoading || genericItems.length > 0) && (
                 <ExpandableItemsSection
                   title="Fatura Kalemleri"
-                  count={genericItems?.itemCount || 0}
+                  count={genericTotalCount}
                   defaultOpen
                 >
                   {genericLoading ? (
                     <ItemsLoadingSkeleton />
                   ) : (
-                    genericItems.items.map((item, idx) => (
-                      <InvoiceItemRow key={item.id || idx} item={item} formatCurrency={formatCurrency} />
-                    ))
+                    <>
+                      {genericItems.map((item, idx) => (
+                        <InvoiceItemRow key={item.id || idx} item={item} formatCurrency={formatCurrency} />
+                      ))}
+                      {/* Infinite scroll sentinel */}
+                      <div ref={genericSentinelRef} />
+                      {genericFetchingNext && (
+                        <div className="flex items-center justify-center py-3">
+                          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                        </div>
+                      )}
+                    </>
                   )}
                 </ExpandableItemsSection>
               )}

@@ -38,6 +38,10 @@ public class InvoiceSummaryDto {
     // Sales VAT (Satış KDV'si) for KDV page
     private SalesVatDto salesVat;
 
+    // Stoppage (Stopaj/Tevkifat) summary
+    private BigDecimal totalStoppageAmount;
+    private int stoppageCount;
+
     /**
      * Nested DTO for category summary
      */

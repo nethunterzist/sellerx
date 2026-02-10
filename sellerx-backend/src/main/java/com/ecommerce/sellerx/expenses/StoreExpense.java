@@ -8,6 +8,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -65,6 +66,21 @@ public class StoreExpense {
 
     @Column(name = "net_amount", precision = 10, scale = 2)
     private BigDecimal netAmount; // amount - vatAmount
+
+    // Recurring expense fields
+    @Column(name = "end_date")
+    private LocalDateTime endDate;
+
+    @Column(name = "is_recurring_template")
+    @Builder.Default
+    private Boolean isRecurringTemplate = false;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_expense_id")
+    private StoreExpense parentExpense;
+
+    @Column(name = "last_generated_date")
+    private LocalDate lastGeneratedDate;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;

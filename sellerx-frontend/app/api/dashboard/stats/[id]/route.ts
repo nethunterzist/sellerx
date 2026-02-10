@@ -16,19 +16,31 @@ export async function GET(
 
     const headers = await getBackendHeaders(request);
 
+    // DEBUG: Log headers
+    console.log(`[DEBUG] /dashboard/stats/${id} - Authorization: ${headers.Authorization ? 'EXISTS' : 'MISSING'}`);
+
     if (!headers.Authorization) {
+      console.log(`[DEBUG] /dashboard/stats/${id} - Returning 401 because no Authorization header`);
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const response = await fetch(`${API_BASE_URL}/dashboard/stats/${id}`, {
+    const backendUrl = `${API_BASE_URL}/dashboard/stats/${id}`;
+    console.log(`[DEBUG] Calling backend: ${backendUrl}`);
+    console.log(`[DEBUG] Headers being sent:`, JSON.stringify(headers, null, 2));
+
+    const response = await fetch(backendUrl, {
       headers,
     });
 
+    console.log(`[DEBUG] Backend response status: ${response.status}`);
+
     if (!response.ok) {
+      const errorText = await response.text();
+      console.log(`[DEBUG] Backend error body: ${errorText}`);
+
       if (response.status === 401) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }
-      const errorText = await response.text();
       logger.error(`Backend error for /dashboard/stats/${id}`, { endpoint: `/dashboard/stats/${id}`, status: response.status, storeId: id, backendError: errorText });
       return NextResponse.json(
         { error: `Backend error: ${response.status}` },

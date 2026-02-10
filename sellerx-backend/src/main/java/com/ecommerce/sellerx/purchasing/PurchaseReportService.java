@@ -215,12 +215,24 @@ public class PurchaseReportService {
     }
 
     /**
-     * Get stock valuation report with aging analysis
+     * Get stock valuation report with aging analysis and estimated depletion dates.
+     * Uses Trendyol actual stock (trendyolQuantity) as the source of truth for current stock levels.
+     * Calculates estimated depletion date based on average daily sales velocity (last 90 days).
      */
     @Transactional(readOnly = true)
     public StockValuationResponse getStockValuation(UUID storeId) {
         List<TrendyolProduct> products = productRepository.findByStoreId(storeId);
         LocalDate today = LocalDate.now();
+
+        // Get sales velocity for all products (last 90 days)
+        LocalDateTime salesStartDate = LocalDateTime.now().minusDays(90);
+        Map<String, Long> salesByBarcode = orderRepository.getSalesVelocityByBarcode(storeId, salesStartDate)
+                .stream()
+                .collect(Collectors.toMap(
+                        TrendyolOrderRepository.SalesVelocityProjection::getBarcode,
+                        TrendyolOrderRepository.SalesVelocityProjection::getTotalQuantitySold,
+                        (a, b) -> a
+                ));
 
         List<StockValuationResponse.ProductValuation> valuations = new ArrayList<>();
         BigDecimal totalValue = BigDecimal.ZERO;
@@ -237,71 +249,113 @@ public class PurchaseReportService {
         int count90plus = 0;
 
         for (TrendyolProduct product : products) {
-            List<CostAndStockInfo> costHistory = product.getCostAndStockInfo();
-            if (costHistory == null || costHistory.isEmpty()) continue;
+            // Use Trendyol actual stock as the source of truth
+            Integer trendyolStock = product.getTrendyolQuantity();
+            if (trendyolStock == null || trendyolStock <= 0) continue;
 
-            int productQuantity = 0;
+            List<CostAndStockInfo> costHistory = product.getCostAndStockInfo();
+
+            // Calculate FIFO value and average cost from purchase history
             BigDecimal productValue = BigDecimal.ZERO;
             BigDecimal weightedCost = BigDecimal.ZERO;
             LocalDate oldestDate = null;
+            int historyQuantity = 0;
 
-            for (CostAndStockInfo stock : costHistory) {
-                int remaining = stock.getRemainingQuantity();
-                if (remaining <= 0) continue;
+            if (costHistory != null && !costHistory.isEmpty()) {
+                for (CostAndStockInfo stock : costHistory) {
+                    int remaining = stock.getRemainingQuantity();
+                    if (remaining <= 0) continue;
 
-                BigDecimal unitCost = stock.getUnitCost() != null ? BigDecimal.valueOf(stock.getUnitCost()) : BigDecimal.ZERO;
-                BigDecimal stockValue = unitCost.multiply(BigDecimal.valueOf(remaining));
+                    BigDecimal unitCost = stock.getUnitCost() != null ? BigDecimal.valueOf(stock.getUnitCost()) : BigDecimal.ZERO;
+                    BigDecimal stockValue = unitCost.multiply(BigDecimal.valueOf(remaining));
 
-                productQuantity += remaining;
-                productValue = productValue.add(stockValue);
-                weightedCost = weightedCost.add(stockValue);
+                    historyQuantity += remaining;
+                    productValue = productValue.add(stockValue);
+                    weightedCost = weightedCost.add(stockValue);
 
-                if (oldestDate == null || (stock.getStockDate() != null && stock.getStockDate().isBefore(oldestDate))) {
-                    oldestDate = stock.getStockDate();
-                }
+                    if (oldestDate == null || (stock.getStockDate() != null && stock.getStockDate().isBefore(oldestDate))) {
+                        oldestDate = stock.getStockDate();
+                    }
 
-                // Aging calculation
-                if (stock.getStockDate() != null) {
-                    long daysOld = ChronoUnit.DAYS.between(stock.getStockDate(), today);
-                    if (daysOld <= 30) {
-                        value0to30 = value0to30.add(stockValue);
-                        count0to30 += remaining;
-                    } else if (daysOld <= 60) {
-                        value30to60 = value30to60.add(stockValue);
-                        count30to60 += remaining;
-                    } else if (daysOld <= 90) {
-                        value60to90 = value60to90.add(stockValue);
-                        count60to90 += remaining;
-                    } else {
-                        value90plus = value90plus.add(stockValue);
-                        count90plus += remaining;
+                    // Aging calculation based on purchase history
+                    if (stock.getStockDate() != null) {
+                        long daysOld = ChronoUnit.DAYS.between(stock.getStockDate(), today);
+                        if (daysOld <= 30) {
+                            value0to30 = value0to30.add(stockValue);
+                            count0to30 += remaining;
+                        } else if (daysOld <= 60) {
+                            value30to60 = value30to60.add(stockValue);
+                            count30to60 += remaining;
+                        } else if (daysOld <= 90) {
+                            value60to90 = value60to90.add(stockValue);
+                            count60to90 += remaining;
+                        } else {
+                            value90plus = value90plus.add(stockValue);
+                            count90plus += remaining;
+                        }
                     }
                 }
             }
 
-            if (productQuantity > 0) {
-                int daysInStock = oldestDate != null ? (int) ChronoUnit.DAYS.between(oldestDate, today) : 0;
-                String agingCategory = daysInStock <= 30 ? "0-30" :
-                                       daysInStock <= 60 ? "30-60" :
-                                       daysInStock <= 90 ? "60-90" : "90+";
+            // Calculate average cost per unit (from purchase history or zero if no history)
+            BigDecimal averageCost = historyQuantity > 0
+                    ? weightedCost.divide(BigDecimal.valueOf(historyQuantity), 2, RoundingMode.HALF_UP)
+                    : BigDecimal.ZERO;
 
-                valuations.add(StockValuationResponse.ProductValuation.builder()
-                        .productId(product.getId())
-                        .productName(product.getTitle())
-                        .barcode(product.getBarcode())
-                        .productImage(product.getImage())
-                        .quantity(productQuantity)
-                        .fifoValue(productValue)
-                        .averageCost(weightedCost.divide(BigDecimal.valueOf(productQuantity), 2, RoundingMode.HALF_UP))
-                        .oldestStockDate(oldestDate)
-                        .daysInStock(daysInStock)
-                        .agingCategory(agingCategory)
-                        .stockDepleted(Boolean.TRUE.equals(product.getStockDepleted()))
-                        .build());
-
-                totalValue = totalValue.add(productValue);
-                totalQuantity += productQuantity;
+            // If we have no purchase history but have Trendyol stock, estimate value using average cost
+            if (historyQuantity == 0 && trendyolStock > 0) {
+                // No purchase history, can't calculate FIFO value accurately
+                productValue = BigDecimal.ZERO;
             }
+
+            int daysInStock = oldestDate != null ? (int) ChronoUnit.DAYS.between(oldestDate, today) : 0;
+            String agingCategory = daysInStock <= 30 ? "0-30" :
+                                   daysInStock <= 60 ? "30-60" :
+                                   daysInStock <= 90 ? "60-90" : "90+";
+
+            // Calculate estimated depletion date based on sales velocity
+            Long totalSold = salesByBarcode.get(product.getBarcode());
+            Double avgDailySales = null;
+            LocalDate estimatedDepletionDate = null;
+            Integer daysUntilDepletion = null;
+
+            if (totalSold != null && totalSold > 0) {
+                // Average daily sales = total sold in 90 days / 90
+                avgDailySales = totalSold / 90.0;
+
+                if (avgDailySales > 0) {
+                    // Days until depletion = current stock / daily sales
+                    double daysDouble = trendyolStock / avgDailySales;
+                    daysUntilDepletion = (int) Math.ceil(daysDouble);
+
+                    // Cap at 365 days to avoid unreasonable projections
+                    if (daysUntilDepletion > 365) {
+                        daysUntilDepletion = 365;
+                    }
+
+                    estimatedDepletionDate = today.plusDays(daysUntilDepletion);
+                }
+            }
+
+            valuations.add(StockValuationResponse.ProductValuation.builder()
+                    .productId(product.getId())
+                    .productName(product.getTitle())
+                    .barcode(product.getBarcode())
+                    .productImage(product.getImage())
+                    .quantity(trendyolStock)  // Use Trendyol actual stock
+                    .fifoValue(productValue)
+                    .averageCost(averageCost)
+                    .oldestStockDate(oldestDate)
+                    .daysInStock(daysInStock)
+                    .agingCategory(agingCategory)
+                    .stockDepleted(Boolean.TRUE.equals(product.getStockDepleted()))
+                    .averageDailySales(avgDailySales)
+                    .estimatedDepletionDate(estimatedDepletionDate)
+                    .daysUntilDepletion(daysUntilDepletion)
+                    .build());
+
+            totalValue = totalValue.add(productValue);
+            totalQuantity += trendyolStock;
         }
 
         // Sort by value descending

@@ -5,14 +5,20 @@ import com.ecommerce.sellerx.financial.dto.AggregatedProductDto;
 import com.ecommerce.sellerx.financial.dto.PurchaseVatDto;
 import com.ecommerce.sellerx.financial.dto.SalesVatDto;
 import com.ecommerce.sellerx.financial.dto.CargoInvoiceItemDto;
+import com.ecommerce.sellerx.financial.dto.CargoInvoiceItemsPageDto;
 import com.ecommerce.sellerx.financial.dto.CommissionInvoiceItemDto;
+import com.ecommerce.sellerx.financial.dto.CommissionInvoiceItemsPageDto;
 import com.ecommerce.sellerx.financial.dto.InvoiceDetailDto;
 import com.ecommerce.sellerx.financial.dto.InvoiceItemDto;
+import com.ecommerce.sellerx.financial.dto.InvoiceItemsPageDto;
 import com.ecommerce.sellerx.financial.dto.InvoiceSummaryDto;
 import com.ecommerce.sellerx.financial.dto.InvoiceTypeStatsDto;
+import com.ecommerce.sellerx.financial.dto.OrderInvoiceItemsDto;
 import com.ecommerce.sellerx.financial.dto.ProductCargoBreakdownDto;
 import com.ecommerce.sellerx.financial.dto.ProductCommissionBreakdownDto;
 import com.ecommerce.sellerx.financial.dto.TransactionTypeBreakdownDto;
+import com.ecommerce.sellerx.financial.dto.StoppageDto;
+import com.ecommerce.sellerx.financial.dto.StoppageSummaryDto;
 import com.ecommerce.sellerx.orders.OrderItem;
 import com.ecommerce.sellerx.orders.TrendyolOrder;
 import com.ecommerce.sellerx.orders.TrendyolOrderRepository;
@@ -52,6 +58,7 @@ public class TrendyolInvoiceService {
     private final TrendyolDeductionInvoiceRepository deductionInvoiceRepository;
     private final TrendyolInvoiceRepository invoiceRepository;
     private final TrendyolCargoInvoiceRepository cargoInvoiceRepository;
+    private final TrendyolStoppageRepository stoppageRepository;
     private final TrendyolOrderRepository orderRepository;
     private final TrendyolProductRepository productRepository;
     private final StoreRepository storeRepository;
@@ -71,14 +78,16 @@ public class TrendyolInvoiceService {
             Map.entry("AZ - Kargo Fatura", "KARGO"),
             Map.entry("MP Kargo İtiraz İade Faturası", "KARGO"),
 
-            // Uluslararasi
+            // Uluslararasi (kesinti olarak faturalandırılan uluslararası hizmetler)
             Map.entry("Uluslararası Hizmet Bedeli", "ULUSLARARASI"),
-            Map.entry("AZ-Yurtdışı Operasyon Bedeli", "ULUSLARARASI"),
-            Map.entry("AZ-YURTDÕ_Õ OPERASYON BEDELI %18", "ULUSLARARASI"),
-            Map.entry("AZ-Platform Hizmet Bedeli", "ULUSLARARASI"),
+            Map.entry("AZ-Platform Hizmet Bedeli", "DIGER"),
             Map.entry("AZ-Uluslararası Hizmet Bedeli", "ULUSLARARASI"),
-            Map.entry("Yurtdışı Operasyon Iade Bedeli", "ULUSLARARASI"),
             Map.entry("Yurt Dışı Operasyon Bedeli", "ULUSLARARASI"),
+
+            // Iade - AZ-Yurtdışı Operasyon (Trendyol UI'da negatif görünüyor - seller'a geri ödeme)
+            Map.entry("AZ-Yurtdışı Operasyon Bedeli", "IADE"),
+            Map.entry("AZ-YURTDÕ_Õ OPERASYON BEDELI %18", "IADE"),
+            Map.entry("Yurtdışı Operasyon Iade Bedeli", "IADE"),
 
             // Ceza
             Map.entry("Tedarik Edememe", "CEZA"),
@@ -96,6 +105,17 @@ public class TrendyolInvoiceService {
 
             // Iade (Geri yatan ödeme - refund/compensation)
             Map.entry("Tazmin Faturası", "IADE"),
+
+            // Hizmet Bedeli (Service Fees - Depo, Paketleme, Çağrı Merkezi, etc.)
+            Map.entry("Depo Hizmet Bedeli", "HIZMET_BEDELI"),
+            Map.entry("Paketleme Hizmet Bedeli", "HIZMET_BEDELI"),
+            Map.entry("Çağrı Merkezi Hizmet Bedeli", "HIZMET_BEDELI"),
+            Map.entry("Fotoğraf Hizmet Bedeli", "HIZMET_BEDELI"),
+            Map.entry("Entegrasyon Hizmet Bedeli", "HIZMET_BEDELI"),
+            Map.entry("Depolama Hizmet Bedeli", "HIZMET_BEDELI"),
+            Map.entry("Fulfilment Hizmet Bedeli", "HIZMET_BEDELI"),
+            Map.entry("Paketleme Hizmeti Bedeli", "HIZMET_BEDELI"),
+            Map.entry("Depo Hizmeti Bedeli", "HIZMET_BEDELI"),
 
             // Diger
             Map.entry("Kurumsal Kampanya Yansıtma Bedeli", "DIGER"),
@@ -137,7 +157,18 @@ public class TrendyolInvoiceService {
             Map.entry("Fatura Kontör Satış Bedeli", "KONTOR_SATIS"),
             Map.entry("Müşteri Duyuruları Faturası", "MUSTERI_DUYURU"),
             Map.entry("TEX Tazmin - İşleme- %0", "TEX_TAZMIN"),
-            Map.entry("Tazmin Faturası", "TAZMIN_FATURASI")
+            Map.entry("Tazmin Faturası", "TAZMIN_FATURASI"),
+
+            // Hizmet Bedeli (Service Fees)
+            Map.entry("Depo Hizmet Bedeli", "DEPO_HIZMET"),
+            Map.entry("Paketleme Hizmet Bedeli", "PAKETLEME_HIZMET"),
+            Map.entry("Çağrı Merkezi Hizmet Bedeli", "CAGRI_MERKEZI_HIZMET"),
+            Map.entry("Fotoğraf Hizmet Bedeli", "FOTOGRAF_HIZMET"),
+            Map.entry("Entegrasyon Hizmet Bedeli", "ENTEGRASYON_HIZMET"),
+            Map.entry("Depolama Hizmet Bedeli", "DEPOLAMA_HIZMET"),
+            Map.entry("Fulfilment Hizmet Bedeli", "FULFILMENT_HIZMET"),
+            Map.entry("Paketleme Hizmeti Bedeli", "PAKETLEME_HIZMETI"),
+            Map.entry("Depo Hizmeti Bedeli", "DEPO_HIZMETI")
     );
 
     /**
@@ -392,6 +423,10 @@ public class TrendyolInvoiceService {
                 .byRate(salesVatByRateList)
                 .build();
 
+        // Calculate Stoppage (Stopaj/Tevkifat) summary
+        BigDecimal totalStoppageAmount = stoppageRepository.sumStoppageOnly(storeId, startDateTime, endDateTime);
+        int stoppageCount = stoppageRepository.countStoppageOnly(storeId, startDateTime, endDateTime);
+
         return InvoiceSummaryDto.builder()
                 .storeId(storeId.toString())
                 .periodStart(startDate)
@@ -404,6 +439,8 @@ public class TrendyolInvoiceService {
                 .invoicesByCategory(new ArrayList<>(categorySummaries.values()))
                 .purchaseVat(purchaseVatDto)
                 .salesVat(salesVatDto)
+                .totalStoppageAmount(totalStoppageAmount != null ? totalStoppageAmount : BigDecimal.ZERO)
+                .stoppageCount(stoppageCount)
                 .build();
     }
 
@@ -467,17 +504,24 @@ public class TrendyolInvoiceService {
         // Filter by category
         // Special handling for "IADE" category - use isRefundTransactionType() logic
         // because refund types may be mapped to different categories in TYPE_TO_CATEGORY
+        // For non-IADE categories, exclude refunds (they should only appear in IADE)
         List<TrendyolDeductionInvoice> filteredInvoices = allInvoices.stream()
                 .filter(inv -> {
+                    // Check if this invoice is a refund
+                    boolean hasCreditValue = inv.getCredit() != null && inv.getCredit().compareTo(BigDecimal.ZERO) > 0;
+                    boolean isRefundByType = isRefundTransactionType(inv.getTransactionType());
+                    boolean isRefund = hasCreditValue || isRefundByType;
+
                     if ("IADE".equals(category)) {
-                        // For IADE category, check if it's a refund by:
-                        // 1. credit > 0 (direct refund from Trendyol)
-                        // 2. transaction type is a refund type (iade or AZ-yurtdışı operasyon)
-                        boolean hasCreditValue = inv.getCredit() != null && inv.getCredit().compareTo(BigDecimal.ZERO) > 0;
-                        boolean isRefundByType = isRefundTransactionType(inv.getTransactionType());
-                        return hasCreditValue || isRefundByType;
+                        // For IADE category, include only refunds
+                        return isRefund;
                     } else {
-                        // For other categories, use the regular TYPE_TO_CATEGORY mapping
+                        // For other categories:
+                        // 1. Exclude refunds (they belong to IADE)
+                        // 2. Check if category matches
+                        if (isRefund) {
+                            return false; // Refunds should only appear in IADE
+                        }
                         String invCategory = TYPE_TO_CATEGORY.getOrDefault(inv.getTransactionType(), "DIGER");
                         return category.equals(invCategory);
                     }
@@ -589,6 +633,64 @@ public class TrendyolInvoiceService {
     }
 
     /**
+     * Get cargo invoice items by invoice serial number with pagination.
+     * Used for lazy loading in invoice detail panel.
+     */
+    @Transactional(readOnly = true)
+    public CargoInvoiceItemsPageDto getCargoInvoiceItemsPaginated(UUID storeId, String invoiceSerialNumber, int page, int size) {
+        log.info("Getting paginated cargo invoice items for store: {}, invoice: {}, page: {}, size: {}",
+                storeId, invoiceSerialNumber, page, size);
+
+        // Verify store exists
+        storeRepository.findById(storeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Store", storeId.toString()));
+
+        Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
+        Page<TrendyolCargoInvoice> itemsPage = cargoInvoiceRepository
+                .findByStoreIdAndInvoiceSerialNumberOrderByInvoiceDateDescCreatedAtDesc(storeId, invoiceSerialNumber, pageable);
+
+        log.info("Found {} cargo invoice items (page {} of {})", itemsPage.getNumberOfElements(), page, itemsPage.getTotalPages());
+
+        // Convert to DTOs
+        List<CargoInvoiceItemDto> dtos = itemsPage.getContent().stream()
+                .map(CargoInvoiceItemDto::fromEntity)
+                .collect(Collectors.toList());
+
+        // Collect all unique barcodes to fetch product info
+        Set<String> barcodes = dtos.stream()
+                .map(CargoInvoiceItemDto::getBarcode)
+                .filter(b -> b != null && !b.isEmpty())
+                .collect(Collectors.toSet());
+
+        if (!barcodes.isEmpty()) {
+            // Fetch products by barcodes
+            List<TrendyolProduct> products = productRepository.findByStoreIdAndBarcodeIn(storeId, new ArrayList<>(barcodes));
+            Map<String, TrendyolProduct> productMap = products.stream()
+                    .collect(Collectors.toMap(TrendyolProduct::getBarcode, p -> p, (a, b) -> a));
+
+            // Enrich DTOs with product info
+            for (CargoInvoiceItemDto dto : dtos) {
+                if (dto.getBarcode() != null) {
+                    TrendyolProduct product = productMap.get(dto.getBarcode());
+                    if (product != null) {
+                        dto.setProductName(product.getTitle());
+                        dto.setProductImageUrl(product.getImage());
+                    }
+                }
+            }
+        }
+
+        return CargoInvoiceItemsPageDto.builder()
+                .content(dtos)
+                .page(page)
+                .size(size)
+                .totalElements(itemsPage.getTotalElements())
+                .totalPages(itemsPage.getTotalPages())
+                .hasNext(itemsPage.hasNext())
+                .build();
+    }
+
+    /**
      * Get generic invoice items by invoice serial number.
      * Returns all orders/items within a specific invoice (for CEZA, KOMISYON, etc. types).
      * This is similar to getCargoInvoiceItems but for non-cargo invoices.
@@ -617,6 +719,39 @@ public class TrendyolInvoiceService {
     @Transactional(readOnly = true)
     public long getInvoiceItemCount(UUID storeId, String invoiceSerialNumber) {
         return deductionInvoiceRepository.countByStoreIdAndInvoiceSerialNumber(storeId, invoiceSerialNumber);
+    }
+
+    /**
+     * Get generic invoice items by invoice serial number with pagination.
+     * Used for lazy loading in invoice detail panel.
+     */
+    @Transactional(readOnly = true)
+    public InvoiceItemsPageDto getInvoiceItemsPaginated(UUID storeId, String invoiceSerialNumber, int page, int size) {
+        log.info("Getting paginated invoice items for store: {}, invoice: {}, page: {}, size: {}",
+                storeId, invoiceSerialNumber, page, size);
+
+        // Verify store exists
+        storeRepository.findById(storeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Store", storeId.toString()));
+
+        Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
+        Page<TrendyolDeductionInvoice> itemsPage = deductionInvoiceRepository
+                .findByStoreIdAndInvoiceSerialNumberOrderByTransactionDateDesc(storeId, invoiceSerialNumber, pageable);
+
+        log.info("Found {} invoice items (page {} of {})", itemsPage.getNumberOfElements(), page, itemsPage.getTotalPages());
+
+        List<InvoiceItemDto> dtos = itemsPage.getContent().stream()
+                .map(InvoiceItemDto::fromEntity)
+                .collect(Collectors.toList());
+
+        return InvoiceItemsPageDto.builder()
+                .content(dtos)
+                .page(page)
+                .size(size)
+                .totalElements(itemsPage.getTotalElements())
+                .totalPages(itemsPage.getTotalPages())
+                .hasNext(itemsPage.hasNext())
+                .build();
     }
 
     /**
@@ -678,6 +813,43 @@ public class TrendyolInvoiceService {
 
         log.info("Extracted {} commission items from {} orders", items.size(), orders.size());
         return items;
+    }
+
+    /**
+     * Get commission invoice items by invoice serial number with pagination.
+     * Used for lazy loading in invoice detail panel.
+     * Note: Commission items are extracted from orders' financial_transactions JSONB,
+     * so pagination is done in-memory after extraction.
+     */
+    @Transactional(readOnly = true)
+    public CommissionInvoiceItemsPageDto getCommissionInvoiceItemsPaginated(UUID storeId, String invoiceSerialNumber, int page, int size) {
+        log.info("Getting paginated commission invoice items for store: {}, invoice: {}, page: {}, size: {}",
+                storeId, invoiceSerialNumber, page, size);
+
+        // Get all items first (extracted from JSONB)
+        List<CommissionInvoiceItemDto> allItems = getCommissionInvoiceItems(storeId, invoiceSerialNumber);
+
+        // Manual pagination
+        int start = page * size;
+        int end = Math.min(start + size, allItems.size());
+
+        List<CommissionInvoiceItemDto> pageContent = start < allItems.size()
+                ? allItems.subList(start, end)
+                : Collections.emptyList();
+
+        int totalPages = (int) Math.ceil((double) allItems.size() / size);
+        boolean hasNext = page < totalPages - 1;
+
+        log.info("Returning {} commission items (page {} of {})", pageContent.size(), page, totalPages);
+
+        return CommissionInvoiceItemsPageDto.builder()
+                .content(pageContent)
+                .page(page)
+                .size(size)
+                .totalElements(allItems.size())
+                .totalPages(totalPages)
+                .hasNext(hasNext)
+                .build();
     }
 
     /**
@@ -1395,6 +1567,181 @@ public class TrendyolInvoiceService {
     }
 
     /**
+     * Get all invoice items (cargo, commission, deductions) linked to a specific order.
+     * Used to show actual invoiced expenses in order detail panel.
+     *
+     * @param storeId     The store ID
+     * @param orderNumber The Trendyol order number
+     * @return OrderInvoiceItemsDto containing all invoice items for this order
+     */
+    @Transactional(readOnly = true)
+    public OrderInvoiceItemsDto getInvoiceItemsByOrderNumber(UUID storeId, String orderNumber) {
+        log.info("Getting invoice items for order: {} in store: {}", orderNumber, storeId);
+
+        // Verify store exists
+        storeRepository.findById(storeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Store", storeId.toString()));
+
+        // 1. Get cargo invoices for this order
+        List<TrendyolCargoInvoice> cargoInvoices = cargoInvoiceRepository
+                .findByStoreIdAndOrderNumber(storeId, orderNumber);
+        List<CargoInvoiceItemDto> cargoItems = cargoInvoices.stream()
+                .map(CargoInvoiceItemDto::fromEntity)
+                .collect(Collectors.toList());
+        BigDecimal totalCargoAmount = cargoInvoices.stream()
+                .map(TrendyolCargoInvoice::getAmount)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalCargoVatAmount = cargoInvoices.stream()
+                .map(TrendyolCargoInvoice::getVatAmount)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // 2. Get deduction invoices for this order (platform fees, advertising, penalties, etc.)
+        List<TrendyolDeductionInvoice> deductionInvoices = deductionInvoiceRepository
+                .findByStoreIdAndOrderNumber(storeId, orderNumber);
+        List<InvoiceItemDto> deductionItems = deductionInvoices.stream()
+                .map(InvoiceItemDto::fromEntity)
+                .collect(Collectors.toList());
+        BigDecimal totalDeductionAmount = deductionItems.stream()
+                .map(InvoiceItemDto::getAmount)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalDeductionVatAmount = deductionItems.stream()
+                .map(InvoiceItemDto::getVatAmount)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // 3. Get commission items from order's financial_transactions
+        List<CommissionInvoiceItemDto> commissionItems = new ArrayList<>();
+        BigDecimal totalCommissionAmount = BigDecimal.ZERO;
+        BigDecimal totalCommissionVatAmount = BigDecimal.ZERO;
+
+        List<TrendyolOrder> orders = orderRepository.findByStoreIdAndTyOrderNumber(storeId, orderNumber);
+        if (!orders.isEmpty()) {
+            TrendyolOrder order = orders.get(0);
+            if (order.getFinancialTransactions() != null) {
+                for (FinancialOrderItemData itemData : order.getFinancialTransactions()) {
+                    // Each FinancialOrderItemData contains a list of FinancialSettlement transactions
+                    String itemBarcode = itemData.getBarcode();
+
+                    if (itemData.getTransactions() != null) {
+                        for (FinancialSettlement transaction : itemData.getTransactions()) {
+                            String transactionType = transaction.getTransactionType() != null
+                                    ? transaction.getTransactionType() : "Satış Komisyonu";
+
+                            // Extract commission amounts from transaction
+                            BigDecimal commissionAmount = transaction.getCommissionAmount();
+                            if (commissionAmount == null) {
+                                commissionAmount = BigDecimal.ZERO;
+                            }
+
+                            BigDecimal commissionRate = transaction.getCommissionRate();
+                            BigDecimal sellerRevenue = transaction.getSellerRevenue();
+
+                            // Get receipt/settlement ID
+                            String recordId = transaction.getReceiptId() != null
+                                    ? transaction.getReceiptId().toString() : null;
+
+                            // Get transaction date
+                            LocalDateTime transactionDate = null;
+                            Long dateObj = transaction.getTransactionDate();
+                            if (dateObj != null) {
+                                transactionDate = LocalDateTime.ofInstant(Instant.ofEpochMilli(dateObj), ZoneId.of("Europe/Istanbul"));
+                            }
+
+                            // Get barcode from order items or from the itemData
+                            String barcode = itemBarcode;
+                            String productName = null;
+                            if (order.getOrderItems() != null && !order.getOrderItems().isEmpty()) {
+                                // Try to find matching order item by barcode
+                                for (OrderItem orderItem : order.getOrderItems()) {
+                                    if (barcode != null && barcode.equals(orderItem.getBarcode())) {
+                                        productName = orderItem.getProductName();
+                                        break;
+                                    }
+                                }
+                                // If no match found, use first item
+                                if (productName == null) {
+                                    OrderItem firstItem = order.getOrderItems().get(0);
+                                    if (barcode == null) {
+                                        barcode = firstItem.getBarcode();
+                                    }
+                                    productName = firstItem.getProductName();
+                                }
+                            }
+
+                            CommissionInvoiceItemDto item = CommissionInvoiceItemDto.builder()
+                                    .orderNumber(orderNumber)
+                                    .orderDate(order.getOrderDate())
+                                    .barcode(barcode)
+                                    .productName(productName)
+                                    .commissionRate(commissionRate)
+                                    .commissionAmount(commissionAmount)
+                                    .sellerRevenue(sellerRevenue)
+                                    .trendyolRevenue(commissionAmount)
+                                    .transactionType(transactionType)
+                                    .recordId(recordId)
+                                    .transactionDate(transactionDate)
+                                    .build();
+                            commissionItems.add(item);
+
+                            totalCommissionAmount = totalCommissionAmount.add(commissionAmount);
+                        }
+                    }
+                }
+
+                // Calculate VAT for commission (20% included in amount)
+                if (totalCommissionAmount.compareTo(BigDecimal.ZERO) > 0) {
+                    totalCommissionVatAmount = totalCommissionAmount.multiply(BigDecimal.valueOf(20))
+                            .divide(BigDecimal.valueOf(120), 2, RoundingMode.HALF_UP);
+                }
+            }
+        }
+
+        // Calculate grand total (all expenses)
+        BigDecimal grandTotal = totalCargoAmount.add(totalDeductionAmount).add(totalCommissionAmount);
+
+        // Check if we have any invoice data
+        boolean hasInvoiceData = !cargoItems.isEmpty() || !deductionItems.isEmpty() || !commissionItems.isEmpty();
+
+        log.info("Order {} invoice summary: cargo={} items ({}₺), deductions={} items ({}₺), commission={} items ({}₺)",
+                orderNumber, cargoItems.size(), totalCargoAmount,
+                deductionItems.size(), totalDeductionAmount,
+                commissionItems.size(), totalCommissionAmount);
+
+        return OrderInvoiceItemsDto.builder()
+                .orderNumber(orderNumber)
+                .cargoItems(cargoItems)
+                .totalCargoAmount(totalCargoAmount)
+                .totalCargoVatAmount(totalCargoVatAmount)
+                .commissionItems(commissionItems)
+                .totalCommissionAmount(totalCommissionAmount)
+                .totalCommissionVatAmount(totalCommissionVatAmount)
+                .deductionItems(deductionItems)
+                .totalDeductionAmount(totalDeductionAmount)
+                .totalDeductionVatAmount(totalDeductionVatAmount)
+                .grandTotal(grandTotal)
+                .hasInvoiceData(hasInvoiceData)
+                .build();
+    }
+
+    /**
+     * Extract BigDecimal value from a map, handling various number types.
+     */
+    private BigDecimal extractBigDecimal(Map<String, Object> map, String key) {
+        Object value = map.get(key);
+        if (value == null) return null;
+        if (value instanceof BigDecimal) return (BigDecimal) value;
+        if (value instanceof Number) return BigDecimal.valueOf(((Number) value).doubleValue());
+        try {
+            return new BigDecimal(value.toString());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    /**
      * Extract cargo company name from invoice rawData if available.
      * Trendyol may include cargo company info in the rawData JSONB field.
      */
@@ -1412,5 +1759,107 @@ public class TrendyolInvoiceService {
         if (cargoCompany != null) return cargoCompany.toString();
 
         return null;
+    }
+
+    // ================================================================================
+    // Stoppage (Withholding Tax) Methods
+    // ================================================================================
+
+    /**
+     * Get stoppage summary for a store within a date range.
+     * Returns total amount and count of stopaj records.
+     */
+    @Transactional(readOnly = true)
+    public StoppageSummaryDto getStoppageSummary(UUID storeId, LocalDate startDate, LocalDate endDate) {
+        log.info("Getting stoppage summary for store: {} from {} to {}", storeId, startDate, endDate);
+
+        // Verify store exists
+        storeRepository.findById(storeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Store", storeId.toString()));
+
+        LocalDateTime startDateTime = startDate.atStartOfDay();
+        LocalDateTime endDateTime = endDate.plusDays(1).atStartOfDay();
+
+        // Get stoppage total using repository method that filters by 'stopaj' keyword
+        BigDecimal totalAmount = stoppageRepository.sumStoppageOnly(storeId, startDateTime, endDateTime);
+        if (totalAmount == null) {
+            totalAmount = BigDecimal.ZERO;
+        }
+
+        // Get count of stoppage records
+        List<TrendyolStoppage> stoppages = stoppageRepository
+                .findByStoreIdAndTransactionDateBetweenOrderByTransactionDateDesc(storeId, startDateTime, endDateTime);
+
+        // Filter only stopaj records
+        long count = stoppages.stream()
+                .filter(s -> s.getDescription() != null && s.getDescription().toLowerCase().contains("stopaj"))
+                .count();
+
+        return StoppageSummaryDto.builder()
+                .storeId(storeId.toString())
+                .periodStart(startDate)
+                .periodEnd(endDate)
+                .count((int) count)
+                .totalAmount(totalAmount)
+                .build();
+    }
+
+    /**
+     * Get stoppages with pagination for a store within a date range.
+     * Filters only records containing 'stopaj' in description.
+     */
+    @Transactional(readOnly = true)
+    public StoppageSummaryDto getStoppages(UUID storeId, LocalDate startDate, LocalDate endDate, int page, int size) {
+        log.info("Getting stoppages for store: {} from {} to {}, page: {}, size: {}",
+                storeId, startDate, endDate, page, size);
+
+        // Verify store exists
+        storeRepository.findById(storeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Store", storeId.toString()));
+
+        LocalDateTime startDateTime = startDate.atStartOfDay();
+        LocalDateTime endDateTime = endDate.plusDays(1).atStartOfDay();
+
+        // Get all stoppages for the period
+        List<TrendyolStoppage> allStoppages = stoppageRepository
+                .findByStoreIdAndTransactionDateBetweenOrderByTransactionDateDesc(storeId, startDateTime, endDateTime);
+
+        // Filter only stopaj records
+        List<TrendyolStoppage> filteredStoppages = allStoppages.stream()
+                .filter(s -> s.getDescription() != null && s.getDescription().toLowerCase().contains("stopaj"))
+                .collect(Collectors.toList());
+
+        // Manual pagination
+        int start = page * size;
+        int end = Math.min(start + size, filteredStoppages.size());
+
+        List<StoppageDto> pageContent = start < filteredStoppages.size()
+                ? filteredStoppages.subList(start, end).stream()
+                    .map(StoppageDto::fromEntity)
+                    .collect(Collectors.toList())
+                : Collections.emptyList();
+
+        int totalPages = (int) Math.ceil((double) filteredStoppages.size() / size);
+        boolean hasNext = page < totalPages - 1;
+
+        // Calculate total amount
+        BigDecimal totalAmount = filteredStoppages.stream()
+                .map(TrendyolStoppage::getAmount)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        return StoppageSummaryDto.builder()
+                .storeId(storeId.toString())
+                .periodStart(startDate)
+                .periodEnd(endDate)
+                .count(filteredStoppages.size())
+                .totalAmount(totalAmount)
+                .items(pageContent)
+                .page(page)
+                .size(size)
+                .totalElements(filteredStoppages.size())
+                .totalPages(totalPages)
+                .hasNext(hasNext)
+                .build();
     }
 }

@@ -43,19 +43,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         if (token == null) {
-            log.debug("[AUTH] No token found for: {}", uri);
+            log.info("[AUTH] No token found for: {} (authHeader: {})", uri, authHeader != null ? "present but not Bearer" : "missing");
             filterChain.doFilter(request, response);
             return;
         }
 
-        log.debug("[AUTH] Validating token from {} for: {}", tokenSource, uri);
+        log.info("[AUTH] Validating token from {} for: {} (token length: {})", tokenSource, uri, token.length());
 
         var jwt = jwtService.parseToken(token);
         if (jwt == null) {
-            log.warn("[AUTH] Invalid token (parse failed) for: {}", uri);
+            log.warn("[AUTH] Invalid token (parse failed) for: {} - token prefix: {}...", uri, token.substring(0, Math.min(20, token.length())));
             filterChain.doFilter(request, response);
             return;
         }
+
+        log.info("[AUTH] Token parsed for userId: {} on: {}", jwt.getUserId(), uri);
 
         if (jwt.isExpired()) {
             log.warn("[AUTH] Token expired for user {} on: {}", jwt.getUserId(), uri);
@@ -73,7 +75,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         );
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
-        log.debug("[AUTH] Authenticated user {} (role: {}) for: {}", jwt.getUserId(), jwt.getRole(), uri);
+        log.info("[AUTH] Authenticated user {} (role: {}) for: {}", jwt.getUserId(), jwt.getRole(), uri);
 
         if (jwt.isImpersonated()) {
             request.setAttribute("impersonatedBy", jwt.getImpersonatedBy());

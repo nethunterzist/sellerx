@@ -623,7 +623,8 @@ public interface TrendyolOrderRepository extends JpaRepository<TrendyolOrder, UU
                 COALESCE(SUM(total_spend), 0) as totalRevenue,
                 COALESCE(SUM(total_spend) FILTER (WHERE order_count >= 2), 0) as repeatRevenue,
                 COALESCE(AVG(order_count), 0) as avgOrdersPerCustomer,
-                COALESCE(AVG(item_count), 0) as avgItemsPerCustomer
+                COALESCE(AVG(item_count), 0) as avgItemsPerCustomer,
+                COALESCE(CAST(SUM(item_count) AS DOUBLE PRECISION) / NULLIF(SUM(order_count), 0), 0) as avgItemsPerOrder
             FROM customer_stats
             """, nativeQuery = true)
     com.ecommerce.sellerx.orders.dto.CustomerAnalyticsProjections.SummaryProjection
@@ -1157,5 +1158,257 @@ public interface TrendyolOrderRepository extends JpaRepository<TrendyolOrder, UU
             """, nativeQuery = true)
     com.ecommerce.sellerx.orders.dto.CustomerAnalyticsProjections.ClvSummaryProjection
     getClvSummary(@Param("storeId") UUID storeId);
+
+    // ============== Customer Detail Queries ==============
+
+    /**
+     * Get per-customer average repeat interval in days.
+     * Returns avgDays for each customer who has more than 1 order.
+     */
+    @Query(value = """
+            WITH customer_order_gaps AS (
+                SELECT
+                    customer_id,
+                    order_date,
+                    LAG(order_date) OVER (PARTITION BY customer_id ORDER BY order_date) as prev_order_date
+                FROM trendyol_orders
+                WHERE store_id = :storeId
+                AND customer_id IS NOT NULL
+                AND status IN ('Created', 'Picking', 'Invoiced', 'Shipped', 'Delivered', 'AtCollectionPoint', 'UnPacked')
+            )
+            SELECT
+                customer_id as customerId,
+                AVG(EXTRACT(EPOCH FROM (order_date - prev_order_date)) / 86400) as avgDays
+            FROM customer_order_gaps
+            WHERE prev_order_date IS NOT NULL
+            GROUP BY customer_id
+            """, nativeQuery = true)
+    List<com.ecommerce.sellerx.orders.dto.CustomerAnalyticsProjections.CustomerRepeatIntervalProjection>
+    getPerCustomerRepeatIntervalDays(@Param("storeId") UUID storeId);
+
+    /**
+     * Find all orders for a specific customer.
+     * Used for customer detail panel.
+     */
+    List<TrendyolOrder> findByStoreIdAndCustomerIdOrderByOrderDateDesc(UUID storeId, Long customerId);
+
+    /**
+     * Find orders for a specific customer with pagination.
+     * Used for lazy loading in customer detail panel.
+     */
+    @Query("SELECT o FROM TrendyolOrder o WHERE o.store.id = :storeId AND o.customerId = :customerId ORDER BY o.orderDate DESC")
+    List<TrendyolOrder> findByStoreIdAndCustomerIdPaginated(
+            @Param("storeId") UUID storeId,
+            @Param("customerId") Long customerId,
+            Pageable pageable);
+
+    /**
+     * Count total orders for a specific customer.
+     * Used for pagination in customer detail panel.
+     */
+    @Query("SELECT COUNT(o) FROM TrendyolOrder o WHERE o.store.id = :storeId AND o.customerId = :customerId")
+    long countByStoreIdAndCustomerId(@Param("storeId") UUID storeId, @Param("customerId") Long customerId);
+
+    /**
+     * Find customers who purchased a specific product by barcode.
+     * Returns customer info with purchase count and total spend on that product.
+     * Used for product detail panel.
+     */
+    @Query(value = """
+            WITH product_buyers AS (
+                SELECT
+                    o.customer_id,
+                    CONCAT(MAX(o.customer_first_name), ' ', MAX(o.customer_last_name)) as customer_name,
+                    MAX(o.shipment_city) as city,
+                    COUNT(*) as purchase_count,
+                    COALESCE(SUM((item->>'price')::numeric), 0) as total_spend
+                FROM trendyol_orders o
+                CROSS JOIN LATERAL jsonb_array_elements(o.order_items) AS item
+                WHERE o.store_id = :storeId
+                AND o.customer_id IS NOT NULL
+                AND o.status IN ('Created', 'Picking', 'Invoiced', 'Shipped', 'Delivered', 'AtCollectionPoint', 'UnPacked')
+                AND item->>'barcode' = :barcode
+                GROUP BY o.customer_id
+            )
+            SELECT
+                customer_id as customerId,
+                customer_name as customerName,
+                city,
+                purchase_count as purchaseCount,
+                total_spend as totalSpend
+            FROM product_buyers
+            ORDER BY purchase_count DESC, total_spend DESC
+            LIMIT 100
+            """, nativeQuery = true)
+    List<com.ecommerce.sellerx.orders.dto.CustomerAnalyticsProjections.ProductBuyerProjection>
+    findProductBuyersByBarcode(@Param("storeId") UUID storeId, @Param("barcode") String barcode);
+
+    /**
+     * Get product repeat stats for a single product by barcode.
+     * Used for product detail panel.
+     */
+    @Query(value = """
+            WITH product_buyers AS (
+                SELECT
+                    o.customer_id,
+                    COUNT(*) as purchase_count,
+                    SUM((item->>'quantity')::integer) as total_qty
+                FROM trendyol_orders o
+                CROSS JOIN LATERAL jsonb_array_elements(o.order_items) AS item
+                WHERE o.store_id = :storeId
+                AND o.customer_id IS NOT NULL
+                AND o.status IN ('Created', 'Picking', 'Invoiced', 'Shipped', 'Delivered', 'AtCollectionPoint', 'UnPacked')
+                AND item->>'barcode' = :barcode
+                GROUP BY o.customer_id
+            )
+            SELECT
+                COUNT(*) as totalBuyers,
+                COUNT(*) FILTER (WHERE purchase_count >= 2) as repeatBuyers,
+                COALESCE(SUM(total_qty), 0) as totalQuantitySold
+            FROM product_buyers
+            """, nativeQuery = true)
+    Object[] getProductRepeatStatsByBarcode(@Param("storeId") UUID storeId, @Param("barcode") String barcode);
+
+    /**
+     * Get average days between repurchase for a specific product.
+     */
+    @Query(value = """
+            WITH product_customer_orders AS (
+                SELECT
+                    o.customer_id,
+                    o.order_date,
+                    LAG(o.order_date) OVER (PARTITION BY o.customer_id ORDER BY o.order_date) as prev_order_date
+                FROM trendyol_orders o
+                CROSS JOIN LATERAL jsonb_array_elements(o.order_items) AS item
+                WHERE o.store_id = :storeId
+                AND o.customer_id IS NOT NULL
+                AND o.status IN ('Created', 'Picking', 'Invoiced', 'Shipped', 'Delivered', 'AtCollectionPoint', 'UnPacked')
+                AND item->>'barcode' = :barcode
+            )
+            SELECT COALESCE(AVG(EXTRACT(EPOCH FROM (order_date - prev_order_date)) / 86400), 0)
+            FROM product_customer_orders
+            WHERE prev_order_date IS NOT NULL
+            """, nativeQuery = true)
+    Double getProductAvgRepeatIntervalDaysByBarcode(@Param("storeId") UUID storeId, @Param("barcode") String barcode);
+
+    /**
+     * Summary stats with total order count for avgOrderValue calculation.
+     */
+    @Query(value = """
+            WITH customer_data AS (
+                SELECT
+                    customer_id,
+                    COUNT(*) as order_count,
+                    COALESCE(SUM(
+                        (SELECT COALESCE(SUM((item->>'quantity')::int), 0)
+                         FROM jsonb_array_elements(order_items) AS item)
+                    ), 0) as item_count,
+                    COALESCE(SUM(total_price), 0) as total_spend
+                FROM trendyol_orders
+                WHERE store_id = :storeId
+                AND customer_id IS NOT NULL
+                AND status IN ('Created', 'Picking', 'Invoiced', 'Shipped', 'Delivered', 'AtCollectionPoint', 'UnPacked')
+                GROUP BY customer_id
+            )
+            SELECT
+                COUNT(*) as totalCustomers,
+                COUNT(*) FILTER (WHERE order_count >= 2) as repeatCustomers,
+                COALESCE(SUM(total_spend), 0) as totalRevenue,
+                COALESCE(SUM(total_spend) FILTER (WHERE order_count >= 2), 0) as repeatRevenue,
+                COALESCE(AVG(order_count), 0) as avgOrdersPerCustomer,
+                COALESCE(AVG(item_count), 0) as avgItemsPerCustomer,
+                CASE WHEN SUM(order_count) > 0
+                     THEN SUM(item_count)::float / SUM(order_count)
+                     ELSE 0
+                END as avgItemsPerOrder,
+                COALESCE(SUM(order_count), 0) as totalOrders
+            FROM customer_data
+            """, nativeQuery = true)
+    com.ecommerce.sellerx.orders.dto.CustomerAnalyticsProjections.SummaryWithOrderCountProjection
+    getCustomerAnalyticsSummaryWithOrderCount(@Param("storeId") UUID storeId);
+
+    /**
+     * Find customers who purchased a specific product by barcode (PAGINATED).
+     * Returns customer info with purchase count and total spend on that product.
+     * Used for lazy loading in product detail panel.
+     */
+    @Query(value = """
+            WITH product_buyers AS (
+                SELECT
+                    o.customer_id,
+                    CONCAT(MAX(o.customer_first_name), ' ', MAX(o.customer_last_name)) as customer_name,
+                    MAX(o.shipment_city) as city,
+                    COUNT(*) as purchase_count,
+                    COALESCE(SUM((item->>'price')::numeric), 0) as total_spend
+                FROM trendyol_orders o
+                CROSS JOIN LATERAL jsonb_array_elements(o.order_items) AS item
+                WHERE o.store_id = :storeId
+                AND o.customer_id IS NOT NULL
+                AND o.status IN ('Created', 'Picking', 'Invoiced', 'Shipped', 'Delivered', 'AtCollectionPoint', 'UnPacked')
+                AND item->>'barcode' = :barcode
+                GROUP BY o.customer_id
+            )
+            SELECT
+                customer_id as customerId,
+                customer_name as customerName,
+                city,
+                purchase_count as purchaseCount,
+                total_spend as totalSpend
+            FROM product_buyers
+            ORDER BY purchase_count DESC, total_spend DESC
+            LIMIT :limit OFFSET :offset
+            """, nativeQuery = true)
+    List<com.ecommerce.sellerx.orders.dto.CustomerAnalyticsProjections.ProductBuyerProjection>
+    findProductBuyersByBarcodePaginated(
+            @Param("storeId") UUID storeId,
+            @Param("barcode") String barcode,
+            @Param("limit") int limit,
+            @Param("offset") int offset);
+
+    /**
+     * Count total buyers for a specific product by barcode.
+     * Used for pagination in product detail panel.
+     */
+    @Query(value = """
+            SELECT COUNT(DISTINCT o.customer_id)
+            FROM trendyol_orders o
+            CROSS JOIN LATERAL jsonb_array_elements(o.order_items) AS item
+            WHERE o.store_id = :storeId
+            AND o.customer_id IS NOT NULL
+            AND o.status IN ('Created', 'Picking', 'Invoiced', 'Shipped', 'Delivered', 'AtCollectionPoint', 'UnPacked')
+            AND item->>'barcode' = :barcode
+            """, nativeQuery = true)
+    long countProductBuyersByBarcode(@Param("storeId") UUID storeId, @Param("barcode") String barcode);
+
+    // ============== Stock Valuation - Sales Velocity Queries ==============
+
+    /**
+     * Get total quantity sold per barcode in a date range.
+     * Used for calculating average daily sales velocity for stock depletion estimation.
+     * Returns: [barcode, totalQuantitySold]
+     */
+    @Query(value = """
+            SELECT
+                item->>'barcode' as barcode,
+                COALESCE(SUM((item->>'quantity')::integer), 0) as totalQuantitySold
+            FROM trendyol_orders o
+            CROSS JOIN LATERAL jsonb_array_elements(o.order_items) AS item
+            WHERE o.store_id = :storeId
+            AND o.order_date >= :startDate
+            AND o.status IN ('Created', 'Picking', 'Invoiced', 'Shipped', 'Delivered', 'AtCollectionPoint', 'UnPacked')
+            AND item->>'barcode' IS NOT NULL
+            GROUP BY item->>'barcode'
+            """, nativeQuery = true)
+    List<SalesVelocityProjection> getSalesVelocityByBarcode(
+            @Param("storeId") UUID storeId,
+            @Param("startDate") LocalDateTime startDate);
+
+    /**
+     * Projection interface for sales velocity query.
+     */
+    interface SalesVelocityProjection {
+        String getBarcode();
+        Long getTotalQuantitySold();
+    }
 
 }

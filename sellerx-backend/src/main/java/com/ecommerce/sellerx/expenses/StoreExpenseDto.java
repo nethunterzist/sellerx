@@ -17,6 +17,10 @@ public record StoreExpenseDto(
     LocalDateTime date,
     ExpenseFrequency frequency,
     String frequencyDisplayName,
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
+    LocalDateTime endDate, // For recurring expenses
+    Boolean isRecurringTemplate, // true = this is a template, false = this is an instance
+    UUID parentExpenseId, // For instances: ID of the template this was generated from
     String name,
     BigDecimal amount,
     Integer vatRate,           // null = faturasız işlem

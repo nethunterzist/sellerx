@@ -3,6 +3,7 @@
 import { AuthProvider } from "@/hooks/useAuth";
 import { AppLayout } from "@/components/layout";
 import { ImpersonationBanner } from "@/components/admin/impersonation-banner";
+import { CurrencyProvider } from "@/lib/contexts/currency-context";
 
 export default function AppShellLayout({
   children,
@@ -11,8 +12,10 @@ export default function AppShellLayout({
 }) {
   return (
     <AuthProvider>
-      <ImpersonationBanner />
-      <AppLayout>{children}</AppLayout>
+      <CurrencyProvider>
+        <ImpersonationBanner />
+        <AppLayout>{children}</AppLayout>
+      </CurrencyProvider>
     </AuthProvider>
   );
 }

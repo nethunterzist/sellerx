@@ -8,6 +8,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import com.ecommerce.sellerx.users.User;
+import com.ecommerce.sellerx.common.encryption.CredentialsEntityListener;
 
 @Setter
 @Getter
@@ -16,6 +17,7 @@ import com.ecommerce.sellerx.users.User;
 @Builder
 @Entity
 @Table(name = "stores")
+@EntityListeners(CredentialsEntityListener.class)
 public class Store {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)

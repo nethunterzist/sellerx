@@ -19,11 +19,13 @@ import {
   TrendingDown,
   TrendingUp,
   Info,
+  Percent,
+  Wrench,
 } from "lucide-react";
 import type { InvoiceSummary, CategorySummary } from "@/types/invoice";
 import { getCategoryDisplayName } from "@/types/invoice";
 
-type CategoryKey = "KOMISYON" | "KARGO" | "ULUSLARARASI" | "CEZA" | "REKLAM" | "IADE" | "DIGER" | "ALL" | "KESINTI";
+type CategoryKey = "KOMISYON" | "KARGO" | "ULUSLARARASI" | "CEZA" | "REKLAM" | "IADE" | "DIGER" | "ALL" | "KESINTI" | "STOPAJ" | "HIZMET_BEDELI";
 
 interface InvoiceSummaryCardsProps {
   summary: InvoiceSummary | undefined;
@@ -43,6 +45,8 @@ const categoryDescriptions: Record<string, string> = {
   REKLAM: "Reklam ve influencer kampanya bedelleri",
   IADE: "Iade ve itiraz sonucu geri alinan tutarlar",
   DIGER: "Diger finansal islemler",
+  STOPAJ: "Stopaj/Tevkifat kesintileri (Gelir vergisi stopaji)",
+  HIZMET_BEDELI: "Depo, paketleme, cagri merkezi gibi hizmet bedelleri",
 };
 
 // Category colors matching the plan
@@ -92,6 +96,16 @@ const categoryColors: Record<CategoryKey, { bg: string; border: string; hoverBor
     border: "border-b-gray-500",
     hoverBorder: "hover:border-b-gray-300",
   },
+  STOPAJ: {
+    bg: "bg-indigo-500",
+    border: "border-b-indigo-500",
+    hoverBorder: "hover:border-b-indigo-300",
+  },
+  HIZMET_BEDELI: {
+    bg: "bg-cyan-500",
+    border: "border-b-cyan-500",
+    hoverBorder: "hover:border-b-cyan-300",
+  },
 };
 
 // Category icons
@@ -105,6 +119,8 @@ const categoryIcons: Record<CategoryKey, React.ReactNode> = {
   REKLAM: <Megaphone className="h-4 w-4" />,
   IADE: <RefreshCcw className="h-4 w-4" />,
   DIGER: <FileText className="h-4 w-4" />,
+  STOPAJ: <Percent className="h-4 w-4" />,
+  HIZMET_BEDELI: <Wrench className="h-4 w-4" />,
 };
 
 interface SummaryCardProps {
@@ -276,7 +292,7 @@ export function InvoiceSummaryCards({
   const categoryData: CategorySummary[] = summary.invoicesByCategory || [];
 
   // Calculate total KDV for deduction categories
-  const deductionCategories = ["KOMISYON", "KARGO", "CEZA", "REKLAM", "DIGER", "ULUSLARARASI"];
+  const deductionCategories = ["KOMISYON", "KARGO", "CEZA", "REKLAM", "DIGER", "ULUSLARARASI", "STOPAJ", "HIZMET_BEDELI"];
   const totalDeductionVat = categoryData.reduce((sum, c) => {
     if (deductionCategories.includes(c.category)) {
       return sum + (c.totalVatAmount || 0);
@@ -302,7 +318,7 @@ export function InvoiceSummaryCards({
   if (summary.totalDeductions !== 0) {
     allCards.push({
       key: "KESINTI",
-      title: "Kesintiler",
+      title: "Tüm Kesintiler",
       invoiceCount: categoryData.reduce((sum, c) => {
         if (deductionCategories.includes(c.category)) {
           return sum + c.invoiceCount;
@@ -345,6 +361,19 @@ export function InvoiceSummaryCards({
         onClick: () => onCategorySelect(cat.category as CategoryKey),
       });
     });
+
+  // Add STOPAJ card if there's stoppage data
+  if (summary.totalStoppageAmount && summary.stoppageCount && summary.stoppageCount > 0) {
+    allCards.push({
+      key: "STOPAJ",
+      title: "Stopaj",
+      invoiceCount: summary.stoppageCount,
+      totalAmount: summary.totalStoppageAmount,
+      category: "STOPAJ",
+      isSelected: selectedCategory === "STOPAJ",
+      onClick: () => onCategorySelect("STOPAJ"),
+    });
+  }
 
   // Sort all cards by absolute amount (highest to lowest)
   allCards.sort((a, b) => Math.abs(b.totalAmount) - Math.abs(a.totalAmount));

@@ -94,6 +94,13 @@ public interface TrendyolCargoInvoiceRepository extends JpaRepository<TrendyolCa
             UUID storeId, String invoiceSerialNumber);
 
     /**
+     * Find cargo invoice items by store and invoice serial number with pagination.
+     * Used for lazy loading in invoice detail panel.
+     */
+    Page<TrendyolCargoInvoice> findByStoreIdAndInvoiceSerialNumberOrderByInvoiceDateDescCreatedAtDesc(
+            UUID storeId, String invoiceSerialNumber, Pageable pageable);
+
+    /**
      * Count items for a specific cargo invoice.
      */
     long countByStoreIdAndInvoiceSerialNumber(UUID storeId, String invoiceSerialNumber);

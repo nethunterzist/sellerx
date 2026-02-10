@@ -4,6 +4,7 @@ import com.ecommerce.sellerx.common.BaseUnitTest;
 import com.ecommerce.sellerx.common.TestDataBuilder;
 import com.ecommerce.sellerx.orders.dto.*;
 import com.ecommerce.sellerx.orders.dto.CustomerAnalyticsProjections.*;
+import com.ecommerce.sellerx.products.TrendyolProductRepository;
 import com.ecommerce.sellerx.stores.Store;
 import com.ecommerce.sellerx.users.User;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,6 +31,9 @@ class CustomerAnalyticsServiceTest extends BaseUnitTest {
     @Mock
     private TrendyolOrderService orderService;
 
+    @Mock
+    private TrendyolProductRepository productRepository;
+
     private CustomerAnalyticsService service;
 
     private User testUser;
@@ -39,7 +43,7 @@ class CustomerAnalyticsServiceTest extends BaseUnitTest {
     @BeforeEach
     void setUp() {
         TestDataBuilder.resetSequence();
-        service = new CustomerAnalyticsService(orderRepository, orderService);
+        service = new CustomerAnalyticsService(orderRepository, orderService, productRepository);
 
         testUser = TestDataBuilder.user().build();
         testStore = TestDataBuilder.completedStore(testUser).build();

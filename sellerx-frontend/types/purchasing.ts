@@ -201,12 +201,16 @@ export interface ProductValuation {
   productName: string;
   barcode: string;
   productImage?: string;
-  quantity: number;
+  quantity: number;              // Trendyol actual stock (source of truth)
   fifoValue: number;
   averageCost: number;
   oldestStockDate?: string;
   daysInStock: number;
   stockDepleted?: boolean;
+  // Estimated depletion fields
+  averageDailySales?: number;        // Average units sold per day (last 90 days)
+  estimatedDepletionDate?: string;   // When stock is expected to run out (ISO date string)
+  daysUntilDepletion?: number;       // Days until stock runs out (null if no sales data)
 }
 
 export interface AgingBreakdown {

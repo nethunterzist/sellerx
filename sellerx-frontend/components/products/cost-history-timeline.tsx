@@ -1,15 +1,19 @@
 "use client";
 
-import { CalendarDays, Package, Sparkles, ShoppingCart, TrendingDown, TrendingUp } from "lucide-react";
+import { CalendarDays, Package, Sparkles, ShoppingCart, TrendingDown, TrendingUp, Pencil, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { CostAndStockInfo } from "@/types/product";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
 import { useCurrency } from "@/lib/contexts/currency-context";
 
 interface CostHistoryTimelineProps {
   costHistory: CostAndStockInfo[];
   salePrice: number;
   vatRate: number;
+  onEdit?: (entry: CostAndStockInfo) => void;
+  onDelete?: (entry: CostAndStockInfo) => void;
+  editingDate?: string;
 }
 
 function formatDate(dateString: string): string {
@@ -37,7 +41,14 @@ function calculateWeightedAverageCost(entries: CostAndStockInfo[]): number {
   return totalQuantity > 0 ? totalValue / totalQuantity : 0;
 }
 
-export function CostHistoryTimeline({ costHistory, salePrice, vatRate }: CostHistoryTimelineProps) {
+export function CostHistoryTimeline({
+  costHistory,
+  salePrice,
+  vatRate,
+  onEdit,
+  onDelete,
+  editingDate,
+}: CostHistoryTimelineProps) {
   const { formatCurrency } = useCurrency();
 
   if (!costHistory || costHistory.length === 0) {
@@ -120,19 +131,22 @@ export function CostHistoryTimeline({ costHistory, salePrice, vatRate }: CostHis
             const entryUsagePercentage = entry.quantity > 0
               ? ((entry.usedQuantity || 0) / entry.quantity) * 100
               : 0;
+            const isEditing = editingDate === entry.stockDate;
 
             return (
               <div key={index} className="relative flex gap-3">
                 {/* Timeline dot */}
                 <div className={cn(
                   "relative z-10 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2",
-                  isFullyUsed
-                    ? "bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-600"
-                    : index === 0
-                      ? "bg-blue-500 border-blue-500"
-                      : "bg-card border-blue-300 dark:border-blue-600"
+                  isEditing
+                    ? "bg-blue-500 border-blue-500 ring-2 ring-blue-200 dark:ring-blue-800"
+                    : isFullyUsed
+                      ? "bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-600"
+                      : index === 0
+                        ? "bg-blue-500 border-blue-500"
+                        : "bg-card border-blue-300 dark:border-blue-600"
                 )}>
-                  {!isFullyUsed && index === 0 && (
+                  {!isFullyUsed && index === 0 && !isEditing && (
                     <div className="h-2 w-2 rounded-full bg-white" />
                   )}
                 </div>
@@ -140,17 +154,24 @@ export function CostHistoryTimeline({ costHistory, salePrice, vatRate }: CostHis
                 {/* Content */}
                 <div className={cn(
                   "flex-1 rounded-lg border p-3 transition-colors",
-                  isFullyUsed
-                    ? "bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 opacity-60"
-                    : index === 0
-                      ? "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800"
-                      : "bg-card border-border hover:border-gray-300 dark:hover:border-gray-600"
+                  isEditing
+                    ? "bg-blue-100 dark:bg-blue-900/40 border-blue-300 dark:border-blue-700 ring-2 ring-blue-200 dark:ring-blue-800"
+                    : isFullyUsed
+                      ? "bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 opacity-60"
+                      : index === 0
+                        ? "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800"
+                        : "bg-card border-border hover:border-gray-300 dark:hover:border-gray-600"
                 )}>
                   <div className="flex items-start justify-between mb-2">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
                       <span className="text-sm font-medium text-foreground">{formatDate(entry.stockDate)}</span>
-                      {index === 0 && !isFullyUsed && (
+                      {isEditing && (
+                        <span className="px-1.5 py-0.5 text-[10px] bg-blue-500 text-white rounded font-medium">
+                          Düzenleniyor
+                        </span>
+                      )}
+                      {index === 0 && !isFullyUsed && !isEditing && (
                         <span className="px-1.5 py-0.5 text-[10px] bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded font-medium">
                           En Güncel
                         </span>
@@ -173,9 +194,42 @@ export function CostHistoryTimeline({ costHistory, salePrice, vatRate }: CostHis
                         </span>
                       )}
                     </div>
-                    <span className="text-sm font-semibold text-foreground">
-                      {formatCurrency(entry.unitCost)}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold text-foreground">
+                        {formatCurrency(entry.unitCost)}
+                      </span>
+                      {/* Edit/Delete buttons */}
+                      {(onEdit || onDelete) && (
+                        <div className="flex items-center gap-1 ml-2">
+                          {onEdit && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 text-muted-foreground hover:text-blue-600 dark:hover:text-blue-400"
+                              onClick={() => onEdit(entry)}
+                              disabled={isEditing}
+                              title="Düzenle"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                          {onDelete && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 text-muted-foreground hover:text-red-600 dark:hover:text-red-400"
+                              onClick={() => onDelete(entry)}
+                              disabled={isEditing}
+                              title="Sil"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex items-center justify-between text-xs text-muted-foreground">

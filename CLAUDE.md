@@ -83,6 +83,82 @@ docker-compose -f docker-compose.dev.yml down
 docker-compose -f docker-compose.dev.yml down -v
 ```
 
+## CI/CD & Production Deployment
+
+### Otomatik Deployment (main branch'e push)
+`main` branch'e push yapıldığında GitHub Actions otomatik tetiklenir:
+- `sellerx-backend/**` değişikliği → Backend deploy (~5-10 dk)
+- `sellerx-frontend/**` değişikliği → Frontend deploy (~3-5 dk)
+
+### Akış
+```
+git push origin main
+    ↓ (otomatik)
+GitHub Actions: Build & Test
+    ↓
+Docker image → GHCR (ghcr.io/nethunterzist/sellerx/*)
+    ↓
+SSH ile sunucuya bağlan
+    ↓
+Eski container'ı durdur (rollback için sakla)
+    ↓
+Yeni image'ı pull et ve başlat
+    ↓
+Health check (başarısız olursa otomatik rollback)
+    ↓
+✅ Deploy tamamlandı!
+```
+
+### Manuel Deployment (Acil Durumlar)
+```bash
+# GitHub Actions'ı manuel tetikle
+gh workflow run deploy-backend.yml
+gh workflow run deploy-frontend.yml
+```
+
+### Rollback
+```bash
+# Sunucuda önceki versiyona dön
+ssh root@157.180.78.53 "docker stop sellerx-backend && docker rm sellerx-backend && \
+  docker run -d --name sellerx-backend ... ghcr.io/nethunterzist/sellerx/backend:rollback"
+```
+
+### Deploy Durumunu Kontrol
+```bash
+# GitHub Actions durumu
+gh run list --workflow=deploy-backend.yml
+
+# Container durumu (sunucuda)
+ssh root@157.180.78.53 "docker ps | grep sellerx"
+
+# Health check
+curl -k https://uwgss4kkocg4kks8880kwwwo.157.180.78.53.sslip.io/actuator/health
+curl -k https://sellerx.157.180.78.53.sslip.io
+```
+
+### Production URLs
+- **Frontend**: https://sellerx.157.180.78.53.sslip.io
+- **Backend**: https://uwgss4kkocg4kks8880kwwwo.157.180.78.53.sslip.io
+- **Coolify Panel**: http://157.180.78.53:8000
+
+### GitHub Secrets (Gerekli)
+| Secret | Açıklama |
+|--------|----------|
+| `SSH_PRIVATE_KEY` | Sunucu SSH erişimi |
+| `DB_PASSWORD` | PostgreSQL şifresi |
+| `JWT_SECRET` | JWT signing key (32+ karakter) |
+| `ENCRYPTION_KEY` | AES encryption key |
+| `GHCR_PAT` | GitHub Container Registry erişimi |
+
+### Workflow Dosyaları
+- `.github/workflows/ci.yml` - Build & Test (PR'larda)
+- `.github/workflows/deploy-backend.yml` - Backend deploy
+- `.github/workflows/deploy-frontend.yml` - Frontend deploy
+
+Detaylı rehber: [docs/deployment/CI_CD_GUIDE.md](docs/deployment/CI_CD_GUIDE.md)
+
+---
+
 ## Architecture
 
 ### Data Flow

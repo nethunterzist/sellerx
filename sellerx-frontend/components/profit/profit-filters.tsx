@@ -12,6 +12,7 @@ import {
   TrendingUp,
   TrendingDown,
   Minus,
+  Settings2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +35,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Calendar } from "@/components/ui/calendar";
+import { Slider } from "@/components/ui/slider";
 import { format, subDays } from "date-fns";
 import { tr } from "date-fns/locale";
 
@@ -54,10 +56,10 @@ const periodOptions: PeriodOption[] = [
 ];
 
 // Profit filter options
-export type ProfitFilter = "all" | "profit" | "loss";
+export type ProfitFilter = "all" | "profit" | "loss" | "custom";
 
 interface ProfitFilterOption {
-  id: ProfitFilter;
+  id: Exclude<ProfitFilter, "custom">;
   label: string;
   icon: React.ReactNode;
 }
@@ -79,6 +81,10 @@ export interface ProfitFiltersProps {
   profitFilter: ProfitFilter;
   onProfitFilterChange: (filter: ProfitFilter) => void;
 
+  // Custom margin threshold filter
+  customMarginThreshold?: number | null;
+  onCustomMarginThresholdChange?: (threshold: number | null) => void;
+
   // Category filter
   selectedCategory: string | null;
   categories: string[];
@@ -96,6 +102,8 @@ export function ProfitFilters({
   onCustomDateRangeChange,
   profitFilter,
   onProfitFilterChange,
+  customMarginThreshold,
+  onCustomMarginThresholdChange,
   selectedCategory,
   categories,
   onCategoryChange,
@@ -104,6 +112,10 @@ export function ProfitFilters({
 }: ProfitFiltersProps) {
   const [periodOpen, setPeriodOpen] = useState(false);
   const [categoryOpen, setCategoryOpen] = useState(false);
+
+  // Custom margin filter state
+  const [customFilterOpen, setCustomFilterOpen] = useState(false);
+  const [tempMarginValue, setTempMarginValue] = useState<number>(customMarginThreshold ?? 20);
 
   // Custom date picker state
   const [customDateOpen, setCustomDateOpen] = useState(false);
@@ -169,6 +181,21 @@ export function ProfitFilters({
     return profitFilterOptions.find((f) => f.id === profitFilter)?.label || "Tumunu Goster";
   };
 
+  // Handle custom margin filter apply
+  const handleCustomMarginApply = () => {
+    onProfitFilterChange("custom");
+    onCustomMarginThresholdChange?.(tempMarginValue);
+    setCustomFilterOpen(false);
+  };
+
+  // Handle custom margin filter clear
+  const handleCustomMarginClear = () => {
+    onProfitFilterChange("all");
+    onCustomMarginThresholdChange?.(null);
+    setTempMarginValue(20);
+    setCustomFilterOpen(false);
+  };
+
   return (
     <div className="flex flex-wrap items-center gap-3">
       {/* Search Input */}
@@ -176,7 +203,7 @@ export function ProfitFilters({
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           type="text"
-          placeholder="Urun ara (isim veya barkod)"
+          placeholder="Urun ara (isim, barkod veya marka)"
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
           className="pl-10"
@@ -329,7 +356,12 @@ export function ProfitFilters({
         {profitFilterOptions.map((option) => (
           <button
             key={option.id}
-            onClick={() => onProfitFilterChange(option.id)}
+            onClick={() => {
+              onProfitFilterChange(option.id);
+              // Clear custom threshold when selecting a standard filter (non-custom)
+              // All options in profitFilterOptions are non-custom, so always clear
+              onCustomMarginThresholdChange?.(null);
+            }}
             className={cn(
               "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
               profitFilter === option.id
@@ -342,6 +374,88 @@ export function ProfitFilters({
           </button>
         ))}
       </div>
+
+      {/* Custom Margin Filter */}
+      <Popover open={customFilterOpen} onOpenChange={setCustomFilterOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            className={cn(
+              "gap-2",
+              profitFilter === "custom" && "border-[#1D70F1] bg-[#1D70F1]/10 text-[#1D70F1]"
+            )}
+          >
+            <Settings2 className="h-4 w-4" />
+            <span className="hidden sm:inline">
+              {profitFilter === "custom" && customMarginThreshold !== null
+                ? `>=${customMarginThreshold}%`
+                : "Ozel Filtre"}
+            </span>
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-72" align="start">
+          <div className="space-y-4">
+            <div>
+              <h4 className="font-medium text-sm mb-2">Minimum Kar Marji</h4>
+              <p className="text-xs text-muted-foreground mb-3">
+                Sadece belirtilen kar marji ve uzerindeki urunleri goster
+              </p>
+            </div>
+
+            {/* Slider */}
+            <div className="space-y-3">
+              <Slider
+                value={[tempMarginValue]}
+                onValueChange={(value) => setTempMarginValue(value[0])}
+                min={0}
+                max={50}
+                step={1}
+                className="w-full"
+              />
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>0%</span>
+                <span>50%</span>
+              </div>
+            </div>
+
+            {/* Input */}
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                value={tempMarginValue}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value) || 0;
+                  setTempMarginValue(Math.min(Math.max(val, 0), 100));
+                }}
+                className="w-20 text-center"
+                min={0}
+                max={100}
+              />
+              <span className="text-sm text-muted-foreground">% ve uzeri</span>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-between pt-2 border-t">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleCustomMarginClear}
+                className="text-muted-foreground"
+              >
+                Temizle
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleCustomMarginApply}
+                className="bg-[#1D70F1] hover:bg-[#1D70F1]/90"
+              >
+                <Check className="h-4 w-4 mr-1" />
+                Uygula
+              </Button>
+            </div>
+          </div>
+        </PopoverContent>
+      </Popover>
 
       {/* Category Dropdown */}
       {categories.length > 0 && (

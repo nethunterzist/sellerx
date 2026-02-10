@@ -21,7 +21,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Edit, Trash2, RefreshCw, Calendar, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Edit, Trash2, RefreshCw, Calendar, ArrowUpDown, ArrowUp, ArrowDown, Repeat } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { useDeleteExpense } from "@/hooks/queries/use-expenses";
 import type { StoreExpense, ExpenseFrequency } from "@/types/expense";
 import { frequencyLabels } from "@/types/expense";
@@ -207,7 +208,22 @@ export function ExpenseList({
               sortedExpenses.map((expense) => (
                 <TableRow key={expense.id} className="hover:bg-muted">
                   <TableCell className="font-medium">
-                    {expense.expenseCategoryName || expense.name}
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2">
+                        {expense.expenseCategoryName || expense.name}
+                        {expense.isRecurringTemplate && (
+                          <Badge variant="outline" className="text-xs px-1.5 py-0 h-5 gap-1 border-blue-300 text-blue-600 dark:border-blue-600 dark:text-blue-400">
+                            <Repeat className="h-3 w-3" />
+                            Şablon
+                          </Badge>
+                        )}
+                      </div>
+                      {expense.parentExpenseId && (
+                        <span className="text-xs text-muted-foreground italic">
+                          (Otomatik oluşturuldu)
+                        </span>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="font-medium">{formatCurrency(expense.amount)}</div>
@@ -234,7 +250,17 @@ export function ExpenseList({
                     </span>
                   </TableCell>
                   <TableCell className="text-muted-foreground">
-                    {formatDate(expense.date?.split("T")[0] || "")}
+                    <div className="flex flex-col gap-0.5">
+                      <span>{formatDate(expense.date?.split("T")[0] || "")}</span>
+                      {expense.endDate && (
+                        <span className="text-xs">
+                          → {formatDate(expense.endDate.split("T")[0])}
+                        </span>
+                      )}
+                      {expense.isRecurringTemplate && !expense.endDate && (
+                        <span className="text-xs text-blue-500">Süresiz</span>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="text-muted-foreground max-w-[200px] truncate">
                     {expense.name || "-"}

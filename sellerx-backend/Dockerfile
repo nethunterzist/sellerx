@@ -1,33 +1,40 @@
-# Backend Dockerfile - Multi-environment support
-FROM maven:3.9-eclipse-temurin-21 AS build
-
+# SellerX Backend - Production Dockerfile
+FROM eclipse-temurin:21-jdk-alpine AS builder
 WORKDIR /app
 
-# Copy pom.xml first for better caching
-COPY pom.xml .
-RUN mvn dependency:go-offline -B
+# Copy Maven wrapper and pom.xml first for caching
+COPY .mvn/ .mvn/
+COPY mvnw pom.xml ./
+RUN chmod +x ./mvnw
 
-# Copy source code
-COPY src ./src
+# Download dependencies (cached layer)
+RUN ./mvnw dependency:go-offline -B
 
-# Build the application
-# Profile will be set via environment variable at runtime
-# Default to docker profile for local development
-RUN mvn clean package -DskipTests
+# Copy source and build
+COPY src/ src/
+RUN ./mvnw -DskipTests clean package
 
 # Runtime stage
-FROM eclipse-temurin:21-jre
-
+FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
-# Copy the built jar
-COPY --from=build /app/target/*.jar app.jar
+# Create non-root user
+RUN addgroup --system --gid 1001 spring && \
+    adduser --system --uid 1001 spring --ingroup spring
 
-# Default profile for Docker (can be overridden)
-ENV SPRING_PROFILES_ACTIVE=docker
+# Copy jar from builder
+COPY --from=builder /app/target/*.jar app.jar
 
-# Railway uses PORT environment variable, Docker uses 8080
-EXPOSE ${PORT:-8080}
+# Set ownership
+RUN chown spring:spring app.jar
 
-# Run the application with profile from environment variable
-CMD ["sh", "-c", "java -Dspring.profiles.active=${SPRING_PROFILES_ACTIVE} -Dserver.port=${PORT:-8080} -jar app.jar"]
+USER spring
+
+EXPOSE 8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD wget -q --spider http://localhost:8080/actuator/health || exit 1
+
+# Run with optimized JVM settings
+CMD ["java", "-XX:+UseContainerSupport", "-XX:MaxRAMPercentage=75.0", "-jar", "app.jar"]

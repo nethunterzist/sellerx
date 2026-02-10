@@ -8,6 +8,18 @@ export interface CostAndStockInfo {
   stockDate: string; // ISO date string (YYYY-MM-DD)
   usedQuantity: number;
   costSource?: 'AUTO_DETECTED' | 'MANUAL' | 'PURCHASE_ORDER' | null;
+
+  // ============== Döviz Kuru Desteği (Excel F1, F2, F4) ==============
+  currency?: 'TRY' | 'USD' | 'EUR' | null; // Para birimi (null = TRY)
+  exchangeRate?: number | null; // Döviz kuru (örn: 44.0 TL/$)
+  foreignCost?: number | null; // Yabancı para cinsinden maliyet (örn: 10 $)
+
+  // ============== ÖTV Desteği (Excel F5) ==============
+  otvRate?: number | null; // Özel Tüketim Vergisi oranı (örn: 0.2 = %20)
+
+  // ============== Reklam Metrikleri (Excel C23, C24) ==============
+  cpc?: number | null; // Cost Per Click (TL)
+  cvr?: number | null; // Conversion Rate (örn: 0.018 = %1.8)
 }
 
 // Backend: TrendyolProductDto
@@ -39,6 +51,19 @@ export interface TrendyolProduct {
   hasAutoDetectedCost?: boolean;
   createdAt: string; // ISO datetime
   updatedAt: string; // ISO datetime
+
+  // ============== Reklam Metrikleri (Excel C23, C24) ==============
+  cpc?: number | null; // Cost Per Click (TL) - ürün varsayılan değeri
+  cvr?: number | null; // Conversion Rate (örn: 0.018 = %1.8) - ürün varsayılan değeri
+  advertisingCostPerSale?: number | null; // Hesaplanan: cpc / cvr
+  acos?: number | null; // ACOS: (advertisingCostPerSale / salePrice) * 100
+
+  // ============== Döviz Kuru (Excel F1) ==============
+  defaultCurrency?: 'TRY' | 'USD' | 'EUR' | null; // Varsayılan para birimi
+  defaultExchangeRate?: number | null; // Varsayılan döviz kuru
+
+  // ============== ÖTV (Excel F5) ==============
+  otvRate?: number | null; // Özel Tüketim Vergisi oranı
 }
 
 // Backend: ProductListResponse
@@ -70,14 +95,28 @@ export interface UpdateCostAndStockRequest {
   unitCost: number;
   costVatRate: number;
   stockDate: string;
+
+  // ============== Döviz Kuru Desteği (Excel F1, F2, F4) ==============
+  currency?: 'TRY' | 'USD' | 'EUR' | null;
+  exchangeRate?: number | null;
+  foreignCost?: number | null;
+
+  // ============== ÖTV Desteği (Excel F5) ==============
+  otvRate?: number | null;
+
+  // ============== Reklam Metrikleri (Excel C23, C24) ==============
+  cpc?: number | null;
+  cvr?: number | null;
 }
 
 export interface ProductFilters {
   search?: string;
-  onSale?: boolean;
-  approved?: boolean;
-  archived?: boolean;
-  hasStock?: boolean;
+  minStock?: number;
+  maxStock?: number;
   minPrice?: number;
   maxPrice?: number;
+  minCommission?: number;
+  maxCommission?: number;
+  minCost?: number;
+  maxCost?: number;
 }

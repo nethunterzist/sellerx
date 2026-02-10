@@ -1,5 +1,6 @@
 package com.ecommerce.sellerx.expenses;
 
+import com.ecommerce.sellerx.stores.Store;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -7,7 +8,8 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "expense_categories")
+@Table(name = "expense_categories",
+       uniqueConstraints = @UniqueConstraint(columnNames = {"store_id", "name"}))
 @Getter
 @Setter
 @Builder
@@ -15,13 +17,17 @@ import java.util.UUID;
 @AllArgsConstructor
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class ExpenseCategory {
-    
+
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     @EqualsAndHashCode.Include
     private UUID id;
-    
-    @Column(name = "name", nullable = false, unique = true)
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "store_id", nullable = false)
+    private Store store;
+
+    @Column(name = "name", nullable = false)
     private String name;
     
     @Column(name = "created_at", nullable = false)

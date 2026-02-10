@@ -27,13 +27,18 @@ public class StockValuationResponse {
         private String productName;
         private String barcode;
         private String productImage;
-        private Integer quantity;
+        private Integer quantity;           // Trendyol actual stock (source of truth)
         private BigDecimal fifoValue;
         private BigDecimal averageCost;
         private LocalDate oldestStockDate;
         private Integer daysInStock;
-        private String agingCategory; // "0-30", "30-60", "60-90", "90+"
+        private String agingCategory;       // "0-30", "30-60", "60-90", "90+"
         private Boolean stockDepleted;
+
+        // New fields for estimated depletion
+        private Double averageDailySales;        // Average units sold per day (last 90 days)
+        private LocalDate estimatedDepletionDate; // When stock is expected to run out
+        private Integer daysUntilDepletion;       // Days until stock runs out (null if no sales data)
     }
 
     @Data

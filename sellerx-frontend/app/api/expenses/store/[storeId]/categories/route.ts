@@ -1,0 +1,98 @@
+import { NextRequest, NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
+import { getBackendHeaders } from "@/lib/api/bff-auth";
+
+const API_BASE_URL = process.env.API_BASE_URL;
+
+// GET /api/expenses/store/[storeId]/categories - Get store expense categories
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ storeId: string }> }
+) {
+  try {
+    const { storeId } = await params;
+    const headers = await getBackendHeaders(request);
+
+    if (!headers.Authorization) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const response = await fetch(
+      `${API_BASE_URL}/expenses/store/${storeId}/categories`,
+      {
+        headers,
+      }
+    );
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    return NextResponse.json(data);
+  } catch (error) {
+    logger.error("GET /expenses/store/[storeId]/categories error", {
+      endpoint: "/expenses/store/[storeId]/categories",
+      error,
+    });
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+
+// POST /api/expenses/store/[storeId]/categories - Create new expense category
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ storeId: string }> }
+) {
+  try {
+    const { storeId } = await params;
+    const headers = await getBackendHeaders(request);
+
+    if (!headers.Authorization) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const body = await request.json();
+
+    const response = await fetch(
+      `${API_BASE_URL}/expenses/store/${storeId}/categories`,
+      {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body),
+      }
+    );
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+      // Handle conflict errors (duplicate category name)
+      if (response.status === 409) {
+        const errorData = await response.json();
+        return NextResponse.json(errorData, { status: 409 });
+      }
+      const errorData = await response.text();
+      throw new Error(errorData || `HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    return NextResponse.json(data);
+  } catch (error) {
+    logger.error("POST /expenses/store/[storeId]/categories error", {
+      endpoint: "/expenses/store/[storeId]/categories",
+      method: "POST",
+      error,
+    });
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Internal server error" },
+      { status: 500 }
+    );
+  }
+}

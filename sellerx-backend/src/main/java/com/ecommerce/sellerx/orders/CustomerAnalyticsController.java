@@ -51,9 +51,34 @@ public class CustomerAnalyticsController {
         return ResponseEntity.ok(analyticsService.getCustomerList(storeId, page, size, sort, search));
     }
 
+    @GetMapping("/customers/{customerId}/orders")
+    public ResponseEntity<CustomerOrdersPageDto> getCustomerOrders(
+            @PathVariable UUID storeId,
+            @PathVariable Long customerId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(analyticsService.getCustomerOrdersPaginated(storeId, customerId, page, size));
+    }
+
     @GetMapping("/product-repeat")
     public ResponseEntity<List<ProductRepeatData>> getProductRepeat(@PathVariable UUID storeId) {
         return ResponseEntity.ok(analyticsService.getProductRepeatAnalysis(storeId));
+    }
+
+    @GetMapping("/products/{barcode}")
+    public ResponseEntity<ProductDetailDto> getProductDetail(
+            @PathVariable UUID storeId,
+            @PathVariable String barcode) {
+        return ResponseEntity.ok(analyticsService.getProductDetail(storeId, barcode));
+    }
+
+    @GetMapping("/products/{barcode}/buyers")
+    public ResponseEntity<ProductBuyersPageDto> getProductBuyers(
+            @PathVariable UUID storeId,
+            @PathVariable String barcode,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(analyticsService.getProductBuyers(storeId, barcode, page, size));
     }
 
     @GetMapping("/cross-sell")

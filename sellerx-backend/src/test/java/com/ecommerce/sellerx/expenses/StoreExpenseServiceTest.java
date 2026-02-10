@@ -23,7 +23,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 /**
@@ -152,7 +152,7 @@ class StoreExpenseServiceTest extends BaseUnitTest {
             // Given
             CreateStoreExpenseRequest request = new CreateStoreExpenseRequest(
                     categoryId, null, LocalDateTime.now(),
-                    ExpenseFrequency.MONTHLY, "Office Rent",
+                    ExpenseFrequency.MONTHLY, null, "Office Rent",
                     new BigDecimal("1000.00"), 20
             );
 
@@ -192,7 +192,7 @@ class StoreExpenseServiceTest extends BaseUnitTest {
             // Given
             CreateStoreExpenseRequest request = new CreateStoreExpenseRequest(
                     categoryId, null, null,
-                    ExpenseFrequency.ONE_TIME, "Test",
+                    ExpenseFrequency.ONE_TIME, null, "Test",
                     new BigDecimal("50.00"), null
             );
             when(storeRepository.findById(storeId)).thenReturn(Optional.empty());
@@ -209,7 +209,7 @@ class StoreExpenseServiceTest extends BaseUnitTest {
             UUID unknownCategoryId = UUID.randomUUID();
             CreateStoreExpenseRequest request = new CreateStoreExpenseRequest(
                     unknownCategoryId, null, null,
-                    ExpenseFrequency.ONE_TIME, "Test",
+                    ExpenseFrequency.ONE_TIME, null, "Test",
                     new BigDecimal("50.00"), null
             );
             when(storeRepository.findById(storeId)).thenReturn(Optional.of(testStore));
@@ -226,7 +226,7 @@ class StoreExpenseServiceTest extends BaseUnitTest {
             // Given
             CreateStoreExpenseRequest request = new CreateStoreExpenseRequest(
                     categoryId, null, null, // null date
-                    ExpenseFrequency.ONE_TIME, "No Date Expense",
+                    ExpenseFrequency.ONE_TIME, null, "No Date Expense",
                     new BigDecimal("75.00"), null
             );
 
@@ -265,7 +265,7 @@ class StoreExpenseServiceTest extends BaseUnitTest {
 
             UpdateStoreExpenseRequest request = new UpdateStoreExpenseRequest(
                     categoryId, null, LocalDateTime.now(),
-                    ExpenseFrequency.YEARLY, "Updated Expense",
+                    ExpenseFrequency.YEARLY, null, "Updated Expense",
                     new BigDecimal("2000.00"), 10
             );
 
@@ -295,7 +295,7 @@ class StoreExpenseServiceTest extends BaseUnitTest {
 
             UpdateStoreExpenseRequest request = new UpdateStoreExpenseRequest(
                     categoryId, null, LocalDateTime.now(),
-                    ExpenseFrequency.MONTHLY, "Hacked Expense",
+                    ExpenseFrequency.MONTHLY, null, "Hacked Expense",
                     new BigDecimal("999.00"), null
             );
 
@@ -315,7 +315,7 @@ class StoreExpenseServiceTest extends BaseUnitTest {
             UUID nonExistentExpenseId = UUID.randomUUID();
             UpdateStoreExpenseRequest request = new UpdateStoreExpenseRequest(
                     categoryId, null, LocalDateTime.now(),
-                    ExpenseFrequency.MONTHLY, "Missing",
+                    ExpenseFrequency.MONTHLY, null, "Missing",
                     new BigDecimal("100.00"), null
             );
 
@@ -402,8 +402,8 @@ class StoreExpenseServiceTest extends BaseUnitTest {
             ExpenseCategoryDto dto2 = mock(ExpenseCategoryDto.class);
 
             when(expenseCategoryRepository.findAllByOrderByNameAsc()).thenReturn(List.of(cat1, cat2));
-            when(expenseCategoryMapper.toDto(cat1)).thenReturn(dto1);
-            when(expenseCategoryMapper.toDto(cat2)).thenReturn(dto2);
+            when(expenseCategoryMapper.toDto(eq(cat1), anyLong())).thenReturn(dto1);
+            when(expenseCategoryMapper.toDto(eq(cat2), anyLong())).thenReturn(dto2);
 
             // When
             List<ExpenseCategoryDto> result = expenseService.getAllExpenseCategories();

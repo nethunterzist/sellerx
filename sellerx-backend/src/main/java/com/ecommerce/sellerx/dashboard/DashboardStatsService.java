@@ -305,6 +305,17 @@ public class DashboardStatsService {
                 .itemsWithoutCost(baseStats.getItemsWithoutCost())
                 .totalExpenseNumber(baseStats.getTotalExpenseNumber())
                 .totalExpenseAmount(baseStats.getTotalExpenseAmount())
+                .totalShippingCost(baseStats.getTotalShippingCost())
+                // Kesilen Faturalar (Invoiced Fees)
+                .platformServiceFee(baseStats.getPlatformServiceFee())
+                .azPlatformServiceFee(baseStats.getAzPlatformServiceFee())
+                .invoicedAdvertisingFees(baseStats.getInvoicedAdvertisingFees())
+                .invoicedPenaltyFees(baseStats.getInvoicedPenaltyFees())
+                .invoicedInternationalFees(baseStats.getInvoicedInternationalFees())
+                .invoicedOtherFees(baseStats.getInvoicedOtherFees())
+                .invoicedRefunds(baseStats.getInvoicedRefunds())
+                // Gider Kategorileri
+                .expensesByCategory(baseStats.getExpensesByCategory())
                 .build();
     }
 
@@ -365,6 +376,17 @@ public class DashboardStatsService {
                     .itemsWithoutCost(0)
                     .totalExpenseNumber(0)
                     .totalExpenseAmount(BigDecimal.ZERO)
+                    .totalShippingCost(BigDecimal.ZERO)
+                    // Kesilen Faturalar
+                    .platformServiceFee(BigDecimal.ZERO)
+                    .azPlatformServiceFee(BigDecimal.ZERO)
+                    .invoicedAdvertisingFees(BigDecimal.ZERO)
+                    .invoicedPenaltyFees(BigDecimal.ZERO)
+                    .invoicedInternationalFees(BigDecimal.ZERO)
+                    .invoicedOtherFees(BigDecimal.ZERO)
+                    .invoicedRefunds(BigDecimal.ZERO)
+                    // Gider Kategorileri
+                    .expensesByCategory(new java.util.HashMap<>())
                     .build();
         }
 
@@ -384,6 +406,26 @@ public class DashboardStatsService {
         BigDecimal totalCommission = sumBigDecimals(periods, PeriodStatsDto::getTotalEstimatedCommission);
         BigDecimal totalNetProfit = sumBigDecimals(periods, PeriodStatsDto::getNetProfit);
         BigDecimal totalExpenseAmount = sumBigDecimals(periods, PeriodStatsDto::getTotalExpenseAmount);
+        BigDecimal totalShippingCost = sumBigDecimals(periods, PeriodStatsDto::getTotalShippingCost);
+
+        // Sum invoiced fees
+        BigDecimal totalPlatformServiceFee = sumBigDecimals(periods, PeriodStatsDto::getPlatformServiceFee);
+        BigDecimal totalAzPlatformServiceFee = sumBigDecimals(periods, PeriodStatsDto::getAzPlatformServiceFee);
+        BigDecimal totalInvoicedAdvertisingFees = sumBigDecimals(periods, PeriodStatsDto::getInvoicedAdvertisingFees);
+        BigDecimal totalInvoicedPenaltyFees = sumBigDecimals(periods, PeriodStatsDto::getInvoicedPenaltyFees);
+        BigDecimal totalInvoicedInternationalFees = sumBigDecimals(periods, PeriodStatsDto::getInvoicedInternationalFees);
+        BigDecimal totalInvoicedOtherFees = sumBigDecimals(periods, PeriodStatsDto::getInvoicedOtherFees);
+        BigDecimal totalInvoicedRefunds = sumBigDecimals(periods, PeriodStatsDto::getInvoicedRefunds);
+
+        // Merge expense categories from all periods
+        java.util.Map<String, BigDecimal> mergedExpensesByCategory = new java.util.HashMap<>();
+        for (PeriodStatsDto period : periods) {
+            if (period.getExpensesByCategory() != null) {
+                period.getExpensesByCategory().forEach((category, amount) -> {
+                    mergedExpensesByCategory.merge(category, amount != null ? amount : BigDecimal.ZERO, BigDecimal::add);
+                });
+            }
+        }
 
         // Calculate derived metrics from totals
         BigDecimal profitMargin = calculateProfitMargin(totalGrossProfit, totalRevenue);
@@ -413,6 +455,17 @@ public class DashboardStatsService {
                 .itemsWithoutCost(itemsWithoutCost)
                 .totalExpenseNumber(totalExpenseNumber)
                 .totalExpenseAmount(totalExpenseAmount)
+                .totalShippingCost(totalShippingCost)
+                // Kesilen Faturalar
+                .platformServiceFee(totalPlatformServiceFee)
+                .azPlatformServiceFee(totalAzPlatformServiceFee)
+                .invoicedAdvertisingFees(totalInvoicedAdvertisingFees)
+                .invoicedPenaltyFees(totalInvoicedPenaltyFees)
+                .invoicedInternationalFees(totalInvoicedInternationalFees)
+                .invoicedOtherFees(totalInvoicedOtherFees)
+                .invoicedRefunds(totalInvoicedRefunds)
+                // Gider Kategorileri
+                .expensesByCategory(mergedExpensesByCategory)
                 .build();
     }
 
@@ -541,15 +594,28 @@ public class DashboardStatsService {
                 period, invoicedAdvertisingFees, invoicedPenaltyFees, invoicedInternationalFees,
                 invoicedOtherFees, invoicedRefunds, invoicedDeductions);
 
+        // ============== ÜRÜN DETAYLARI VE REKLAM MALİYETİ ==============
+        // Önce ürün detaylarını hesapla (reklam maliyetini netProfit'ten düşmek için)
+        List<ProductDetailDto> products = calculateProductDetails(storeId, revenueOrders, returnedOrders, startDateTime, endDateTime);
+
+        // Tüm ürünlerin toplam reklam maliyetini hesapla
+        BigDecimal totalAdvertisingCostSum = products.stream()
+                .map(ProductDetailDto::getTotalAdvertisingCost)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        log.info("Period {} total advertising cost from products: {}", period, totalAdvertisingCostSum);
+
         // ============== NET KAR HESAPLAMASI (Güncellenmiş) ==============
-        // Net Kar = Brüt Kar - Komisyon - Platform Ücretleri - İade Maliyeti - Giderler - Kargo - Kesilen Faturalar
+        // Net Kar = Brüt Kar - Komisyon - Platform Ücretleri - İade Maliyeti - Giderler - Kargo - Kesilen Faturalar - Reklam Maliyeti
         BigDecimal netProfit = grossProfit
                 .subtract(totalEstimatedCommission)
                 .subtract(platformFees.getTotal())
                 .subtract(returnCost)
                 .subtract(totalExpenseAmount)
                 .subtract(shippingCosts.getShippingCost())
-                .subtract(invoicedDeductions);
+                .subtract(invoicedDeductions)
+                .subtract(totalAdvertisingCostSum);
 
         // Calculate Profit Margin (%)
         BigDecimal profitMargin = BigDecimal.ZERO;
@@ -569,8 +635,8 @@ public class DashboardStatsService {
                     .setScale(2, RoundingMode.HALF_UP);
         }
 
-        log.info("Period {} stats: revenue={}, grossProfit={}, commission={}, platformFees={}, returnCost={}, expenses={}, shipping={}, invoicedDeductions={}, netProfit={}",
-                period, totalRevenue, grossProfit, totalEstimatedCommission, platformFees.getTotal(), returnCost, totalExpenseAmount, shippingCosts.getShippingCost(), invoicedDeductions, netProfit);
+        log.info("Period {} stats: revenue={}, grossProfit={}, commission={}, platformFees={}, returnCost={}, expenses={}, shipping={}, invoicedDeductions={}, adsCost={}, netProfit={}",
+                period, totalRevenue, grossProfit, totalEstimatedCommission, platformFees.getTotal(), returnCost, totalExpenseAmount, shippingCosts.getShippingCost(), invoicedDeductions, totalAdvertisingCostSum, netProfit);
         log.info("Period {} discounts: seller={}, platform={}, coupon={}, total={}",
                 period, discounts.getSellerDiscount(), discounts.getPlatformDiscount(), discounts.getCouponDiscount(), discounts.getTotalDiscount());
 
@@ -641,7 +707,7 @@ public class DashboardStatsService {
                 .roi(roi)
                 // Detay listeleri
                 .orders(calculateOrderDetails(storeId, revenueOrders, returnedOrders))
-                .products(calculateProductDetails(storeId, revenueOrders, returnedOrders, startDateTime, endDateTime))
+                .products(products)
                 .expenses(expenses)
                 .build();
     }
@@ -951,6 +1017,11 @@ public class DashboardStatsService {
             BigDecimal couponDiscount = BigDecimal.ZERO;
             BigDecimal refundCost = BigDecimal.ZERO;
             BigDecimal shippingCost = BigDecimal.ZERO; // Kargo maliyeti (sipariş bazlı dağıtım)
+            Set<String> orderNumbers = new HashSet<>(); // Bu ürünü içeren benzersiz sipariş numaraları
+            // Reklam metrikleri (CPC/CVR)
+            BigDecimal cpc = null; // Cost Per Click (TL)
+            BigDecimal cvr = null; // Conversion Rate (örn: 0.018 = %1.8)
+            BigDecimal salePrice = BigDecimal.ZERO; // Ürünün satış fiyatı (ACOS hesabı için)
         }
 
         Map<String, ProductMetrics> productMap = new HashMap<>();
@@ -1016,8 +1087,19 @@ public class DashboardStatsService {
                     m.image = imageUrl;
                     m.productUrl = productUrl;
                     m.stock = stock;
+                    // Reklam metrikleri (CPC/CVR) - ürün bazlı
+                    if (trendyolProduct != null) {
+                        m.cpc = trendyolProduct.getCpc();
+                        m.cvr = trendyolProduct.getCvr();
+                        m.salePrice = trendyolProduct.getSalePrice() != null ? trendyolProduct.getSalePrice() : BigDecimal.ZERO;
+                    }
                     return m;
                 });
+
+                // Sipariş numarasını takip et (benzersiz sipariş sayısı için)
+                if (order.getTyOrderNumber() != null) {
+                    metrics.orderNumbers.add(order.getTyOrderNumber());
+                }
 
                 // Satış miktarını ekle
                 int qty = item.getQuantity() != null ? item.getQuantity() : 0;
@@ -1118,11 +1200,42 @@ public class DashboardStatsService {
                                 .setScale(2, RoundingMode.HALF_UP);
                     }
 
-                    // Net kar = brüt kar - komisyon - kargo - iade maliyeti
+                    // ============== REKLAM METRİKLERİ HESAPLAMA (NET KAR'DAN ÖNCE) ==============
+                    // Reklam Maliyeti (satış başına) = CPC / CVR
+                    // Örnek: CPC=3 TL, CVR=0.018 → 3 / 0.018 = 166.67 TL/satış
+                    BigDecimal advertisingCostPerSale = null;
+                    BigDecimal acos = null;
+                    BigDecimal totalAdvertisingCost = null;
+
+                    if (m.cpc != null && m.cvr != null && m.cvr.compareTo(BigDecimal.ZERO) > 0) {
+                        // Satış başına reklam maliyeti
+                        advertisingCostPerSale = m.cpc.divide(m.cvr, 2, RoundingMode.HALF_UP);
+
+                        // ACOS = (reklamMaliyeti / satışFiyatı) * 100
+                        if (m.salePrice.compareTo(BigDecimal.ZERO) > 0) {
+                            acos = advertisingCostPerSale
+                                    .divide(m.salePrice, 4, RoundingMode.HALF_UP)
+                                    .multiply(BigDecimal.valueOf(100))
+                                    .setScale(2, RoundingMode.HALF_UP);
+                        }
+
+                        // Toplam reklam maliyeti = satış başına maliyet × satış adedi
+                        if (m.totalSoldQuantity > 0) {
+                            totalAdvertisingCost = advertisingCostPerSale
+                                    .multiply(BigDecimal.valueOf(m.totalSoldQuantity))
+                                    .setScale(2, RoundingMode.HALF_UP);
+                        }
+                    }
+
+                    // Net kar = brüt kar - komisyon - kargo - iade maliyeti - reklam maliyeti
                     BigDecimal netProfit = m.grossProfit
                             .subtract(m.estimatedCommission)
                             .subtract(m.shippingCost)
                             .subtract(m.refundCost);
+                    // Reklam maliyetini çıkar (eğer varsa)
+                    if (totalAdvertisingCost != null) {
+                        netProfit = netProfit.subtract(totalAdvertisingCost);
+                    }
 
                     // Kar marjı (%)
                     BigDecimal profitMargin = BigDecimal.ZERO;
@@ -1167,6 +1280,13 @@ public class DashboardStatsService {
                             .netProfit(netProfit.setScale(2, RoundingMode.HALF_UP))
                             .profitMargin(profitMargin)
                             .roi(roi)
+                            .orderCount(m.orderNumbers.size())
+                            // Reklam metrikleri
+                            .cpc(m.cpc)
+                            .cvr(m.cvr)
+                            .advertisingCostPerSale(advertisingCostPerSale)
+                            .acos(acos)
+                            .totalAdvertisingCost(totalAdvertisingCost)
                             .build();
                 })
                 .toList();
@@ -1392,36 +1512,75 @@ public class DashboardStatsService {
      * Kategori bazlı gider hesaplamaları.
      * StoreExpense tablosundaki expenseCategory.name alanına göre kategorize eder.
      * Dinamik kategori desteği: Tüm kategoriler Map olarak döner, yeni kategoriler otomatik desteklenir.
+     *
+     * NOT: Bu metot artık frequency-aware hesaplama yapıyor (calculatePeriodExpenses ile aynı mantık).
+     * Recurring expenses (DAILY, WEEKLY, MONTHLY, YEARLY) dönem içinde kaç kez uygulanacağına göre hesaplanır.
      */
     private CategorizedExpensesResult calculateCategorizedExpenses(UUID storeId, LocalDateTime startDateTime, LocalDateTime endDateTime) {
-        // Dinamik kategoriler - veritabanındaki TÜM kategorileri al
-        Map<String, BigDecimal> expensesByCategory = new LinkedHashMap<>(); // Sıralı tutmak için LinkedHashMap
-        var categoryResults = storeExpenseRepository.sumByAllCategories(storeId, startDateTime, endDateTime);
+        LocalDate startDate = startDateTime.toLocalDate();
+        LocalDate endDate = endDateTime.toLocalDate();
 
-        for (var row : categoryResults) {
-            String categoryName = row.getCategoryName();
-            BigDecimal amount = row.getTotalAmount() != null ? row.getTotalAmount() : BigDecimal.ZERO;
-            if (categoryName != null && amount.compareTo(BigDecimal.ZERO) > 0) {
-                expensesByCategory.put(categoryName, amount);
+        // TÜM giderleri al (calculatePeriodExpenses ile aynı)
+        List<StoreExpense> allExpenses = storeExpenseRepository.findByStoreIdWithRelations(storeId);
+
+        // Kategori bazlı toplam hesapla (frequency-aware)
+        Map<String, BigDecimal> expensesByCategory = new LinkedHashMap<>();
+
+        // Hardcoded alanlar için de frequency-aware hesaplama
+        BigDecimal officeExpenses = BigDecimal.ZERO;
+        BigDecimal packagingExpenses = BigDecimal.ZERO;
+        BigDecimal accountingExpenses = BigDecimal.ZERO;
+        BigDecimal advertisingExpenses = BigDecimal.ZERO;
+        BigDecimal otherExpenses = BigDecimal.ZERO;
+
+        for (StoreExpense expense : allExpenses) {
+            int quantity = calculateExpenseQuantityForPeriod(expense, startDate, endDate);
+
+            if (quantity > 0) {
+                BigDecimal totalAmount = expense.getAmount().multiply(BigDecimal.valueOf(quantity));
+
+                // Dinamik kategori hesaplaması
+                if (expense.getExpenseCategory() != null) {
+                    String categoryName = expense.getExpenseCategory().getName();
+                    expensesByCategory.merge(categoryName, totalAmount, BigDecimal::add);
+
+                    // Hardcoded alanlar için keyword eşleştirmesi (geriye uyumluluk)
+                    String lowerName = categoryName.toLowerCase();
+                    if (lowerName.contains(EXPENSE_KEYWORD_OFFICE)) {
+                        officeExpenses = officeExpenses.add(totalAmount);
+                    } else if (lowerName.contains(EXPENSE_KEYWORD_PACKAGING) || lowerName.contains("paketleme")) {
+                        packagingExpenses = packagingExpenses.add(totalAmount);
+                    } else if (lowerName.contains(EXPENSE_KEYWORD_ACCOUNTING)) {
+                        accountingExpenses = accountingExpenses.add(totalAmount);
+                    } else if (lowerName.contains("reklam")) {
+                        advertisingExpenses = advertisingExpenses.add(totalAmount);
+                    } else {
+                        // Diğer tüm kategoriler
+                        otherExpenses = otherExpenses.add(totalAmount);
+                    }
+                }
             }
         }
 
-        log.debug("Calculated expenses by category for store {}: {}", storeId, expensesByCategory);
+        // Kategori toplamlarını büyükten küçüğe sırala
+        Map<String, BigDecimal> sortedExpensesByCategory = expensesByCategory.entrySet().stream()
+                .sorted(Map.Entry.<String, BigDecimal>comparingByValue().reversed())
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        Map.Entry::getValue,
+                        (e1, e2) -> e1,
+                        LinkedHashMap::new
+                ));
 
-        // Geriye uyumluluk için eski hardcoded alanları da hesapla
-        BigDecimal officeExpenses = storeExpenseRepository.sumByCategoryKeyword(storeId, startDateTime, endDateTime, EXPENSE_KEYWORD_OFFICE);
-        BigDecimal packagingExpenses = storeExpenseRepository.sumByCategoryKeyword(storeId, startDateTime, endDateTime, EXPENSE_KEYWORD_PACKAGING);
-        BigDecimal accountingExpenses = storeExpenseRepository.sumByCategoryKeyword(storeId, startDateTime, endDateTime, EXPENSE_KEYWORD_ACCOUNTING);
-        BigDecimal advertisingExpenses = storeExpenseRepository.sumAdvertisingExpenses(storeId, startDateTime, endDateTime);
-        BigDecimal otherExpenses = storeExpenseRepository.sumOtherExpenses(storeId, startDateTime, endDateTime);
+        log.debug("Calculated expenses by category for store {}: {}", storeId, sortedExpensesByCategory);
 
         return new CategorizedExpensesResult(
-                officeExpenses != null ? officeExpenses : BigDecimal.ZERO,
-                packagingExpenses != null ? packagingExpenses : BigDecimal.ZERO,
-                accountingExpenses != null ? accountingExpenses : BigDecimal.ZERO,
-                advertisingExpenses != null ? advertisingExpenses : BigDecimal.ZERO,
-                otherExpenses != null ? otherExpenses : BigDecimal.ZERO,
-                expensesByCategory
+                officeExpenses,
+                packagingExpenses,
+                accountingExpenses,
+                advertisingExpenses,
+                otherExpenses,
+                sortedExpensesByCategory
         );
     }
 

@@ -5,6 +5,13 @@ import com.ecommerce.sellerx.config.CookieConfig;
 import com.ecommerce.sellerx.users.UserDto;
 import com.ecommerce.sellerx.users.UserMapper;
 import com.ecommerce.sellerx.users.UserRepository;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -22,6 +29,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @RestController
 @RequestMapping("/auth")
+@Tag(name = "Authentication", description = "User authentication and token management")
 public class AuthController {
     private final JwtConfig jwtConfig;
     private final CookieConfig cookieConfig;
@@ -30,6 +38,15 @@ public class AuthController {
     private final ActivityLogService activityLogService;
     private final UserRepository userRepository;
 
+    @Operation(
+            summary = "User login",
+            description = "Authenticate user with email and password. Returns JWT access token and sets HTTP-only cookies for access_token and refreshToken."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Login successful",
+                    content = @Content(schema = @Schema(implementation = JwtResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Invalid credentials", content = @Content)
+    })
     @PostMapping("/login")
     public JwtResponse login(
             @Valid @RequestBody LoginRequest request,
@@ -69,6 +86,11 @@ public class AuthController {
         return new JwtResponse(loginResult.getAccessToken().toString());
     }
 
+    @Operation(
+            summary = "User logout",
+            description = "Logout user by clearing all authentication cookies (access_token, refreshToken, selected_store_id)."
+    )
+    @ApiResponse(responseCode = "200", description = "Logout successful")
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(HttpServletRequest httpRequest, HttpServletResponse response) {
         // Log logout (try to get user info from current context)
@@ -115,8 +137,19 @@ public class AuthController {
     }
 
 
+    @Operation(
+            summary = "Refresh access token",
+            description = "Use refresh token from cookie to obtain a new access token. The new access token is set as HTTP-only cookie."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Token refreshed successfully",
+                    content = @Content(schema = @Schema(implementation = JwtResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Invalid or expired refresh token", content = @Content)
+    })
     @PostMapping("/refresh")
-    public JwtResponse refresh(@CookieValue(value = "refreshToken") String refreshToken, HttpServletResponse response) {
+    public JwtResponse refresh(
+            @Parameter(hidden = true) @CookieValue(value = "refreshToken") String refreshToken,
+            HttpServletResponse response) {
         var accessToken = authService.refreshAccessToken(refreshToken);
         ResponseCookie accessCookie = ResponseCookie.from("access_token", accessToken.toString())
                 .httpOnly(cookieConfig.isHttpOnly())
@@ -129,6 +162,15 @@ public class AuthController {
         return new JwtResponse(accessToken.toString());
     }
 
+    @Operation(
+            summary = "Get current user",
+            description = "Returns the authenticated user's profile. If user is being impersonated by admin, includes impersonation metadata."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "User profile retrieved",
+                    content = @Content(schema = @Schema(implementation = UserDto.class))),
+            @ApiResponse(responseCode = "404", description = "User not found", content = @Content)
+    })
     @GetMapping("/me")
     public ResponseEntity<UserDto> me(HttpServletRequest httpRequest) {
         var user = authService.getCurrentUser();

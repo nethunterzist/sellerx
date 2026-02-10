@@ -20,10 +20,13 @@ public record CreateStoreExpenseRequest(
     
     @NotNull(message = "Frequency is required")
     ExpenseFrequency frequency,
-    
+
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
+    LocalDateTime endDate, // NULL = süresiz tekrarlanır (for recurring expenses)
+
     @NotBlank(message = "Name is required")
     String name,
-    
+
     @NotNull(message = "Amount is required")
     @DecimalMin(value = "0.01", message = "Amount must be greater than 0")
     BigDecimal amount,

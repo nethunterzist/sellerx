@@ -1,6 +1,13 @@
 package com.ecommerce.sellerx.stores;
 
 import com.ecommerce.sellerx.users.UserService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -15,6 +22,7 @@ import java.util.UUID;
 @RestController
 @AllArgsConstructor
 @RequestMapping("/stores")
+@Tag(name = "Stores", description = "Store management and Trendyol credentials")
 public class StoreController {
     private final StoreService storeService;
     private final StoreRepository storeRepository;
@@ -22,6 +30,8 @@ public class StoreController {
     private final UserService userService;
     private final StoreOnboardingService storeOnboardingService;
 
+    @Operation(summary = "Get user's stores", description = "Returns all stores owned by the authenticated user")
+    @ApiResponse(responseCode = "200", description = "List of stores")
     @GetMapping("/my")
     public Iterable<StoreDto> getMyStores() {
         Long userId = (Long) org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getPrincipal();
@@ -29,14 +39,24 @@ public class StoreController {
         return storeService.getStoresByUser(user);
     }
 
+    @Operation(summary = "Get all stores (Admin)", description = "Returns all stores in the system. Admin only.")
+    @ApiResponse(responseCode = "200", description = "List of all stores")
     @GetMapping
     @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
-    public Iterable<StoreDto> getAllStores(@RequestParam(required = false, defaultValue = "", name = "sort") String sortBy) {
+    public Iterable<StoreDto> getAllStores(
+            @Parameter(description = "Sort field (e.g., 'name', 'createdAt')")
+            @RequestParam(required = false, defaultValue = "", name = "sort") String sortBy) {
         return storeService.getAllStores(sortBy);
     }
 
+    @Operation(summary = "Get store by ID", description = "Returns store details. User must own the store.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Store details"),
+            @ApiResponse(responseCode = "403", description = "Access denied", content = @Content),
+            @ApiResponse(responseCode = "404", description = "Store not found", content = @Content)
+    })
     @GetMapping("/{id}")
-    public StoreDto getStore(@PathVariable UUID id) {
+    public StoreDto getStore(@Parameter(description = "Store UUID") @PathVariable UUID id) {
         Long userId = (Long) org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         User user = userRepository.findById(userId).orElseThrow(com.ecommerce.sellerx.users.UserNotFoundException::new);
         StoreDto storeDto = storeService.getStore(id);
@@ -46,6 +66,11 @@ public class StoreController {
         return storeDto;
     }
 
+    @Operation(summary = "Register new store", description = "Creates a new store with Trendyol credentials. Triggers initial sync.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "Store created successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid request", content = @Content)
+    })
     @PostMapping
     public ResponseEntity<?> registerStore(@Valid @RequestBody RegisterStoreRequest request, UriComponentsBuilder uriBuilder) {
         // UserId yerine token'dan userId al

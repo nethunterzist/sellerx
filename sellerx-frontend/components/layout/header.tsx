@@ -17,7 +17,6 @@ import {
   TrendingUp,
   MapPin,
   LogOut,
-  User,
   Settings,
   ShoppingCart,
   Package,
@@ -139,7 +138,6 @@ const pageTitles: Record<string, PageTitle> = {
   "/notifications": { icon: Bell, title: "Bildirimler" },
   "/education": { icon: GraduationCap, title: "Eğitim Videoları" },
   "/analytics": { icon: BarChart3, title: "Analitik" },
-  "/profile": { icon: User, title: "Profil" },
 };
 
 const notificationIcons: Record<NotificationType, { icon: React.ElementType; color: string }> = {
@@ -489,12 +487,6 @@ export function Header() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuItem asChild>
-              <Link href="/profile" className="flex items-center gap-2">
-                <User className="h-4 w-4" />
-                Profil
-              </Link>
-            </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <Link href="/settings" className="flex items-center gap-2">
                 <Settings className="h-4 w-4" />

@@ -5,6 +5,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
 
@@ -29,12 +30,23 @@ public class TrendyolProductController {
             @RequestParam(defaultValue = "0") Integer page,
             @RequestParam(defaultValue = "50") Integer size,
             @RequestParam(required = false) String search,
+            @RequestParam(required = false) Integer minStock,
+            @RequestParam(required = false) Integer maxStock,
+            @RequestParam(required = false) BigDecimal minPrice,
+            @RequestParam(required = false) BigDecimal maxPrice,
+            @RequestParam(required = false) BigDecimal minCommission,
+            @RequestParam(required = false) BigDecimal maxCommission,
+            @RequestParam(required = false) BigDecimal minCost,
+            @RequestParam(required = false) BigDecimal maxCost,
             @RequestParam(defaultValue = "onSale") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDirection) {
-        
+
         size = Math.min(size, 100);
         ProductListResponse<TrendyolProductDto> products = trendyolProductService.getProductsByStoreWithPagination(
-                storeId, page, size, search, sortBy, sortDirection);
+                storeId, page, size, search,
+                minStock, maxStock, minPrice, maxPrice,
+                minCommission, maxCommission, minCost, maxCost,
+                sortBy, sortDirection);
         return ResponseEntity.ok(products);
     }
     

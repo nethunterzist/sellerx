@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -19,6 +19,15 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import {
+  useUpdateProductCostAndStock,
+  useUpdateStockInfoByDate,
+  useDeleteStockInfoByDate,
+} from "@/hooks/queries/use-products";
+import type { TrendyolProduct, CostAndStockInfo } from "@/types/product";
+import { AlertTriangle, Loader2, Package, TrendingUp, X, DollarSign, Percent, Target } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -26,22 +35,44 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { useUpdateProductCostAndStock } from "@/hooks/queries/use-products";
-import type { TrendyolProduct, CostAndStockInfo } from "@/types/product";
-import { AlertTriangle, Loader2, Package, TrendingUp } from "lucide-react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { CostHistoryTimeline } from "./cost-history-timeline";
 import { useCurrency } from "@/lib/contexts/currency-context";
 
 const formSchema = z.object({
   quantity: z.coerce.number().min(1, "Miktar en az 1 olmalıdır"),
   unitCost: z.coerce.number().min(0, "Maliyet 0'dan küçük olamaz"),
-  costVatRate: z.coerce.number(),
+  costVatRate: z.coerce.number().min(0, "KDV 0'dan küçük olamaz").max(100, "KDV 100'den büyük olamaz"),
   stockDate: z.string().min(1, "Tarih gereklidir"),
+  // Döviz kuru desteği
+  currency: z.enum(["TRY", "USD", "EUR"]).optional().nullable(),
+  exchangeRate: z.coerce.number().min(0).optional().nullable(),
+  foreignCost: z.coerce.number().min(0).optional().nullable(),
+  // ÖTV desteği
+  otvRate: z.coerce.number().min(0).max(1).optional().nullable(),
+  // Reklam metrikleri
+  cpc: z.coerce.number().min(0).optional().nullable(),
+  cvr: z.coerce.number().min(0).max(1).optional().nullable(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
+
+// Common VAT rates
+const COMMON_VAT_RATES = [0, 1, 10, 20];
+
+// Common ÖTV rates
+const COMMON_OTV_RATES = [0, 0.10, 0.20, 0.50];
+
+// Supported currencies
+const CURRENCIES = [
+  { value: "TRY", label: "₺ TL", symbol: "₺" },
+  { value: "USD", label: "$ USD", symbol: "$" },
+  { value: "EUR", label: "€ EUR", symbol: "€" },
+] as const;
 
 interface CostEditModalProps {
   product: TrendyolProduct;
@@ -49,14 +80,19 @@ interface CostEditModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
-function formatDate(dateString: string): string {
-  return new Date(dateString).toLocaleDateString("tr-TR");
-}
-
 export function CostEditModal({ product, open, onOpenChange }: CostEditModalProps) {
   const { formatCurrency } = useCurrency();
   const [error, setError] = useState<string | null>(null);
-  const { mutate, isPending } = useUpdateProductCostAndStock();
+  const [editingEntry, setEditingEntry] = useState<CostAndStockInfo | null>(null);
+  const [isCustomVat, setIsCustomVat] = useState(false);
+  const [isCustomOtv, setIsCustomOtv] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
+  const { mutate: addCost, isPending: isAdding } = useUpdateProductCostAndStock();
+  const { mutate: updateCost, isPending: isUpdating } = useUpdateStockInfoByDate();
+  const { mutate: deleteCost, isPending: isDeleting } = useDeleteStockInfoByDate();
+
+  const isPending = isAdding || isUpdating || isDeleting;
 
   const today = new Date().toISOString().split("T")[0];
 
@@ -67,36 +103,244 @@ export function CostEditModal({ product, open, onOpenChange }: CostEditModalProp
       unitCost: 0,
       costVatRate: 20,
       stockDate: today,
+      currency: "TRY",
+      exchangeRate: null,
+      foreignCost: null,
+      otvRate: null,
+      cpc: null,
+      cvr: null,
     },
   });
 
-  const onSubmit = (values: FormValues) => {
+  // Watch values for hybrid inputs and calculations
+  const currentVatRate = form.watch("costVatRate");
+  const currentOtvRate = form.watch("otvRate");
+  const currentCurrency = form.watch("currency");
+  const currentExchangeRate = form.watch("exchangeRate");
+  const currentForeignCost = form.watch("foreignCost");
+  const currentCpc = form.watch("cpc");
+  const currentCvr = form.watch("cvr");
+
+  // Reset form when modal opens/closes
+  useEffect(() => {
+    if (open && !editingEntry) {
+      form.reset({
+        quantity: 1,
+        unitCost: 0,
+        costVatRate: 20,
+        stockDate: today,
+        currency: "TRY",
+        exchangeRate: null,
+        foreignCost: null,
+        otvRate: null,
+        cpc: null,
+        cvr: null,
+      });
+      setIsCustomVat(false);
+      setIsCustomOtv(false);
+      setShowAdvanced(false);
+      setError(null);
+    }
+  }, [open, editingEntry, form, today]);
+
+  // Update isCustomVat based on whether value is in common rates
+  useEffect(() => {
+    if (!COMMON_VAT_RATES.includes(currentVatRate)) {
+      setIsCustomVat(true);
+    }
+  }, [currentVatRate]);
+
+  // Update isCustomOtv based on whether value is in common rates
+  useEffect(() => {
+    if (currentOtvRate !== null && currentOtvRate !== undefined && !COMMON_OTV_RATES.includes(currentOtvRate)) {
+      setIsCustomOtv(true);
+    }
+  }, [currentOtvRate]);
+
+  // Auto-calculate unitCost from foreignCost * exchangeRate
+  useEffect(() => {
+    if (currentCurrency && currentCurrency !== "TRY" && currentForeignCost && currentExchangeRate) {
+      const calculatedCost = currentForeignCost * currentExchangeRate;
+      form.setValue("unitCost", Math.round(calculatedCost * 100) / 100);
+    }
+  }, [currentForeignCost, currentExchangeRate, currentCurrency, form]);
+
+  const handleVatSelect = (rate: number | "custom") => {
+    if (rate === "custom") {
+      setIsCustomVat(true);
+    } else {
+      setIsCustomVat(false);
+      form.setValue("costVatRate", rate);
+    }
+  };
+
+  const handleOtvSelect = (rate: number | "custom" | null) => {
+    if (rate === "custom") {
+      setIsCustomOtv(true);
+    } else if (rate === null) {
+      setIsCustomOtv(false);
+      form.setValue("otvRate", null);
+    } else {
+      setIsCustomOtv(false);
+      form.setValue("otvRate", rate);
+    }
+  };
+
+  const handleEdit = (entry: CostAndStockInfo) => {
+    setEditingEntry(entry);
     setError(null);
-    mutate(
+
+    const vatRate = entry.costVatRate;
+    setIsCustomVat(!COMMON_VAT_RATES.includes(vatRate));
+
+    const otvRate = entry.otvRate ?? null;
+    setIsCustomOtv(otvRate !== null && !COMMON_OTV_RATES.includes(otvRate));
+
+    // Show advanced section if any advanced fields have values
+    const hasAdvancedValues = entry.currency || entry.otvRate || entry.cpc || entry.cvr;
+    setShowAdvanced(!!hasAdvancedValues);
+
+    form.reset({
+      quantity: entry.quantity,
+      unitCost: entry.unitCost,
+      costVatRate: vatRate,
+      stockDate: entry.stockDate,
+      currency: (entry.currency as "TRY" | "USD" | "EUR") ?? "TRY",
+      exchangeRate: entry.exchangeRate ?? null,
+      foreignCost: entry.foreignCost ?? null,
+      otvRate: otvRate,
+      cpc: entry.cpc ?? null,
+      cvr: entry.cvr ?? null,
+    });
+  };
+
+  const handleDelete = (entry: CostAndStockInfo) => {
+    if (!confirm(`${entry.stockDate} tarihli maliyet kaydını silmek istediğinizden emin misiniz?`)) {
+      return;
+    }
+
+    setError(null);
+    deleteCost(
       {
         productId: product.id,
-        data: {
-          quantity: values.quantity,
-          unitCost: values.unitCost,
-          costVatRate: values.costVatRate,
-          stockDate: values.stockDate,
-        },
+        stockDate: entry.stockDate,
       },
       {
         onSuccess: () => {
-          form.reset({
-            quantity: 1,
-            unitCost: 0,
-            costVatRate: 20,
-            stockDate: today,
-          });
-          onOpenChange(false);
+          // Stay in modal, just refresh the list
         },
         onError: (err: Error) => {
-          setError(err.message || "Maliyet güncellenirken bir hata oluştu");
+          setError(err.message || "Maliyet silinirken bir hata oluştu");
         },
       }
     );
+  };
+
+  const handleCancelEdit = () => {
+    setEditingEntry(null);
+    setIsCustomVat(false);
+    setIsCustomOtv(false);
+    setShowAdvanced(false);
+    form.reset({
+      quantity: 1,
+      unitCost: 0,
+      costVatRate: 20,
+      stockDate: today,
+      currency: "TRY",
+      exchangeRate: null,
+      foreignCost: null,
+      otvRate: null,
+      cpc: null,
+      cvr: null,
+    });
+  };
+
+  const onSubmit = (values: FormValues) => {
+    setError(null);
+
+    // Prepare common data with all fields
+    const commonData = {
+      quantity: values.quantity,
+      unitCost: values.unitCost,
+      costVatRate: values.costVatRate,
+      // Döviz kuru
+      currency: values.currency === "TRY" ? null : values.currency,
+      exchangeRate: values.currency !== "TRY" ? values.exchangeRate : null,
+      foreignCost: values.currency !== "TRY" ? values.foreignCost : null,
+      // ÖTV
+      otvRate: values.otvRate,
+      // Reklam metrikleri
+      cpc: values.cpc,
+      cvr: values.cvr,
+    };
+
+    if (editingEntry) {
+      // Update existing entry
+      updateCost(
+        {
+          productId: product.id,
+          stockDate: editingEntry.stockDate,
+          data: commonData,
+        },
+        {
+          onSuccess: () => {
+            setEditingEntry(null);
+            setIsCustomVat(false);
+            setIsCustomOtv(false);
+            setShowAdvanced(false);
+            form.reset({
+              quantity: 1,
+              unitCost: 0,
+              costVatRate: 20,
+              stockDate: today,
+              currency: "TRY",
+              exchangeRate: null,
+              foreignCost: null,
+              otvRate: null,
+              cpc: null,
+              cvr: null,
+            });
+          },
+          onError: (err: Error) => {
+            setError(err.message || "Maliyet güncellenirken bir hata oluştu");
+          },
+        }
+      );
+    } else {
+      // Add new entry
+      addCost(
+        {
+          productId: product.id,
+          data: {
+            ...commonData,
+            stockDate: values.stockDate,
+          },
+        },
+        {
+          onSuccess: () => {
+            form.reset({
+              quantity: 1,
+              unitCost: 0,
+              costVatRate: 20,
+              stockDate: today,
+              currency: "TRY",
+              exchangeRate: null,
+              foreignCost: null,
+              otvRate: null,
+              cpc: null,
+              cvr: null,
+            });
+            setIsCustomVat(false);
+            setIsCustomOtv(false);
+            setShowAdvanced(false);
+            onOpenChange(false);
+          },
+          onError: (err: Error) => {
+            setError(err.message || "Maliyet eklenirken bir hata oluştu");
+          },
+        }
+      );
+    }
   };
 
   // Get cost history from product
@@ -157,12 +401,39 @@ export function CostEditModal({ product, open, onOpenChange }: CostEditModalProp
             costHistory={costHistory}
             salePrice={product.salePrice}
             vatRate={product.vatRate}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            editingDate={editingEntry?.stockDate}
           />
         </div>
 
-        {/* Add New Cost Form */}
+        {/* Add/Edit Cost Form */}
         <div className="space-y-4 pt-4 border-t">
-          <h4 className="font-medium text-sm">Yeni Maliyet Ekle</h4>
+          <div className="flex items-center justify-between">
+            <h4 className="font-medium text-sm">
+              {editingEntry ? "Maliyet Düzenle" : "Yeni Maliyet Ekle"}
+            </h4>
+            {editingEntry && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleCancelEdit}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-4 w-4 mr-1" />
+                İptal
+              </Button>
+            )}
+          </div>
+
+          {editingEntry && (
+            <div className="p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <p className="text-xs text-blue-700 dark:text-blue-300">
+                <span className="font-medium">{editingEntry.stockDate}</span> tarihli kaydı düzenliyorsunuz
+              </p>
+            </div>
+          )}
 
           {error && (
             <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
@@ -212,28 +483,57 @@ export function CostEditModal({ product, open, onOpenChange }: CostEditModalProp
                   )}
                 />
 
+                {/* Hybrid VAT Rate Input */}
                 <FormField
                   control={form.control}
                   name="costVatRate"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="col-span-2">
                       <FormLabel>KDV Oranı</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={String(field.value)}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="KDV seçin" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="0">%0</SelectItem>
-                          <SelectItem value="1">%1</SelectItem>
-                          <SelectItem value="10">%10</SelectItem>
-                          <SelectItem value="20">%20</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <div className="space-y-2">
+                        {/* Toggle buttons for common rates */}
+                        <div className="flex flex-wrap gap-2">
+                          {COMMON_VAT_RATES.map((rate) => (
+                            <Button
+                              key={rate}
+                              type="button"
+                              variant={!isCustomVat && field.value === rate ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => handleVatSelect(rate)}
+                              className="min-w-[50px]"
+                            >
+                              %{rate}
+                            </Button>
+                          ))}
+                          <Button
+                            type="button"
+                            variant={isCustomVat ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => handleVatSelect("custom")}
+                          >
+                            Özel
+                          </Button>
+                        </div>
+
+                        {/* Custom input - shown when "Özel" is selected */}
+                        {isCustomVat && (
+                          <div className="flex items-center gap-2">
+                            <FormControl>
+                              <Input
+                                type="number"
+                                min="0"
+                                max="100"
+                                step="0.01"
+                                placeholder="KDV oranı girin"
+                                className="w-32"
+                                {...field}
+                                onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                              />
+                            </FormControl>
+                            <span className="text-sm text-muted-foreground">%</span>
+                          </div>
+                        )}
+                      </div>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -243,28 +543,302 @@ export function CostEditModal({ product, open, onOpenChange }: CostEditModalProp
                   control={form.control}
                   name="stockDate"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="col-span-2">
                       <FormLabel>Stok Tarihi</FormLabel>
                       <FormControl>
                         <Input
                           type="date"
                           max={today}
+                          disabled={!!editingEntry}
                           {...field}
                         />
                       </FormControl>
+                      {editingEntry && (
+                        <p className="text-xs text-muted-foreground">
+                          Düzenleme modunda tarih değiştirilemez
+                        </p>
+                      )}
                       <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
 
+              {/* Advanced Settings Collapsible */}
+              <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
+                <CollapsibleTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="w-full flex items-center justify-between text-muted-foreground hover:text-foreground"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Target className="h-4 w-4" />
+                      Gelişmiş Ayarlar (Döviz, ÖTV, Reklam)
+                    </span>
+                    <span className="text-xs">
+                      {showAdvanced ? "Gizle" : "Göster"}
+                    </span>
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-4 pt-4">
+                  {/* Currency Section */}
+                  <div className="p-4 border rounded-lg space-y-4">
+                    <h5 className="text-sm font-medium flex items-center gap-2">
+                      <DollarSign className="h-4 w-4" />
+                      Döviz Kuru (İthalat Ürünleri)
+                    </h5>
+
+                    <div className="grid grid-cols-3 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="currency"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Para Birimi</FormLabel>
+                            <Select
+                              value={field.value || "TRY"}
+                              onValueChange={(val) => field.onChange(val as "TRY" | "USD" | "EUR")}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Seçin" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {CURRENCIES.map((curr) => (
+                                  <SelectItem key={curr.value} value={curr.value}>
+                                    {curr.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      {currentCurrency && currentCurrency !== "TRY" && (
+                        <>
+                          <FormField
+                            control={form.control}
+                            name="foreignCost"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>
+                                  Yabancı Maliyet ({CURRENCIES.find(c => c.value === currentCurrency)?.symbol})
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    placeholder="örn: 10"
+                                    value={field.value ?? ""}
+                                    onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : null)}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name="exchangeRate"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Döviz Kuru (TL)</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    step="0.0001"
+                                    placeholder="örn: 44.50"
+                                    value={field.value ?? ""}
+                                    onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : null)}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </>
+                      )}
+                    </div>
+
+                    {currentCurrency && currentCurrency !== "TRY" && currentForeignCost && currentExchangeRate && (
+                      <div className="p-2 bg-green-50 dark:bg-green-900/20 rounded text-sm text-green-700 dark:text-green-300">
+                        <strong>Hesaplanan TL Maliyet:</strong>{" "}
+                        {formatCurrency(currentForeignCost * currentExchangeRate)}
+                        {" "}({currentForeignCost} {CURRENCIES.find(c => c.value === currentCurrency)?.symbol} × {currentExchangeRate} TL)
+                      </div>
+                    )}
+                  </div>
+
+                  {/* OTV Section */}
+                  <div className="p-4 border rounded-lg space-y-4">
+                    <h5 className="text-sm font-medium flex items-center gap-2">
+                      <Percent className="h-4 w-4" />
+                      ÖTV - Özel Tüketim Vergisi
+                    </h5>
+                    <p className="text-xs text-muted-foreground">
+                      Kozmetik, parfüm, elektronik vb. ürünler için ÖTV oranı
+                    </p>
+
+                    <FormField
+                      control={form.control}
+                      name="otvRate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <div className="space-y-2">
+                            <div className="flex flex-wrap gap-2">
+                              <Button
+                                type="button"
+                                variant={field.value === null || field.value === undefined ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => handleOtvSelect(null)}
+                              >
+                                Yok
+                              </Button>
+                              {COMMON_OTV_RATES.filter(r => r > 0).map((rate) => (
+                                <Button
+                                  key={rate}
+                                  type="button"
+                                  variant={!isCustomOtv && field.value === rate ? "default" : "outline"}
+                                  size="sm"
+                                  onClick={() => handleOtvSelect(rate)}
+                                  className="min-w-[50px]"
+                                >
+                                  %{(rate * 100).toFixed(0)}
+                                </Button>
+                              ))}
+                              <Button
+                                type="button"
+                                variant={isCustomOtv ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => handleOtvSelect("custom")}
+                              >
+                                Özel
+                              </Button>
+                            </div>
+
+                            {isCustomOtv && (
+                              <div className="flex items-center gap-2">
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    step="1"
+                                    placeholder="ÖTV oranı"
+                                    className="w-24"
+                                    value={field.value !== null && field.value !== undefined ? (field.value * 100) : ""}
+                                    onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) / 100 : null)}
+                                  />
+                                </FormControl>
+                                <span className="text-sm text-muted-foreground">%</span>
+                              </div>
+                            )}
+                          </div>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  {/* Advertising Section */}
+                  <div className="p-4 border rounded-lg space-y-4">
+                    <h5 className="text-sm font-medium flex items-center gap-2">
+                      <Target className="h-4 w-4" />
+                      Reklam Metrikleri (CPC/CVR)
+                    </h5>
+                    <p className="text-xs text-muted-foreground">
+                      Trendyol reklam kampanyası metrikleri. Reklam maliyeti = CPC / CVR
+                    </p>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="cpc"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>CPC - Tıklama Başı Maliyet (TL)</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                placeholder="örn: 3.50"
+                                value={field.value ?? ""}
+                                onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : null)}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="cvr"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>CVR - Dönüşüm Oranı (%)</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                min="0"
+                                max="100"
+                                step="0.01"
+                                placeholder="örn: 1.8"
+                                value={field.value !== null && field.value !== undefined ? (field.value * 100) : ""}
+                                onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) / 100 : null)}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    {currentCpc && currentCvr && currentCvr > 0 && (
+                      <div className="p-2 bg-purple-50 dark:bg-purple-900/20 rounded text-sm text-purple-700 dark:text-purple-300">
+                        <strong>1 Satış İçin Reklam Maliyeti:</strong>{" "}
+                        {formatCurrency(currentCpc / currentCvr)}
+                        {" "}(CPC {formatCurrency(currentCpc)} / CVR %{(currentCvr * 100).toFixed(2)})
+                        <br />
+                        <strong>ACOS:</strong>{" "}
+                        %{((currentCpc / currentCvr / product.salePrice) * 100).toFixed(2)}
+                      </div>
+                    )}
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+
               {/* Cost Preview */}
               {form.watch("quantity") > 0 && form.watch("unitCost") > 0 && (
-                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg space-y-1">
                   <p className="text-sm text-blue-800 dark:text-blue-200">
-                    <span className="font-medium">Toplam Maliyet:</span>{" "}
-                    {formatCurrency(form.watch("quantity") * form.watch("unitCost"))}
-                    {" "}({form.watch("quantity")} adet × {formatCurrency(form.watch("unitCost"))})
+                    <span className="font-medium">Birim Maliyet (KDV Hariç):</span>{" "}
+                    {formatCurrency(form.watch("unitCost"))}
+                  </p>
+                  {currentOtvRate && currentOtvRate > 0 && (
+                    <p className="text-sm text-blue-800 dark:text-blue-200">
+                      <span className="font-medium">+ ÖTV (%{(currentOtvRate * 100).toFixed(0)}):</span>{" "}
+                      {formatCurrency(form.watch("unitCost") * currentOtvRate)}
+                    </p>
+                  )}
+                  <p className="text-sm text-blue-800 dark:text-blue-200">
+                    <span className="font-medium">+ KDV (%{form.watch("costVatRate")}):</span>{" "}
+                    {formatCurrency(form.watch("unitCost") * (1 + (currentOtvRate || 0)) * (form.watch("costVatRate") / 100))}
+                  </p>
+                  <p className="text-sm text-blue-800 dark:text-blue-200 font-semibold border-t border-blue-200 dark:border-blue-700 pt-1 mt-1">
+                    <span>Fatura Maliyeti (ÖTV+KDV Dahil):</span>{" "}
+                    {formatCurrency(form.watch("unitCost") * (1 + (currentOtvRate || 0)) * (1 + form.watch("costVatRate") / 100))}
+                    {" "}× {form.watch("quantity")} adet ={" "}
+                    {formatCurrency(form.watch("quantity") * form.watch("unitCost") * (1 + (currentOtvRate || 0)) * (1 + form.watch("costVatRate") / 100))}
                   </p>
                 </div>
               )}
@@ -273,14 +847,22 @@ export function CostEditModal({ product, open, onOpenChange }: CostEditModalProp
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => onOpenChange(false)}
+                  onClick={() => {
+                    if (editingEntry) {
+                      handleCancelEdit();
+                    } else {
+                      onOpenChange(false);
+                    }
+                  }}
                   disabled={isPending}
                 >
-                  İptal
+                  {editingEntry ? "Düzenlemeyi İptal Et" : "Kapat"}
                 </Button>
                 <Button type="submit" disabled={isPending}>
                   {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {isPending ? "Kaydediliyor..." : "Kaydet"}
+                  {isPending
+                    ? (editingEntry ? "Güncelleniyor..." : "Kaydediliyor...")
+                    : (editingEntry ? "Güncelle" : "Kaydet")}
                 </Button>
               </div>
             </form>

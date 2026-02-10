@@ -8,6 +8,7 @@ export interface ExpenseCategory {
   name: string;
   createdAt?: string;
   updatedAt?: string;
+  expenseCount?: number;  // Number of expenses using this category
 }
 
 // Backend: StoreExpenseDto
@@ -21,6 +22,9 @@ export interface StoreExpense {
   date: string;  // ISO datetime
   frequency: ExpenseFrequency;
   frequencyDisplayName: string;
+  endDate?: string;  // For recurring expenses - when to stop
+  isRecurringTemplate?: boolean;  // true = template, false = generated instance
+  parentExpenseId?: string;  // For instances: ID of the template
   name: string;
   amount: number;
   vatRate?: number | null;       // null = faturasız işlem
@@ -33,7 +37,6 @@ export interface StoreExpense {
   category: ExpenseCategory;
   startDate: string;
   description?: string;
-  endDate?: string;
 }
 
 // Legacy Expense type (for backward compatibility)
@@ -57,6 +60,7 @@ export interface CreateExpenseRequest {
   amount: number;
   frequency: ExpenseFrequency;
   date?: string;  // ISO datetime, optional (defaults to now)
+  endDate?: string | null;  // For recurring expenses - when to stop (null = never)
   productId?: string | null;  // UUID, null for general expense
   vatRate?: number | null;  // null = faturasız işlem
 }
@@ -68,6 +72,7 @@ export interface UpdateExpenseRequest {
   amount: number;
   frequency: ExpenseFrequency;
   date: string;  // ISO datetime
+  endDate?: string | null;  // For recurring expenses - when to stop (null = never)
   productId?: string | null;  // UUID, null for general expense
   vatRate?: number | null;  // null = faturasız işlem
 }

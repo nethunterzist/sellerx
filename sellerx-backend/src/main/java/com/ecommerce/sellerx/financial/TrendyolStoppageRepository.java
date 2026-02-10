@@ -92,4 +92,16 @@ public interface TrendyolStoppageRepository extends JpaRepository<TrendyolStoppa
             @Param("storeId") UUID storeId,
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate);
+
+    /**
+     * Stopaj kayıtlarının sayısı (sadece stopaj olanlar).
+     */
+    @Query("SELECT COUNT(s) FROM TrendyolStoppage s " +
+            "WHERE s.store.id = :storeId " +
+            "AND s.transactionDate BETWEEN :startDate AND :endDate " +
+            "AND LOWER(s.description) LIKE '%stopaj%'")
+    int countStoppageOnly(
+            @Param("storeId") UUID storeId,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate);
 }

@@ -4,7 +4,8 @@
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
-    // RELAXED FOR BUILD SUCCESS - Originally was "strict": true but caused deployment failures
+    // Gradual strict mode enablement - Phase 1
+    // Full strict mode causes 177 errors, so we're enabling incrementally
     "strict": false,
     "noEmit": true,
     "esModuleInterop": true,
@@ -14,12 +15,14 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
-    // RELAXED FOR BUILD SUCCESS - These were causing TypeScript errors during Vercel deployment
-    // Original values: "noImplicitAny": true, "noImplicitReturns": true, "noUnusedLocals": true, "noUnusedParameters": true
+    // Phase 1 (enabled): Catch missing returns - important for async functions
+    "noImplicitReturns": true,
+    // Phase 2 (TODO): Enable unused checks after cleanup
+    // These are disabled for now due to 132 unused variable errors
     "noImplicitAny": false,
-    "noImplicitReturns": false,
     "noUnusedLocals": false,
     "noUnusedParameters": false,
+    // Phase 3 (future): Enable strict: true after fixing all issues
     "plugins": [
       {
         "name": "next"

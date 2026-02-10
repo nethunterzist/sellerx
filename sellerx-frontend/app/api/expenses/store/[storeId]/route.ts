@@ -17,7 +17,17 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const response = await fetch(`${API_BASE_URL}/expenses/store/${storeId}`, {
+    // Forward date query params if present
+    const searchParams = request.nextUrl.searchParams;
+    const startDate = searchParams.get("startDate");
+    const endDate = searchParams.get("endDate");
+
+    let url = `${API_BASE_URL}/expenses/store/${storeId}`;
+    if (startDate && endDate) {
+      url += `?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`;
+    }
+
+    const response = await fetch(url, {
       headers,
     });
 

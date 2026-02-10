@@ -21,9 +21,14 @@ import type {
 export const purchasingKeys = {
   all: ["purchasing"] as const,
   lists: () => [...purchasingKeys.all, "list"] as const,
-  list: (storeId: string, filters?: { status?: PurchaseOrderStatus; search?: string; supplierId?: number }) =>
-    [...purchasingKeys.lists(), storeId, filters] as const,
-  stats: (storeId: string) => [...purchasingKeys.all, "stats", storeId] as const,
+  list: (storeId: string, filters?: {
+    status?: PurchaseOrderStatus;
+    search?: string;
+    supplierId?: number;
+    startDate?: string;
+    endDate?: string;
+  }) => [...purchasingKeys.lists(), storeId, filters] as const,
+  stats: (storeId: string, startDate?: string, endDate?: string) => [...purchasingKeys.all, "stats", storeId, { startDate, endDate }] as const,
   details: () => [...purchasingKeys.all, "detail"] as const,
   detail: (storeId: string, poId: number) =>
     [...purchasingKeys.details(), storeId, poId] as const,
@@ -53,20 +58,26 @@ export function usePurchaseOrders(
   storeId: string | undefined,
   status?: PurchaseOrderStatus,
   search?: string,
-  supplierId?: number
+  supplierId?: number,
+  startDate?: string,
+  endDate?: string
 ) {
   return useQuery({
-    queryKey: purchasingKeys.list(storeId!, { status, search, supplierId }),
-    queryFn: () => purchasingApi.getOrders(storeId!, status, search, supplierId),
+    queryKey: purchasingKeys.list(storeId!, { status, search, supplierId, startDate, endDate }),
+    queryFn: () => purchasingApi.getOrders(storeId!, status, search, supplierId, startDate, endDate),
     enabled: !!storeId,
   });
 }
 
-// Get purchase order stats
-export function usePurchaseOrderStats(storeId: string | undefined) {
+// Get purchase order stats (with optional date filter)
+export function usePurchaseOrderStats(
+  storeId: string | undefined,
+  startDate?: string,
+  endDate?: string
+) {
   return useQuery({
-    queryKey: purchasingKeys.stats(storeId!),
-    queryFn: () => purchasingApi.getStats(storeId!),
+    queryKey: purchasingKeys.stats(storeId!, startDate, endDate),
+    queryFn: () => purchasingApi.getStats(storeId!, startDate, endDate),
     enabled: !!storeId,
   });
 }

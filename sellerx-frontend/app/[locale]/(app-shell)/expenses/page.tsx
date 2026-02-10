@@ -1,16 +1,24 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { format } from "date-fns";
+import type { DateRange } from "react-day-picker";
 import { useSelectedStore } from "@/hooks/queries/use-stores";
 import { useStoreExpenses } from "@/hooks/queries/use-expenses";
 import { Button } from "@/components/ui/button";
 import { ExpenseList } from "@/components/expenses/expense-list";
 import { ExpenseFormModal } from "@/components/expenses/expense-form-modal";
+import { ExpenseCategoryModal } from "@/components/expenses/expense-category-modal";
 import { ExpenseStatsCards } from "@/components/expenses/expense-stats-cards";
 import { ExpenseCategoryChart } from "@/components/expenses/expense-category-chart";
 import { ExpenseTrendChart } from "@/components/expenses/expense-trend-chart";
 import { ExpenseFiltersComponent, type ExpenseFilters } from "@/components/expenses/expense-filters";
-import { Plus } from "lucide-react";
+import {
+  ExpenseDateFilter,
+  getExpensePresetRange,
+  type ExpenseDatePreset,
+} from "@/components/expenses/expense-date-filter";
+import { Plus, Settings } from "lucide-react";
 import type { StoreExpense } from "@/types/expense";
 import {
   StatCardSkeleton,
@@ -47,13 +55,39 @@ function ExpensesPageSkeleton() {
 
 export default function ExpensesPage() {
   const [modalOpen, setModalOpen] = useState(false);
+  const [categoryModalOpen, setCategoryModalOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<StoreExpense | null>(null);
   const [filters, setFilters] = useState<ExpenseFilters>(DEFAULT_FILTERS);
+
+  // Date filter state - no default (show all expenses)
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  const [datePreset, setDatePreset] = useState<ExpenseDatePreset | undefined>(undefined);
 
   const { data: selectedStore, isLoading: storeLoading } = useSelectedStore();
   const storeId = selectedStore?.selectedStoreId;
 
-  const { data, isLoading } = useStoreExpenses(storeId || undefined);
+  // Convert date range to ISO format for API
+  const { startDate, endDate } = useMemo(() => {
+    if (!dateRange?.from || !dateRange?.to) return {};
+    const start = new Date(dateRange.from);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(dateRange.to);
+    end.setHours(23, 59, 59, 999);
+    return {
+      startDate: format(start, "yyyy-MM-dd'T'HH:mm:ss"),
+      endDate: format(end, "yyyy-MM-dd'T'HH:mm:ss"),
+    };
+  }, [dateRange]);
+
+  const { data, isLoading } = useStoreExpenses(storeId || undefined, startDate, endDate);
+
+  const handleDateRangeChange = (
+    range: DateRange | undefined,
+    preset: ExpenseDatePreset | undefined
+  ) => {
+    setDateRange(range);
+    setDatePreset(preset);
+  };
 
   // Get unique categories from expenses
   const categories = useMemo(() => {
@@ -130,10 +164,24 @@ export default function ExpensesPage() {
           </p>
         </div>
 
-        <Button onClick={handleOpenNew} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Yeni Gider Ekle
-        </Button>
+        <div className="flex items-center gap-3">
+          <ExpenseDateFilter
+            dateRange={dateRange}
+            onDateRangeChange={handleDateRangeChange}
+          />
+          <Button onClick={handleOpenNew} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Yeni Gider Ekle
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setCategoryModalOpen(true)}
+            title="Gider Kategorileri"
+          >
+            <Settings className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -192,6 +240,15 @@ export default function ExpensesPage() {
           expense={editingExpense}
           open={modalOpen}
           onOpenChange={handleCloseModal}
+        />
+      )}
+
+      {/* Category Management Modal */}
+      {storeId && (
+        <ExpenseCategoryModal
+          storeId={storeId}
+          open={categoryModalOpen}
+          onOpenChange={setCategoryModalOpen}
         />
       )}
     </div>

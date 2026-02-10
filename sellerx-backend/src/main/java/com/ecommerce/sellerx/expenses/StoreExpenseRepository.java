@@ -7,6 +7,8 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -29,9 +31,13 @@ public interface StoreExpenseRepository extends JpaRepository<StoreExpense, UUID
     
     void deleteByIdAndStoreId(UUID expenseId, UUID storeId);
 
-    // For VAT reconciliation - find expenses by date range
-    @Query("SELECT se FROM StoreExpense se WHERE se.store.id = :storeId " +
-           "AND se.date BETWEEN :startDate AND :endDate")
+    // For VAT reconciliation and date filtering - find expenses by date range
+    @Query("SELECT se FROM StoreExpense se " +
+           "LEFT JOIN FETCH se.expenseCategory " +
+           "LEFT JOIN FETCH se.product " +
+           "WHERE se.store.id = :storeId " +
+           "AND se.date BETWEEN :startDate AND :endDate " +
+           "ORDER BY se.date DESC")
     List<StoreExpense> findByStoreIdAndDateBetween(
             @Param("storeId") UUID storeId,
             @Param("startDate") java.time.LocalDateTime startDate,
@@ -96,4 +102,44 @@ public interface StoreExpenseRepository extends JpaRepository<StoreExpense, UUID
             @Param("storeId") UUID storeId,
             @Param("startDate") java.time.LocalDateTime startDate,
             @Param("endDate") java.time.LocalDateTime endDate);
+
+    // ============== Recurring Expense Queries ==============
+
+    /**
+     * Find all active recurring expense templates.
+     * Used by scheduled job to generate expense instances.
+     */
+    @Query("SELECT se FROM StoreExpense se " +
+           "LEFT JOIN FETCH se.expenseCategory " +
+           "LEFT JOIN FETCH se.product " +
+           "LEFT JOIN FETCH se.store " +
+           "WHERE se.isRecurringTemplate = true " +
+           "AND se.frequency IN ('DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY') " +
+           "AND CAST(se.date AS LocalDate) <= :today " +
+           "AND (se.endDate IS NULL OR CAST(se.endDate AS LocalDate) >= :today)")
+    List<StoreExpense> findActiveRecurringTemplates(@Param("today") LocalDate today);
+
+    /**
+     * Check if an instance exists for a specific template and date.
+     */
+    @Query("SELECT COUNT(se) > 0 FROM StoreExpense se " +
+           "WHERE se.parentExpense.id = :templateId " +
+           "AND CAST(se.date AS LocalDate) = :date")
+    boolean existsInstanceForDate(@Param("templateId") UUID templateId, @Param("date") LocalDate date);
+
+    /**
+     * Find active recurring templates for a specific store.
+     * Used for backfilling missing instances when querying expenses.
+     */
+    @Query("SELECT se FROM StoreExpense se " +
+           "LEFT JOIN FETCH se.expenseCategory " +
+           "LEFT JOIN FETCH se.product " +
+           "LEFT JOIN FETCH se.store " +
+           "WHERE se.store.id = :storeId " +
+           "AND se.isRecurringTemplate = true " +
+           "AND se.frequency IN ('DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY') " +
+           "AND (se.endDate IS NULL OR CAST(se.endDate AS LocalDate) >= :endDate)")
+    List<StoreExpense> findActiveRecurringTemplatesByStoreId(
+            @Param("storeId") UUID storeId,
+            @Param("endDate") LocalDate endDate);
 }

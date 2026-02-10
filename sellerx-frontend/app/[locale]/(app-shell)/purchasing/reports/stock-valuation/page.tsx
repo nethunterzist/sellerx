@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import type { ProductValuation } from "@/types/purchasing";
 
-type SortField = "fifoValue" | "quantity" | "daysInStock" | "averageCost";
+type SortField = "fifoValue" | "quantity" | "daysUntilDepletion" | "averageCost";
 type SortDirection = "asc" | "desc";
 
 export default function StockValuationPage() {
@@ -121,7 +121,16 @@ export default function StockValuationPage() {
     });
   };
 
-  // Get age badge color
+  // Get depletion badge color (fewer days = more urgent = red)
+  const getDepletionBadgeColor = (daysUntilDepletion: number | undefined): string => {
+    if (daysUntilDepletion == null) return "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400";
+    if (daysUntilDepletion <= 15) return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
+    if (daysUntilDepletion <= 30) return "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400";
+    if (daysUntilDepletion <= 60) return "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400";
+    return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400";
+  };
+
+  // Get age badge color (kept for summary cards - based on stock age)
   const getAgeBadgeColor = (days: number): string => {
     if (days <= 30) return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400";
     if (days <= 60) return "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400";
@@ -349,11 +358,11 @@ export default function StockValuationPage() {
                 </th>
                 <th
                   className="text-center p-3 text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground"
-                  onClick={() => handleSort("daysInStock")}
+                  onClick={() => handleSort("daysUntilDepletion")}
                 >
                   <div className="flex items-center justify-center gap-1">
-                    Yas
-                    <SortIcon field="daysInStock" />
+                    Tahmini Bitim
+                    <SortIcon field="daysUntilDepletion" />
                   </div>
                 </th>
               </tr>
@@ -418,17 +427,26 @@ export default function StockValuationPage() {
                       {formatDate(product.oldestStockDate)}
                     </td>
                     <td className="p-3 text-center">
-                      <span
-                        className={cn(
-                          "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium",
-                          getAgeBadgeColor(product.daysInStock)
-                        )}
-                      >
-                        {product.daysInStock > 90 && (
-                          <AlertTriangle className="h-3 w-3" />
-                        )}
-                        {product.daysInStock} gun
-                      </span>
+                      {product.daysUntilDepletion != null ? (
+                        <div
+                          className={cn(
+                            "inline-flex flex-col items-center px-2 py-1 rounded-lg text-xs",
+                            getDepletionBadgeColor(product.daysUntilDepletion)
+                          )}
+                        >
+                          <span className="font-medium">
+                            {formatDate(product.estimatedDepletionDate)}
+                          </span>
+                          <span className="text-[10px] opacity-80 flex items-center gap-0.5">
+                            {product.daysUntilDepletion <= 15 && (
+                              <AlertTriangle className="h-2.5 w-2.5" />
+                            )}
+                            ≈ {product.daysUntilDepletion} gun
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">-</span>
+                      )}
                     </td>
                   </tr>
                 ))
@@ -444,12 +462,17 @@ export default function StockValuationPage() {
           <Clock className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5" />
           <div>
             <p className="font-medium text-blue-900 dark:text-blue-100">
-              Stok Yaslandirma Nedir?
+              Tahmini Stok Bitim Tarihi Nedir?
             </p>
             <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-              Stok yaslandirma, urunlerin ne kadar suredir depoda bekledigini gosterir.
-              Uzun sureli stoklar nakit akisini olumsuz etkiler ve bozulma/eskime riski tasir.
-              60 gun uzerindeki stoklar icin indirim veya promosyon dusunulebilir.
+              Tahmini stok bitim tarihi, mevcut stogunuzun ortalama satis hiziniza gore
+              ne zaman tukenecegini gosterir. Son 90 gunluk satis verilerinize dayanarak hesaplanir.
+              <span className="block mt-1">
+                <span className="inline-block px-1.5 py-0.5 bg-red-200 dark:bg-red-800 rounded text-red-800 dark:text-red-200 mr-2">≤15 gun</span>
+                <span className="inline-block px-1.5 py-0.5 bg-orange-200 dark:bg-orange-800 rounded text-orange-800 dark:text-orange-200 mr-2">15-30 gun</span>
+                <span className="inline-block px-1.5 py-0.5 bg-yellow-200 dark:bg-yellow-800 rounded text-yellow-800 dark:text-yellow-200 mr-2">30-60 gun</span>
+                <span className="inline-block px-1.5 py-0.5 bg-green-200 dark:bg-green-800 rounded text-green-800 dark:text-green-200">60+ gun</span>
+              </span>
             </p>
           </div>
         </div>

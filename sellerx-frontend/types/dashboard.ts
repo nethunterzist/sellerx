@@ -210,6 +210,13 @@ export interface ProductDetail {
 
   // Sipariş sayısı
   orderCount?: number;           // Sipariş adedi
+
+  // ============== REKLAM METRİKLERİ (Excel C23, C24) ==============
+  cpc?: number;                    // Cost Per Click (TL)
+  cvr?: number;                    // Conversion Rate (örn: 0.018 = %1.8)
+  advertisingCostPerSale?: number; // Reklam Maliyeti = CPC / CVR
+  acos?: number;                   // ACOS = (advertisingCostPerSale / salePrice) * 100
+  totalAdvertisingCost?: number;   // Toplam reklam maliyeti = advertisingCostPerSale × satış adedi
 }
 
 // Backend: PeriodExpenseDto
@@ -358,8 +365,13 @@ export interface PeriodStats {
 
   // ============== YENİ ALANLAR (32 Metrik için genişletilmiş) ==============
 
-  // Faturalı Reklam (Trendyol DeductionInvoices API'den)
-  invoicedAdvertisingCost?: number;
+  // Kesilen Faturalar (Trendyol DeductionInvoices API'den)
+  invoicedAdvertisingCost?: number; // deprecated - use invoicedAdvertisingFees
+  invoicedAdvertisingFees?: number;
+  invoicedPenaltyFees?: number;
+  invoicedInternationalFees?: number;
+  invoicedOtherFees?: number;
+  invoicedRefunds?: number;
 
   // İndirimler & Kuponlar
   totalSellerDiscount?: number;
@@ -390,11 +402,14 @@ export interface PeriodStats {
   // Erken Ödeme
   earlyPaymentFee?: number;
 
-  // Gider Kategorileri
+  // Gider Kategorileri (legacy - use expensesByCategory)
   officeExpenses?: number;
   packagingExpenses?: number;
   accountingExpenses?: number;
   otherExpenses?: number;
+
+  // Dinamik Gider Kategorileri
+  expensesByCategory?: Record<string, number>;
 
   // İade
   refundRate?: number;

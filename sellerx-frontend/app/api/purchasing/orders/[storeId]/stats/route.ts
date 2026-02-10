@@ -17,8 +17,18 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Forward date filter params
+    const { searchParams } = new URL(request.url);
+    const startDate = searchParams.get("startDate");
+    const endDate = searchParams.get("endDate");
+
+    const queryParams = new URLSearchParams();
+    if (startDate) queryParams.set("startDate", startDate);
+    if (endDate) queryParams.set("endDate", endDate);
+    const queryString = queryParams.toString();
+
     const response = await fetch(
-      `${API_BASE_URL}/api/stores/${storeId}/purchase-orders/stats`,
+      `${API_BASE_URL}/api/stores/${storeId}/purchase-orders/stats${queryString ? `?${queryString}` : ""}`,
       {
         headers,
       }
