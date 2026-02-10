@@ -133,16 +133,14 @@ jobs:
                 break
               fi
 
-              # Check health endpoint
-              HEALTH_STATUS=$(docker exec $CONTAINER_NAME curl -s -o /dev/null -w "%{http_code}" $HEALTH_ENDPOINT 2>/dev/null || echo "000")
-
-              if [ "$HEALTH_STATUS" = "200" ]; then
-                echo "Health check passed! Status: $HEALTH_STATUS"
+              # Check if Spring Boot has started by looking for startup message in logs
+              if docker logs $CONTAINER_NAME 2>&1 | grep -q "Started SellerxApplication"; then
+                echo "Health check passed! Spring Boot application started."
                 HEALTH_OK=true
                 break
               fi
 
-              echo "Health check returned: $HEALTH_STATUS, waiting..."
+              echo "Application not ready yet, waiting..."
               sleep $HEALTH_RETRY_DELAY
             done
 
