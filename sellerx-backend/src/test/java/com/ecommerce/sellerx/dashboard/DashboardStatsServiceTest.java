@@ -196,7 +196,7 @@ class DashboardStatsServiceTest extends BaseUnitTest {
         }
 
         @Test
-        @DisplayName("should return zero return cost when no return records exist")
+        @DisplayName("should estimate return cost from orders when no return records exist")
         void shouldUseFallbackReturnCost() {
             // Given
             LocalDate startDate = LocalDate.of(2024, 6, 1);
@@ -218,11 +218,20 @@ class DashboardStatsServiceTest extends BaseUnitTest {
                     .orderItems(List.of(revenueItem))
                     .build();
 
-            // Return order
+            // Return order with cost and shipping data for fallback estimation
+            OrderItem returnItem = OrderItem.builder()
+                    .barcode("TEST-456")
+                    .quantity(1)
+                    .price(new BigDecimal("50.00"))
+                    .cost(new BigDecimal("20.00"))
+                    .build();
+
             TrendyolOrder returnOrder = TrendyolOrder.builder()
                     .tyOrderNumber("TY-002")
                     .grossAmount(new BigDecimal("50.00"))
-                    .orderItems(List.of())
+                    .estimatedShippingCost(new BigDecimal("15.00"))
+                    .estimatedCommission(new BigDecimal("5.00"))
+                    .orderItems(List.of(returnItem))
                     .build();
 
             when(orderRepository.findRevenueOrdersByStoreAndDateRange(any(), any(), any()))
@@ -239,9 +248,50 @@ class DashboardStatsServiceTest extends BaseUnitTest {
             // When
             DashboardStatsDto result = dashboardService.getStatsForDateRange(testStoreId, startDate, endDate, "test");
 
-            // Then - no fallback calculation, returns zero when no return records
-            assertThat(result.getReturnCost()).isEqualByComparingTo(BigDecimal.ZERO);
+            // Then - fallback: productCost(20) + outboundShipping(15) + returnShipping(15, estimated from outbound) + commission(5) = 55
+            assertThat(result.getReturnCost()).isEqualByComparingTo(new BigDecimal("55.00"));
             assertThat(result.getReturnCount()).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("should return zero return cost when no return records and no returned orders")
+        void shouldReturnZeroWhenNoReturnsAtAll() {
+            // Given
+            LocalDate startDate = LocalDate.of(2024, 6, 1);
+            LocalDate endDate = LocalDate.of(2024, 6, 30);
+
+            OrderItem item = OrderItem.builder()
+                    .barcode("TEST-123")
+                    .quantity(1)
+                    .price(new BigDecimal("100.00"))
+                    .cost(new BigDecimal("40.00"))
+                    .build();
+
+            TrendyolOrder order = TrendyolOrder.builder()
+                    .tyOrderNumber("TY-001")
+                    .grossAmount(new BigDecimal("100.00"))
+                    .totalDiscount(BigDecimal.ZERO)
+                    .stoppage(BigDecimal.ZERO)
+                    .orderItems(List.of(item))
+                    .build();
+
+            when(orderRepository.findRevenueOrdersByStoreAndDateRange(any(), any(), any()))
+                    .thenReturn(List.of(order));
+            when(orderRepository.findReturnedOrdersByStoreAndDateRange(any(), any(), any()))
+                    .thenReturn(List.of()); // No returns
+            when(storeExpenseRepository.findByStoreIdOrderByDateDesc(any()))
+                    .thenReturn(List.of());
+            when(returnRecordRepository.sumTotalLossByStoreAndDateRange(any(), any(), any()))
+                    .thenReturn(null);
+            when(productRepository.findByStoreIdAndBarcodeIn(any(), any()))
+                    .thenReturn(List.of());
+
+            // When
+            DashboardStatsDto result = dashboardService.getStatsForDateRange(testStoreId, startDate, endDate, "test");
+
+            // Then - no return records and no returned orders → zero
+            assertThat(result.getReturnCost()).isEqualByComparingTo(BigDecimal.ZERO);
+            assertThat(result.getReturnCount()).isEqualTo(0);
         }
 
         @Test
@@ -518,9 +568,10 @@ class DashboardStatsServiceTest extends BaseUnitTest {
     class CommissionCalculation {
 
         @Test
-        @DisplayName("should use order estimated commission when no product rate available")
-        void shouldUseOrderEstimatedCommission() {
-            // Given
+        @DisplayName("should use invoiced commission from TrendyolDeductionInvoice")
+        void shouldUseInvoicedCommission() {
+            // Given - Commission is now calculated from TrendyolDeductionInvoice (invoice-based)
+            // This matches the Invoices page calculation for consistency
             LocalDate startDate = LocalDate.of(2024, 6, 1);
             LocalDate endDate = LocalDate.of(2024, 6, 30);
 
@@ -528,14 +579,12 @@ class DashboardStatsServiceTest extends BaseUnitTest {
                     .barcode("TEST-123")
                     .quantity(1)
                     .price(new BigDecimal("100.00"))
-                    .unitEstimatedCommission(new BigDecimal("15.00"))
                     .build();
 
             TrendyolOrder order = TrendyolOrder.builder()
                     .tyOrderNumber("TY-001")
                     .grossAmount(new BigDecimal("100.00"))
                     .totalDiscount(BigDecimal.ZERO)
-                    .estimatedCommission(new BigDecimal("15.00"))
                     .transactionStatus("NOT_SETTLED")
                     .orderItems(List.of(item))
                     .build();
@@ -549,19 +598,22 @@ class DashboardStatsServiceTest extends BaseUnitTest {
             when(returnRecordRepository.sumTotalLossByStoreAndDateRange(any(), any(), any()))
                     .thenReturn(null);
             when(productRepository.findByStoreIdAndBarcodeIn(any(), any()))
-                    .thenReturn(List.of()); // No products with lastCommissionRate
+                    .thenReturn(List.of());
+            // Mock invoice-based commission (matches Invoices page)
+            when(deductionInvoiceRepository.sumCommissionFeesByStoreIdAndDateRange(any(), any(), any()))
+                    .thenReturn(new BigDecimal("15.00"));
 
             // When
             DashboardStatsDto result = dashboardService.getStatsForDateRange(testStoreId, startDate, endDate, "test");
 
-            // Then
+            // Then - Commission comes from invoiced amount (TrendyolDeductionInvoice)
             assertThat(result.getTotalEstimatedCommission()).isEqualByComparingTo(new BigDecimal("15.00"));
         }
 
         @Test
-        @DisplayName("should use product lastCommissionRate for NOT_SETTLED orders")
-        void shouldUseProductLastCommissionRate() {
-            // Given
+        @DisplayName("should return zero commission when no invoices exist")
+        void shouldReturnZeroCommissionWhenNoInvoices() {
+            // Given - No commission invoices in the date range
             LocalDate startDate = LocalDate.of(2024, 6, 1);
             LocalDate endDate = LocalDate.of(2024, 6, 30);
 
@@ -579,12 +631,6 @@ class DashboardStatsServiceTest extends BaseUnitTest {
                     .orderItems(List.of(item))
                     .build();
 
-            // Product has lastCommissionRate of 20%
-            TrendyolProduct product = TrendyolProduct.builder()
-                    .barcode("TEST-123")
-                    .lastCommissionRate(new BigDecimal("20.00"))
-                    .build();
-
             when(orderRepository.findRevenueOrdersByStoreAndDateRange(any(), any(), any()))
                     .thenReturn(List.of(order));
             when(orderRepository.findReturnedOrdersByStoreAndDateRange(any(), any(), any()))
@@ -593,14 +639,17 @@ class DashboardStatsServiceTest extends BaseUnitTest {
                     .thenReturn(List.of());
             when(returnRecordRepository.sumTotalLossByStoreAndDateRange(any(), any(), any()))
                     .thenReturn(null);
-            when(productRepository.findByStoreIdAndBarcodeIn(eq(testStoreId), any()))
-                    .thenReturn(List.of(product));
+            when(productRepository.findByStoreIdAndBarcodeIn(any(), any()))
+                    .thenReturn(List.of());
+            // No invoiced commission
+            when(deductionInvoiceRepository.sumCommissionFeesByStoreIdAndDateRange(any(), any(), any()))
+                    .thenReturn(null);
 
             // When
             DashboardStatsDto result = dashboardService.getStatsForDateRange(testStoreId, startDate, endDate, "test");
 
-            // Then - Commission = 100 * 20% = 20
-            assertThat(result.getTotalEstimatedCommission()).isEqualByComparingTo(new BigDecimal("20.00"));
+            // Then - Zero commission when no invoices
+            assertThat(result.getTotalEstimatedCommission()).isEqualByComparingTo(BigDecimal.ZERO);
         }
     }
 

@@ -320,18 +320,26 @@ public class DashboardStatsService {
     }
 
     private BigDecimal calculateNetProfit(DashboardStatsDto stats) {
-        // Net Profit = Gross Profit - Commission - Stoppage - Return Cost - Expenses
+        // Net Profit = Gross Profit - Commission - Stoppage - Return Cost - Expenses - Shipping - InvoicedDeductions
+        // Bu formül DashboardStatsService.java:617-624 ile tutarlı olmalı
+        // NOT: Reklam maliyeti (CPC/CVR bazlı) burada dahil değil - invoicedDeductions zaten faturalı reklamları içeriyor
+        // Ürün bazlı reklam maliyeti dashboard ana hesaplamasında products'dan ayrıca hesaplanıyor
         BigDecimal grossProfit = stats.getGrossProfit() != null ? stats.getGrossProfit() : BigDecimal.ZERO;
         BigDecimal commission = stats.getTotalEstimatedCommission() != null ? stats.getTotalEstimatedCommission() : BigDecimal.ZERO;
         BigDecimal stoppage = stats.getTotalStoppage() != null ? stats.getTotalStoppage() : BigDecimal.ZERO;
         BigDecimal returnCost = stats.getReturnCost() != null ? stats.getReturnCost() : BigDecimal.ZERO;
         BigDecimal expenses = stats.getTotalExpenseAmount() != null ? stats.getTotalExpenseAmount() : BigDecimal.ZERO;
+        // Eksik giderler eklendi (tutarlılık için)
+        BigDecimal shippingCost = stats.getTotalShippingCost() != null ? stats.getTotalShippingCost() : BigDecimal.ZERO;
+        BigDecimal invoicedDeductions = stats.getInvoicedDeductions() != null ? stats.getInvoicedDeductions() : BigDecimal.ZERO;
 
         return grossProfit
                 .subtract(commission)
                 .subtract(stoppage)
                 .subtract(returnCost)
-                .subtract(expenses);
+                .subtract(expenses)
+                .subtract(shippingCost)
+                .subtract(invoicedDeductions);
     }
 
     private BigDecimal calculateProfitMargin(BigDecimal grossProfit, BigDecimal revenue) {
@@ -501,7 +509,7 @@ public class DashboardStatsService {
         BigDecimal totalRevenue = calculateTotalRevenue(revenueOrders);
 
         // Calculate actual return cost from ReturnRecord table (dynamic, not hardcoded)
-        BigDecimal returnCost = calculateActualReturnCost(storeId, startDateTime, endDateTime, returnCount);
+        BigDecimal returnCost = calculateActualReturnCost(storeId, startDateTime, endDateTime, returnCount, returnedOrders);
 
         // Calculate product costs and items without cost
         ProductCostResult productCostResult = calculateProductCosts(revenueOrders);
@@ -517,8 +525,14 @@ public class DashboardStatsService {
         // Calculate total stoppage (from orders - legacy method)
         BigDecimal totalStoppage = calculateTotalStoppage(revenueOrders);
 
-        // Calculate total estimated commission
-        BigDecimal totalEstimatedCommission = calculateTotalEstimatedCommission(revenueOrders, storeId);
+        // Calculate invoiced commission from TrendyolDeductionInvoice (matches Invoices page)
+        // Includes: Komisyon Faturası, AZ - Komisyon Faturası, AZ-Komisyon Geliri
+        BigDecimal totalEstimatedCommission = deductionInvoiceRepository.sumCommissionFeesByStoreIdAndDateRange(
+                storeId, startDateTime, endDateTime);
+        if (totalEstimatedCommission == null || totalEstimatedCommission.compareTo(BigDecimal.ZERO) == 0) {
+            // Fatura komisyonu yoksa, siparişlerin estimatedCommission toplamını kullan (Sandbox için)
+            totalEstimatedCommission = calculateTotalEstimatedCommissionFromOrders(revenueOrders);
+        }
 
         // Calculate period expenses (legacy method)
         List<PeriodExpenseDto> expenses = calculatePeriodExpenses(storeId, startDate, endDate);
@@ -564,7 +578,8 @@ public class DashboardStatsService {
 
         // ============== KESİLEN FATURALAR (Dashboard Kartları için) ==============
         // Kategori bazlı fatura toplamları - TrendyolDeductionInvoice tablosundan
-        // NOT: KOMISYON ve KARGO faturaları HARİÇ (bunlar sipariş bazlı hesaplanıyor)
+        // NOT: KOMİSYON ve KARGO artık ayrı satırlarda gösteriliyor (fatura bazlı hesaplanıyor)
+        // Bu bölüm sadece REKLAM, CEZA, ULUSLARARASI, DİĞER ve İADE kategorilerini içerir
         BigDecimal invoicedAdvertisingFees = deductionInvoiceRepository.sumInvoicedAdvertisingFees(
                 storeId, startDateTime, endDateTime);
         BigDecimal invoicedPenaltyFees = deductionInvoiceRepository.sumInvoicedPenaltyFees(
@@ -596,7 +611,10 @@ public class DashboardStatsService {
 
         // ============== ÜRÜN DETAYLARI VE REKLAM MALİYETİ ==============
         // Önce ürün detaylarını hesapla (reklam maliyetini netProfit'ten düşmek için)
-        List<ProductDetailDto> products = calculateProductDetails(storeId, revenueOrders, returnedOrders, startDateTime, endDateTime);
+        // Toplam giderleri de geçir (ürün bazlı net kar tutarlılığı için)
+        List<ProductDetailDto> products = calculateProductDetails(
+                storeId, revenueOrders, returnedOrders, startDateTime, endDateTime,
+                totalRevenue, platformFees.getTotal(), totalExpenseAmount, invoicedDeductions);
 
         // Tüm ürünlerin toplam reklam maliyetini hesapla
         BigDecimal totalAdvertisingCostSum = products.stream()
@@ -738,16 +756,19 @@ public class DashboardStatsService {
      * - Commission loss
      * - Packaging cost
      *
-     * Falls back to FALLBACK_RETURN_COST_PER_ITEM if no ReturnRecord data exists.
+     * Falls back to estimating from returned orders if no ReturnRecord data exists.
      *
      * @param storeId Store ID
      * @param startDateTime Period start date/time
      * @param endDateTime Period end date/time
      * @param returnCount Number of returned orders (for fallback calculation)
-     * @return Actual return cost from ReturnRecord or fallback estimate
+     * @param returnedOrders List of returned orders for fallback estimation
+     * @return Actual return cost from ReturnRecord or estimated from orders
      */
     private BigDecimal calculateActualReturnCost(UUID storeId, LocalDateTime startDateTime,
-                                                   LocalDateTime endDateTime, int returnCount) {
+                                                   LocalDateTime endDateTime, int returnCount,
+                                                   List<TrendyolOrder> returnedOrders) {
+        // 1. Try return_records table first (most accurate data)
         try {
             BigDecimal actualReturnCost = returnRecordRepository.sumTotalLossByStoreAndDateRange(
                     storeId, startDateTime, endDateTime);
@@ -759,6 +780,44 @@ public class DashboardStatsService {
             }
         } catch (Exception e) {
             log.warn("Error fetching return cost from ReturnRecord: {}", e.getMessage());
+        }
+
+        // 2. Fallback: Estimate from returned orders
+        if (returnedOrders != null && !returnedOrders.isEmpty()) {
+            BigDecimal estimatedCost = BigDecimal.ZERO;
+            for (TrendyolOrder order : returnedOrders) {
+                // Product cost
+                BigDecimal productCost = BigDecimal.ZERO;
+                if (order.getOrderItems() != null) {
+                    for (OrderItem item : order.getOrderItems()) {
+                        if (item.getCost() != null && item.getCost().compareTo(BigDecimal.ZERO) > 0) {
+                            int qty = item.getQuantity() != null ? item.getQuantity() : 1;
+                            productCost = productCost.add(
+                                    item.getCost().multiply(BigDecimal.valueOf(qty)));
+                        }
+                    }
+                }
+                // Outbound shipping cost
+                BigDecimal outboundShipping = order.getEstimatedShippingCost() != null
+                        ? order.getEstimatedShippingCost() : BigDecimal.ZERO;
+                // Return shipping cost (actual if available, otherwise estimate from outbound)
+                BigDecimal returnShipping = BigDecimal.ZERO;
+                if (order.getReturnShippingCost() != null && order.getReturnShippingCost().compareTo(BigDecimal.ZERO) > 0) {
+                    returnShipping = order.getReturnShippingCost();
+                } else if (outboundShipping.compareTo(BigDecimal.ZERO) > 0) {
+                    returnShipping = outboundShipping;
+                }
+                // Commission
+                BigDecimal commission = order.getEstimatedCommission() != null
+                        ? order.getEstimatedCommission() : BigDecimal.ZERO;
+
+                estimatedCost = estimatedCost.add(productCost)
+                        .add(outboundShipping)
+                        .add(returnShipping)
+                        .add(commission);
+            }
+            log.info("Estimated return cost from orders: {} for {} returns", estimatedCost, returnedOrders.size());
+            return estimatedCost;
         }
 
         return BigDecimal.ZERO;
@@ -848,7 +907,17 @@ public class DashboardStatsService {
                 .map(order -> order.getStoppage() != null ? order.getStoppage() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
-    
+
+    /**
+     * Siparişlerin estimatedCommission toplamını hesaplar.
+     * Fatura komisyonu yoksa (Sandbox vb. durumlar) bu değer kullanılır.
+     */
+    private BigDecimal calculateTotalEstimatedCommissionFromOrders(List<TrendyolOrder> orders) {
+        return orders.stream()
+                .map(order -> order.getEstimatedCommission() != null ? order.getEstimatedCommission() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
     // Helper class for product cost calculation result
     private static class ProductCostResult {
         private final BigDecimal totalCosts;
@@ -958,7 +1027,10 @@ public class DashboardStatsService {
                 .toList();
     }
     
-    private List<ProductDetailDto> calculateProductDetails(UUID storeId, List<TrendyolOrder> revenueOrders, List<TrendyolOrder> returnedOrders, LocalDateTime startDateTime, LocalDateTime endDateTime) {
+    private List<ProductDetailDto> calculateProductDetails(
+            UUID storeId, List<TrendyolOrder> revenueOrders, List<TrendyolOrder> returnedOrders,
+            LocalDateTime startDateTime, LocalDateTime endDateTime,
+            BigDecimal totalRevenue, BigDecimal totalPlatformFees, BigDecimal totalExpenses, BigDecimal totalInvoicedDeductions) {
         // Per-order kargo maliyetlerini cargo invoices tablosundan al
         LocalDate startDate = startDateTime.toLocalDate();
         LocalDate endDate = endDateTime.toLocalDate();
@@ -1227,11 +1299,33 @@ public class DashboardStatsService {
                         }
                     }
 
-                    // Net kar = brüt kar - komisyon - kargo - iade maliyeti - reklam maliyeti
+                    // ============== NET KAR HESAPLAMASI (Tutarlılık için güncellenmiş) ==============
+                    // Net kar = brüt kar - komisyon - kargo - iade maliyeti - platform fees - giderler - faturalı kesintiler - reklam
+                    // Ürün bazlı gider dağıtımı: (ürün geliri / toplam gelir) × toplam gider
+                    BigDecimal revenueRatio = BigDecimal.ZERO;
+                    if (totalRevenue != null && totalRevenue.compareTo(BigDecimal.ZERO) > 0 && m.revenue.compareTo(BigDecimal.ZERO) > 0) {
+                        revenueRatio = m.revenue.divide(totalRevenue, 6, RoundingMode.HALF_UP);
+                    }
+
+                    // Ürün bazlı dağıtılmış giderler
+                    BigDecimal allocatedPlatformFees = totalPlatformFees != null
+                            ? totalPlatformFees.multiply(revenueRatio).setScale(2, RoundingMode.HALF_UP)
+                            : BigDecimal.ZERO;
+                    BigDecimal allocatedExpenses = totalExpenses != null
+                            ? totalExpenses.multiply(revenueRatio).setScale(2, RoundingMode.HALF_UP)
+                            : BigDecimal.ZERO;
+                    BigDecimal allocatedInvoicedDeductions = totalInvoicedDeductions != null
+                            ? totalInvoicedDeductions.multiply(revenueRatio).setScale(2, RoundingMode.HALF_UP)
+                            : BigDecimal.ZERO;
+
+                    // Net kar hesaplaması (dashboard ile tutarlı)
                     BigDecimal netProfit = m.grossProfit
                             .subtract(m.estimatedCommission)
                             .subtract(m.shippingCost)
-                            .subtract(m.refundCost);
+                            .subtract(m.refundCost)
+                            .subtract(allocatedPlatformFees)
+                            .subtract(allocatedExpenses)
+                            .subtract(allocatedInvoicedDeductions);
                     // Reklam maliyetini çıkar (eğer varsa)
                     if (totalAdvertisingCost != null) {
                         netProfit = netProfit.subtract(totalAdvertisingCost);
@@ -1634,11 +1728,11 @@ public class DashboardStatsService {
 
     /**
      * Kargo maliyetleri hesaplama (dönem seviyesi).
-     * Trendyol sipariş bazlı kargo verisi sağlamıyor, sadece günlük toplam.
-     * Bu metot TrendyolDeductionInvoice tablosundan "Kargo Fatura" kayıtlarını alır.
+     * TrendyolDeductionInvoice tablosundan fatura bazlı toplam (Faturalar sayfasıyla tutarlı).
+     * Dahil edilen fatura tipleri: 'Kargo Fatura', 'Kargo Faturası', 'AZ - Kargo Fatura'
      *
-     * NOT: Kargo maliyeti sadece dönem seviyesinde hesaplanır.
-     * Ürün bazlı kargo maliyet dağılımı yapılmaz (veri yok).
+     * NOT: Bu hesaplama Faturalar sayfasındaki KARGO kategorisiyle aynı kaynağı kullanır.
+     * Böylece Dashboard ve Faturalar sayfası tutarlı değerler gösterir.
      *
      * @param storeId Mağaza ID
      * @param startDate Başlangıç tarihi
@@ -1646,89 +1740,22 @@ public class DashboardStatsService {
      * @return ShippingCostsResult (shippingCost ve shippingIncome)
      */
     private ShippingCostsResult calculateShippingCosts(UUID storeId, LocalDate startDate, LocalDate endDate) {
-        // 1. GERÇEK KARGO: Cargo invoices tablosundan doğrudan kargo fatura toplamı
-        BigDecimal realCargoAmount = cargoInvoiceRepository.sumAmountByStoreAndDateRange(
-                storeId, startDate, endDate);
-        if (realCargoAmount == null) {
-            realCargoAmount = BigDecimal.ZERO;
+        // TrendyolDeductionInvoice tablosundan fatura bazlı kargo toplamı
+        // Bu hesaplama Faturalar sayfasıyla tutarlı sonuç verir
+        LocalDateTime startDateTime = startDate.atStartOfDay();
+        LocalDateTime endDateTime = endDate.plusDays(1).atStartOfDay();
+
+        BigDecimal cargoAmount = deductionInvoiceRepository.sumCargoFeesByStoreIdAndDateRange(
+                storeId, startDateTime, endDateTime);
+        if (cargoAmount == null) {
+            cargoAmount = BigDecimal.ZERO;
         }
 
-        // 2. FALLBACK KARGO: Kargo faturası olmayan siparişler için tahmini kargo maliyeti
-        BigDecimal fallbackCargoAmount = BigDecimal.ZERO;
+        log.debug("Calculated shipping costs for store {} from {} to {}: invoiced={}",
+                storeId, startDate, endDate, cargoAmount);
 
-        try {
-            // 2a. Dönemdeki tüm gelir siparişlerini al
-            LocalDateTime startDateTime = startDate.atStartOfDay();
-            LocalDateTime endDateTime = endDate.plusDays(1).atStartOfDay();
-            List<TrendyolOrder> revenueOrders = orderRepository.findRevenueOrdersByStoreAndDateRange(
-                    storeId, startDateTime, endDateTime);
-
-            // 2b. Cargo invoice olan sipariş numaralarını bul
-            List<TrendyolCargoInvoice> cargoInvoices = cargoInvoiceRepository
-                    .findByStoreIdAndInvoiceDateBetweenOrderByInvoiceDateDesc(storeId, startDate, endDate);
-            Set<String> ordersWithCargoInvoice = cargoInvoices.stream()
-                    .map(TrendyolCargoInvoice::getOrderNumber)
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toSet());
-
-            // 2c. Kargo faturası OLMAYAN siparişleri filtrele
-            List<TrendyolOrder> ordersWithoutCargoInvoice = revenueOrders.stream()
-                    .filter(o -> !ordersWithCargoInvoice.contains(o.getTyOrderNumber()))
-                    .toList();
-
-            if (!ordersWithoutCargoInvoice.isEmpty()) {
-                // 2d. Bu siparişlerdeki barkodları topla
-                Set<String> barcodesWithoutInvoice = new HashSet<>();
-                for (TrendyolOrder order : ordersWithoutCargoInvoice) {
-                    for (OrderItem item : order.getOrderItems()) {
-                        if (item.getBarcode() != null) {
-                            barcodesWithoutInvoice.add(item.getBarcode());
-                        }
-                    }
-                }
-
-                // 2e. Bu barkodlar için EN SON kargo faturasındaki payı al
-                Map<String, BigDecimal> barcodeLatestShippingMap = new HashMap<>();
-                if (!barcodesWithoutInvoice.isEmpty()) {
-                    var latestShippingResults = cargoInvoiceRepository.findLatestShippingShareByBarcodes(
-                            storeId, new ArrayList<>(barcodesWithoutInvoice));
-                    for (var row : latestShippingResults) {
-                        String barcode = row.getBarcode();
-                        BigDecimal latestShipping = row.getShippingShare() != null ? row.getShippingShare() : BigDecimal.ZERO;
-                        if (barcode != null && latestShipping.compareTo(BigDecimal.ZERO) > 0) {
-                            barcodeLatestShippingMap.put(barcode, latestShipping);
-                        }
-                    }
-                }
-
-                // 2f. Her siparişin tahmini kargo maliyetini hesapla (en son kargo payından)
-                for (TrendyolOrder order : ordersWithoutCargoInvoice) {
-                    for (OrderItem item : order.getOrderItems()) {
-                        String barcode = item.getBarcode();
-                        if (barcode != null) {
-                            BigDecimal latestShipping = barcodeLatestShippingMap.getOrDefault(barcode, BigDecimal.ZERO);
-                            if (latestShipping.compareTo(BigDecimal.ZERO) > 0) {
-                                fallbackCargoAmount = fallbackCargoAmount.add(latestShipping);
-                            }
-                        }
-                    }
-                }
-
-                log.info("SHIPPING_FALLBACK: {} orders without cargo invoice, estimated shipping: {}",
-                        ordersWithoutCargoInvoice.size(), fallbackCargoAmount);
-            }
-        } catch (Exception e) {
-            log.warn("SHIPPING_FALLBACK: Failed to calculate fallback shipping: {}", e.getMessage());
-        }
-
-        BigDecimal totalCargoAmount = realCargoAmount.add(fallbackCargoAmount);
-
-        log.debug("Calculated shipping costs for store {} from {} to {}: real={}, fallback={}, total={}",
-                storeId, startDate, endDate, realCargoAmount, fallbackCargoAmount, totalCargoAmount);
-
-        // Şimdilik shippingIncome'u 0 olarak döndür (müşteri kargo bedeli siparişte gelmiyor)
-        // Not: shippingIncome müşterinin ödediği kargo bedelidir, bu bilgi ayrı bir yerden alınabilir
-        return new ShippingCostsResult(totalCargoAmount, BigDecimal.ZERO);
+        // shippingIncome'u 0 olarak döndür (müşteri kargo bedeli siparişte gelmiyor)
+        return new ShippingCostsResult(cargoAmount, BigDecimal.ZERO);
     }
 
     // ============== RESULT HOLDER CLASSES ==============
@@ -1989,5 +2016,32 @@ public class DashboardStatsService {
      */
     private BigDecimal getActualCommission(TrendyolOrder order) {
         return getActualCommission(order, null);
+    }
+
+    /**
+     * Get deduction invoice breakdown by transaction type for a date range.
+     * Used for dashboard detail panel to show all invoice types individually instead of grouped categories.
+     *
+     * @param storeId Store UUID
+     * @param startDate Start date (inclusive)
+     * @param endDate End date (inclusive)
+     * @return List of deduction breakdown by transaction type with debt and credit totals
+     */
+    public List<com.ecommerce.sellerx.dashboard.dto.DeductionBreakdownDto> getDeductionBreakdown(
+            UUID storeId, LocalDate startDate, LocalDate endDate) {
+        log.info("Getting deduction breakdown for store {} from {} to {}", storeId, startDate, endDate);
+
+        LocalDateTime start = startDate.atStartOfDay();
+        LocalDateTime end = endDate.plusDays(1).atStartOfDay();
+
+        var projections = deductionInvoiceRepository.getDeductionBreakdownByStoreIdAndDateRange(storeId, start, end);
+
+        return projections.stream()
+                .map(p -> new com.ecommerce.sellerx.dashboard.dto.DeductionBreakdownDto(
+                        p.getTransactionType(),
+                        p.getTotalDebt() != null ? p.getTotalDebt() : BigDecimal.ZERO,
+                        p.getTotalCredit() != null ? p.getTotalCredit() : BigDecimal.ZERO
+                ))
+                .toList();
     }
 }
