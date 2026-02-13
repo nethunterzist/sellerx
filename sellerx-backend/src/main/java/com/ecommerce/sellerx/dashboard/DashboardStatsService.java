@@ -784,8 +784,55 @@ public class DashboardStatsService {
 
         // 2. Fallback: Estimate from returned orders
         if (returnedOrders != null && !returnedOrders.isEmpty()) {
+            // 2a. Kargo faturalarından gerçek gönderi ve iade kargo maliyetlerini al
+            List<String> orderNumbers = returnedOrders.stream()
+                    .map(TrendyolOrder::getTyOrderNumber)
+                    .filter(Objects::nonNull)
+                    .toList();
+
+            Map<String, BigDecimal> outboundShippingMap = new HashMap<>();
+            Map<String, BigDecimal> returnShippingMap = new HashMap<>();
+            if (!orderNumbers.isEmpty()) {
+                cargoInvoiceRepository.sumOutboundShippingByOrderNumbers(storeId, orderNumbers)
+                        .forEach(p -> outboundShippingMap.put(p.getOrderNumber(), p.getTotalAmount()));
+                cargoInvoiceRepository.sumReturnShippingByOrderNumbers(storeId, orderNumbers)
+                        .forEach(p -> returnShippingMap.put(p.getOrderNumber(), p.getTotalAmount()));
+            }
+
+            // 2b. Kargo faturası olmayan barkodlar için son bilinen kargo maliyetini bul
+            Set<String> barcodesNeedingFallback = new HashSet<>();
+            for (TrendyolOrder order : returnedOrders) {
+                String orderNum = order.getTyOrderNumber();
+                if (!outboundShippingMap.containsKey(orderNum) && !returnShippingMap.containsKey(orderNum)) {
+                    // Bu sipariş için hiç kargo faturası yok - barkodlardan referans al
+                    if (order.getOrderItems() != null) {
+                        for (OrderItem item : order.getOrderItems()) {
+                            if (item.getBarcode() != null) {
+                                barcodesNeedingFallback.add(item.getBarcode());
+                            }
+                        }
+                    }
+                }
+            }
+
+            Map<String, BigDecimal> barcodeShippingFallback = new HashMap<>();
+            if (!barcodesNeedingFallback.isEmpty()) {
+                cargoInvoiceRepository.findLatestShippingShareByBarcodes(storeId, new ArrayList<>(barcodesNeedingFallback))
+                        .forEach(p -> {
+                            if (p.getShippingShare() != null && p.getShippingShare().compareTo(BigDecimal.ZERO) > 0) {
+                                barcodeShippingFallback.put(p.getBarcode(), p.getShippingShare());
+                            }
+                        });
+                if (!barcodeShippingFallback.isEmpty()) {
+                    log.info("RETURN_SHIPPING_FALLBACK: Found shipping reference for {} of {} barcodes",
+                            barcodeShippingFallback.size(), barcodesNeedingFallback.size());
+                }
+            }
+
             BigDecimal estimatedCost = BigDecimal.ZERO;
             for (TrendyolOrder order : returnedOrders) {
+                String orderNum = order.getTyOrderNumber();
+
                 // Product cost
                 BigDecimal productCost = BigDecimal.ZERO;
                 if (order.getOrderItems() != null) {
@@ -797,16 +844,33 @@ public class DashboardStatsService {
                         }
                     }
                 }
-                // Outbound shipping cost
-                BigDecimal outboundShipping = order.getEstimatedShippingCost() != null
-                        ? order.getEstimatedShippingCost() : BigDecimal.ZERO;
-                // Return shipping cost (actual if available, otherwise estimate from outbound)
-                BigDecimal returnShipping = BigDecimal.ZERO;
-                if (order.getReturnShippingCost() != null && order.getReturnShippingCost().compareTo(BigDecimal.ZERO) > 0) {
-                    returnShipping = order.getReturnShippingCost();
-                } else if (outboundShipping.compareTo(BigDecimal.ZERO) > 0) {
-                    returnShipping = outboundShipping;
+
+                // Outbound shipping cost: 1) Kargo faturası, 2) Sipariş alanı, 3) Barkod referansı
+                BigDecimal outboundShipping = outboundShippingMap.getOrDefault(orderNum, BigDecimal.ZERO);
+                if (outboundShipping.compareTo(BigDecimal.ZERO) == 0) {
+                    outboundShipping = order.getEstimatedShippingCost() != null
+                            ? order.getEstimatedShippingCost() : BigDecimal.ZERO;
                 }
+                if (outboundShipping.compareTo(BigDecimal.ZERO) == 0 && order.getOrderItems() != null) {
+                    // Barkod bazlı son bilinen kargo maliyetinden referans al
+                    for (OrderItem item : order.getOrderItems()) {
+                        BigDecimal ref = barcodeShippingFallback.getOrDefault(item.getBarcode(), BigDecimal.ZERO);
+                        if (ref.compareTo(BigDecimal.ZERO) > 0) {
+                            outboundShipping = outboundShipping.add(ref);
+                        }
+                    }
+                }
+
+                // Return shipping cost: 1) İade kargo faturası, 2) Sipariş alanı, 3) Gönderi kargosundan tahmin
+                BigDecimal returnShipping = returnShippingMap.getOrDefault(orderNum, BigDecimal.ZERO);
+                if (returnShipping.compareTo(BigDecimal.ZERO) == 0) {
+                    if (order.getReturnShippingCost() != null && order.getReturnShippingCost().compareTo(BigDecimal.ZERO) > 0) {
+                        returnShipping = order.getReturnShippingCost();
+                    } else if (outboundShipping.compareTo(BigDecimal.ZERO) > 0) {
+                        returnShipping = outboundShipping; // İade kargo ≈ gönderi kargo
+                    }
+                }
+
                 // Commission
                 BigDecimal commission = order.getEstimatedCommission() != null
                         ? order.getEstimatedCommission() : BigDecimal.ZERO;
@@ -815,6 +879,9 @@ public class DashboardStatsService {
                         .add(outboundShipping)
                         .add(returnShipping)
                         .add(commission);
+
+                log.debug("RETURN_COST order={}: product={}, outbound={}, return={}, commission={}",
+                        orderNum, productCost, outboundShipping, returnShipping, commission);
             }
             log.info("Estimated return cost from orders: {} for {} returns", estimatedCost, returnedOrders.size());
             return estimatedCost;
