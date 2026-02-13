@@ -749,14 +749,12 @@ public class DashboardStatsService {
 
     /**
      * Calculate actual return cost from ReturnRecord table.
-     * Uses the totalLoss field which includes:
-     * - Product cost
-     * - Shipping cost (outbound)
-     * - Shipping cost (return)
-     * - Commission loss
-     * - Packaging cost
-     *
      * Falls back to estimating from returned orders if no ReturnRecord data exists.
+     * Fallback includes:
+     * - Product cost (alış maliyeti)
+     * - Shipping cost (outbound - gönderi kargo)
+     * - Shipping cost (return - iade kargo)
+     * NOT: Komisyon dahil edilmez - Trendyol iade durumunda komisyonu iptal eder.
      *
      * @param storeId Store ID
      * @param startDateTime Period start date/time
@@ -871,17 +869,15 @@ public class DashboardStatsService {
                     }
                 }
 
-                // Commission
-                BigDecimal commission = order.getEstimatedCommission() != null
-                        ? order.getEstimatedCommission() : BigDecimal.ZERO;
+                // NOT: Komisyon iade maliyetine dahil edilmez.
+                // Trendyol iade durumunda komisyonu iptal eder, gerçek bir kayıp değildir.
 
                 estimatedCost = estimatedCost.add(productCost)
                         .add(outboundShipping)
-                        .add(returnShipping)
-                        .add(commission);
+                        .add(returnShipping);
 
-                log.debug("RETURN_COST order={}: product={}, outbound={}, return={}, commission={}",
-                        orderNum, productCost, outboundShipping, returnShipping, commission);
+                log.debug("RETURN_COST order={}: product={}, outbound={}, return={}",
+                        orderNum, productCost, outboundShipping, returnShipping);
             }
             log.info("Estimated return cost from orders: {} for {} returns", estimatedCost, returnedOrders.size());
             return estimatedCost;

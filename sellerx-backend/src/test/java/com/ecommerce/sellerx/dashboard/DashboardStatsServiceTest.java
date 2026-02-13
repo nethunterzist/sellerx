@@ -248,8 +248,9 @@ class DashboardStatsServiceTest extends BaseUnitTest {
             // When
             DashboardStatsDto result = dashboardService.getStatsForDateRange(testStoreId, startDate, endDate, "test");
 
-            // Then - fallback: productCost(20) + outboundShipping(15) + returnShipping(15, estimated from outbound) + commission(5) = 55
-            assertThat(result.getReturnCost()).isEqualByComparingTo(new BigDecimal("55.00"));
+            // Then - fallback: productCost(20) + outboundShipping(15) + returnShipping(15, estimated from outbound) = 50
+            // NOT: Komisyon dahil edilmez - Trendyol iade durumunda komisyonu iptal eder
+            assertThat(result.getReturnCost()).isEqualByComparingTo(new BigDecimal("50.00"));
             assertThat(result.getReturnCount()).isEqualTo(1);
         }
 
