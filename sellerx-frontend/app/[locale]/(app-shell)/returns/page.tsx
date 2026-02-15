@@ -151,8 +151,7 @@ export default function ReturnsPage() {
 
               {/* Reasons + Trend Charts - side by side */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {analyticsData?.returnReasonDistribution &&
-                  Object.keys(analyticsData.returnReasonDistribution).some(k => k !== "Bilinmiyor") && (
+                {analyticsData?.returnReasonDistribution && (
                   <FadeIn delay={0.1}>
                     <ReturnReasonsChart
                       reasonDistribution={analyticsData.returnReasonDistribution}
