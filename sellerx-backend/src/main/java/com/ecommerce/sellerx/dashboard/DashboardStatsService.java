@@ -1276,8 +1276,8 @@ public class DashboardStatsService {
                         // Bu, Trendyol'un henüz kargo faturası kesmediği siparişler için referans değer sağlar
                         BigDecimal fallbackShipping = barcodeLatestShippingMap.getOrDefault(barcode, BigDecimal.ZERO);
                         if (fallbackShipping.compareTo(BigDecimal.ZERO) > 0) {
-                            // En son kargo faturasındaki payı doğrudan kullan
-                            metrics.shippingCost = metrics.shippingCost.add(fallbackShipping);
+                            // En son kargo faturasındaki payı itemRatio ile dağıt (diğer maliyetler gibi)
+                            metrics.shippingCost = metrics.shippingCost.add(fallbackShipping.multiply(itemRatio));
                         }
                     }
                 }
@@ -1793,29 +1793,52 @@ public class DashboardStatsService {
         LocalDateTime startDateTime = startDate.atStartOfDay();
         LocalDateTime endDateTime = endDate.plusDays(1).atStartOfDay();
 
-        // Priority 1: Real deduction invoices from Trendyol (Kargo Fatura/Faturası)
-        BigDecimal invoicedAmount = deductionInvoiceRepository.sumCargoFeesByStoreIdAndDateRange(
-                storeId, startDateTime, endDateTime);
-        if (invoicedAmount == null) {
-            invoicedAmount = BigDecimal.ZERO;
-        }
+        // CRITICAL FIX: Cargo invoices from Trendyol arrive 1-4 weeks after orders are placed.
+        // Using invoice data for recent periods causes wrong calculations because:
+        // - Invoice transaction_date = when invoice was issued (e.g., today)
+        // - But the invoice covers orders from 1-4 weeks ago
+        // Solution: Only use invoices for periods that ended at least 7 days ago
+        LocalDate today = LocalDate.now(TURKEY_ZONE);
+        boolean isRecentPeriod = endDate.isAfter(today.minusDays(7));
 
-        // Priority 2: If no invoiced amount, use estimated shipping from orders as fallback
-        // (like commission: estimated until real invoice arrives)
         BigDecimal cargoAmount;
-        if (invoicedAmount.compareTo(BigDecimal.ZERO) > 0) {
-            cargoAmount = invoicedAmount;
-            log.debug("Shipping costs for store {} [{} to {}]: invoiced={}",
-                    storeId, startDate, endDate, cargoAmount);
-        } else {
+
+        if (isRecentPeriod) {
+            // Recent period (< 7 days old): ALWAYS use estimated shipping from orders
+            // Invoices don't exist yet or would be for wrong period
             cargoAmount = orderRepository.sumEstimatedShippingCostByStoreAndDateRange(
                     storeId, startDateTime, endDateTime);
             if (cargoAmount == null) {
                 cargoAmount = BigDecimal.ZERO;
             }
-            log.debug("Shipping costs for store {} [{} to {}]: estimated from orders={}",
-                    storeId, startDate, endDate, cargoAmount);
+            log.debug("Shipping costs for store {} [{} to {}]: using estimated from orders (recent period)",
+                    storeId, startDate, endDate);
+        } else {
+            // Older period (>= 7 days): Try invoices first, fallback to estimates
+            BigDecimal invoicedAmount = deductionInvoiceRepository.sumCargoFeesByStoreIdAndDateRange(
+                    storeId, startDateTime, endDateTime);
+            if (invoicedAmount == null) {
+                invoicedAmount = BigDecimal.ZERO;
+            }
+
+            if (invoicedAmount.compareTo(BigDecimal.ZERO) > 0) {
+                cargoAmount = invoicedAmount;
+                log.debug("Shipping costs for store {} [{} to {}]: invoiced={}",
+                        storeId, startDate, endDate, cargoAmount);
+            } else {
+                cargoAmount = orderRepository.sumEstimatedShippingCostByStoreAndDateRange(
+                        storeId, startDateTime, endDateTime);
+                if (cargoAmount == null) {
+                    cargoAmount = BigDecimal.ZERO;
+                }
+                log.debug("Shipping costs for store {} [{} to {}]: estimated from orders (no invoice)",
+                        storeId, startDate, endDate);
+            }
         }
+
+        log.info("✅ Shipping costs for store {} [{} to {}]: {} TL ({})",
+                storeId, startDate, endDate, cargoAmount,
+                isRecentPeriod ? "ESTIMATED" : "INVOICED");
 
         return new ShippingCostsResult(cargoAmount, BigDecimal.ZERO);
     }

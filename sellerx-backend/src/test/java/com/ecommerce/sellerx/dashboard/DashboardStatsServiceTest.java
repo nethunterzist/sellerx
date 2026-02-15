@@ -918,6 +918,150 @@ class DashboardStatsServiceTest extends BaseUnitTest {
         }
     }
 
+    @Nested
+    @DisplayName("Shipping Cost Distribution Tests (Bug Fix Verification)")
+    class ShippingCostDistribution {
+
+        @Test
+        @DisplayName("should handle multi-item order with estimated shipping correctly")
+        void shouldHandleMultiItemOrderWithEstimatedShipping() {
+            // Given - Regression test to ensure multi-item orders work correctly
+            // This test verifies that shipping costs are aggregated properly at dashboard level
+            LocalDate startDate = LocalDate.of(2024, 6, 1);
+            LocalDate endDate = LocalDate.of(2024, 6, 30);
+
+            // Order with 2 items - total 350 TL
+            OrderItem itemA = OrderItem.builder()
+                    .barcode("PRODUCT-A")
+                    .productName("Product A")
+                    .quantity(1)
+                    .price(new BigDecimal("200.00"))
+                    .cost(new BigDecimal("100.00"))
+                    .build();
+
+            OrderItem itemB = OrderItem.builder()
+                    .barcode("PRODUCT-B")
+                    .productName("Product B")
+                    .quantity(1)
+                    .price(new BigDecimal("150.00"))
+                    .cost(new BigDecimal("75.00"))
+                    .build();
+
+            // Estimated shipping: 17 TL for the entire order
+            TrendyolOrder order = TrendyolOrder.builder()
+                    .tyOrderNumber("TY-MULTI-001")
+                    .grossAmount(new BigDecimal("350.00"))
+                    .totalPrice(new BigDecimal("350.00"))
+                    .totalDiscount(BigDecimal.ZERO)
+                    .stoppage(BigDecimal.ZERO)
+                    .estimatedShippingCost(new BigDecimal("17.00")) // Order-level shipping
+                    .estimatedCommission(BigDecimal.ZERO)
+                    .transactionStatus("NOT_SETTLED")
+                    .orderItems(List.of(itemA, itemB))
+                    .build();
+
+            when(orderRepository.findRevenueOrdersByStoreAndDateRange(any(), any(), any()))
+                    .thenReturn(List.of(order));
+            when(storeExpenseRepository.findByStoreIdOrderByDateDesc(any()))
+                    .thenReturn(List.of());
+            when(returnRecordRepository.sumTotalLossByStoreAndDateRange(any(), any(), any()))
+                    .thenReturn(null);
+            when(productRepository.findByStoreIdAndBarcodeIn(any(), any()))
+                    .thenReturn(List.of());
+
+            // Mock shipping costs calculation to use estimated shipping
+            when(deductionInvoiceRepository.sumCargoFeesByStoreIdAndDateRange(any(), any(), any()))
+                    .thenReturn(BigDecimal.ZERO); // No cargo invoice yet
+            when(orderRepository.sumEstimatedShippingCostByStoreAndDateRange(any(), any(), any()))
+                    .thenReturn(new BigDecimal("17.00"));
+
+            // When
+            DashboardStatsDto result = dashboardService.getStatsForDateRange(testStoreId, startDate, endDate, "test");
+
+            // Then - Total shipping should be 17 TL (from estimated shipping)
+            assertThat(result.getTotalShippingCost())
+                    .describedAs("Total shipping should match order's estimated shipping")
+                    .isEqualByComparingTo(new BigDecimal("17.00"));
+        }
+
+        @Test
+        @DisplayName("should use invoiced cargo fees when available instead of estimated")
+        void shouldUseInvoicedCargoFeesWhenAvailable() {
+            // Given - Test that actual cargo invoices take priority over estimates
+            LocalDate startDate = LocalDate.of(2024, 6, 1);
+            LocalDate endDate = LocalDate.of(2024, 6, 30);
+
+            OrderItem item = OrderItem.builder()
+                    .barcode("PRODUCT-C")
+                    .quantity(1)
+                    .price(new BigDecimal("100.00"))
+                    .cost(new BigDecimal("50.00"))
+                    .build();
+
+            // Order has estimated shipping of 20 TL
+            TrendyolOrder order = TrendyolOrder.builder()
+                    .tyOrderNumber("TY-INVOICED-001")
+                    .grossAmount(new BigDecimal("100.00"))
+                    .totalPrice(new BigDecimal("100.00"))
+                    .totalDiscount(BigDecimal.ZERO)
+                    .stoppage(BigDecimal.ZERO)
+                    .estimatedShippingCost(new BigDecimal("20.00"))
+                    .estimatedCommission(BigDecimal.ZERO)
+                    .transactionStatus("NOT_SETTLED")
+                    .orderItems(List.of(item))
+                    .build();
+
+            when(orderRepository.findRevenueOrdersByStoreAndDateRange(any(), any(), any()))
+                    .thenReturn(List.of(order));
+            when(storeExpenseRepository.findByStoreIdOrderByDateDesc(any()))
+                    .thenReturn(List.of());
+            when(returnRecordRepository.sumTotalLossByStoreAndDateRange(any(), any(), any()))
+                    .thenReturn(null);
+            when(productRepository.findByStoreIdAndBarcodeIn(any(), any()))
+                    .thenReturn(List.of());
+
+            // Mock invoiced cargo fees (actual cargo invoice: 18 TL)
+            when(deductionInvoiceRepository.sumCargoFeesByStoreIdAndDateRange(any(), any(), any()))
+                    .thenReturn(new BigDecimal("18.00")); // Real cargo invoice
+
+            // When
+            DashboardStatsDto result = dashboardService.getStatsForDateRange(testStoreId, startDate, endDate, "test");
+
+            // Then - Should use invoiced amount (18 TL), not estimated (20 TL)
+            assertThat(result.getTotalShippingCost())
+                    .describedAs("Should use actual cargo invoice instead of estimate")
+                    .isEqualByComparingTo(new BigDecimal("18.00"));
+        }
+
+        @Test
+        @DisplayName("should return zero shipping cost when no data available")
+        void shouldReturnZeroShippingCostWhenNoData() {
+            // Given - Edge case: no orders and no cargo invoices
+            LocalDate startDate = LocalDate.of(2024, 6, 1);
+            LocalDate endDate = LocalDate.of(2024, 6, 30);
+
+            when(orderRepository.findRevenueOrdersByStoreAndDateRange(any(), any(), any()))
+                    .thenReturn(List.of());
+            when(storeExpenseRepository.findByStoreIdOrderByDateDesc(any()))
+                    .thenReturn(List.of());
+            when(returnRecordRepository.sumTotalLossByStoreAndDateRange(any(), any(), any()))
+                    .thenReturn(null);
+
+            when(deductionInvoiceRepository.sumCargoFeesByStoreIdAndDateRange(any(), any(), any()))
+                    .thenReturn(BigDecimal.ZERO);
+            when(orderRepository.sumEstimatedShippingCostByStoreAndDateRange(any(), any(), any()))
+                    .thenReturn(BigDecimal.ZERO);
+
+            // When
+            DashboardStatsDto result = dashboardService.getStatsForDateRange(testStoreId, startDate, endDate, "test");
+
+            // Then
+            assertThat(result.getTotalShippingCost())
+                    .describedAs("Shipping cost should be zero when no data")
+                    .isEqualByComparingTo(BigDecimal.ZERO);
+        }
+    }
+
     // Helper method to create a simple order item
     private OrderItem createSimpleOrderItem() {
         return OrderItem.builder()
