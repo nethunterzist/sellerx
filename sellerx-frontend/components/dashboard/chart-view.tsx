@@ -6,7 +6,6 @@ import { cn } from "@/lib/utils";
 import { ChevronRight, ChevronDown, Info } from "lucide-react";
 import { LazyDashboardChart } from "@/components/charts/lazy-chart";
 import { ChartMetricSelector, CompactMetricSelector } from "./chart-metric-selector";
-import { FifoProfitabilitySection } from "./fifo-profitability-section";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Collapsible,
@@ -515,9 +514,6 @@ export function ChartView({ stats, isLoading, selectedProducts = [] }: ChartView
             </div>
           </div>
         </div>
-
-        {/* FIFO Section Skeleton */}
-        <Skeleton className="h-16 w-full rounded-lg" />
       </div>
     );
   }
@@ -799,9 +795,6 @@ export function ChartView({ stats, isLoading, selectedProducts = [] }: ChartView
           </div>
         </div>
       </div>
-
-      {/* FIFO Profitability Section - Collapsible */}
-      <FifoProfitabilitySection />
     </div>
     </FadeIn>
   );
