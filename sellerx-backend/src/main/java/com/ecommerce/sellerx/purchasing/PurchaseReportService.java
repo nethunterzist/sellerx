@@ -408,6 +408,7 @@ public class PurchaseReportService {
 
     /**
      * Get profitability analysis for a date range
+     * Updated to include net profit calculation with all expenses (matching DashboardStatsService)
      */
     @Transactional(readOnly = true)
     public ProfitabilityResponse getProfitabilityAnalysis(UUID storeId, LocalDate startDate, LocalDate endDate) {
@@ -427,12 +428,28 @@ public class PurchaseReportService {
         BigDecimal totalCost = BigDecimal.ZERO;
         int totalQuantitySold = 0;
 
+        // Expense tracking (order-level data)
+        BigDecimal totalCommission = BigDecimal.ZERO;
+        BigDecimal totalShippingCost = BigDecimal.ZERO;
+        BigDecimal totalStoppage = BigDecimal.ZERO;
+
         for (TrendyolOrder order : orders) {
             if (order.getOrderItems() == null) continue;
 
             LocalDate orderDate = order.getOrderDate().toLocalDate();
             BigDecimal[] dailyData = dailyMap.computeIfAbsent(orderDate, k -> new BigDecimal[]{BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO});
             dailyData[2] = dailyData[2].add(BigDecimal.ONE);
+
+            // Accumulate order-level expenses
+            if (order.getEstimatedCommission() != null) {
+                totalCommission = totalCommission.add(order.getEstimatedCommission());
+            }
+            if (order.getEstimatedShippingCost() != null) {
+                totalShippingCost = totalShippingCost.add(order.getEstimatedShippingCost());
+            }
+            if (order.getStoppage() != null) {
+                totalStoppage = totalStoppage.add(order.getStoppage());
+            }
 
             for (OrderItem item : order.getOrderItems()) {
                 BigDecimal itemRevenue = item.getPrice() != null
@@ -549,6 +566,21 @@ public class PurchaseReportService {
                 ? grossProfit.divide(totalRevenue, 4, RoundingMode.HALF_UP).doubleValue() * 100
                 : 0;
 
+        // Calculate net profit (matching DashboardStatsService formula)
+        // Net Profit = Gross Profit - Commission - Shipping - Stoppage
+        // Note: This is a simplified calculation using order-level data.
+        // For comprehensive analysis including platform fees, expenses, invoiced deductions,
+        // and advertising costs, use the Dashboard Stats API.
+        BigDecimal netProfit = grossProfit
+                .subtract(totalCommission)
+                .subtract(totalShippingCost)
+                .subtract(totalStoppage);
+
+        log.info("Profitability analysis for store {} from {} to {}: revenue={}, cost={}, grossProfit={}, " +
+                        "commission={}, shipping={}, stoppage={}, netProfit={}",
+                storeId, startDate, endDate, totalRevenue, totalCost, grossProfit,
+                totalCommission, totalShippingCost, totalStoppage, netProfit);
+
         return ProfitabilityResponse.builder()
                 .startDate(startDate)
                 .endDate(endDate)
@@ -556,6 +588,17 @@ public class PurchaseReportService {
                 .totalCost(totalCost)
                 .grossProfit(grossProfit)
                 .grossMargin(grossMargin)
+                // Net profit and expenses
+                .netProfit(netProfit)
+                .totalCommission(totalCommission)
+                .totalShippingCost(totalShippingCost)
+                .totalStoppage(totalStoppage)
+                .totalReturnCost(BigDecimal.ZERO) // Not tracked in this report
+                .totalExpenses(BigDecimal.ZERO) // Not tracked in this report
+                .totalPlatformFees(BigDecimal.ZERO) // Not tracked in this report
+                .totalInvoicedDeductions(BigDecimal.ZERO) // Not tracked in this report
+                .totalAdvertisingCost(BigDecimal.ZERO) // Not tracked in this report
+                // Summary
                 .totalOrders(orders.size())
                 .totalQuantitySold(totalQuantitySold)
                 .topProfitable(topProfitable)

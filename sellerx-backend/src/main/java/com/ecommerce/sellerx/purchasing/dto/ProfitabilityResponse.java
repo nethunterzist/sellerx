@@ -18,6 +18,18 @@ public class ProfitabilityResponse {
     private BigDecimal totalCost;
     private BigDecimal grossProfit;
     private Double grossMargin;
+
+    // Net profit and expenses (matching DashboardStatsService)
+    private BigDecimal netProfit;
+    private BigDecimal totalCommission;
+    private BigDecimal totalShippingCost;
+    private BigDecimal totalStoppage;
+    private BigDecimal totalReturnCost;
+    private BigDecimal totalExpenses;
+    private BigDecimal totalPlatformFees;
+    private BigDecimal totalInvoicedDeductions;
+    private BigDecimal totalAdvertisingCost;
+
     private Integer totalOrders;
     private Integer totalQuantitySold;
     private List<ProductProfitability> topProfitable;

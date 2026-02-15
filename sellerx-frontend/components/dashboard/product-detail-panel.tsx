@@ -65,6 +65,7 @@ interface ProductDetailData {
 
   // ============== KOMİSYON ==============
   commission: number;         // Tahmini Komisyon
+  stoppage?: number;          // Stopaj (Vergi Kesintisi)
 
   // ============== KÂR METRİKLERİ ==============
   grossProfit: number;        // Brüt Kâr
@@ -571,6 +572,15 @@ export function ProductDetailPanel({
               </div>
             ) : null}
           </ExpandableRow>
+
+          {/* Stopaj (Vergi Kesintisi) */}
+          {(product.stoppage ?? 0) > 0 && (
+            <ExpandableRow
+              label="Stopaj"
+              value={formatCurrency(-(product.stoppage ?? 0))}
+              isNegative={(product.stoppage ?? 0) > 0}
+            />
+          )}
 
           {/* ========== DİĞER GİDERLER (Expense Breakdown) ========== */}
           {isLoadingExpense ? (
