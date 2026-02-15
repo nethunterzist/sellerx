@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { returnsApi, claimsApi } from "@/lib/api/client";
 import type {
   ReturnAnalyticsResponse,
+  ReturnedOrderDecision,
   TrendyolClaim,
   ClaimsPage,
   ClaimsSyncResponse,
@@ -9,6 +10,7 @@ import type {
   ClaimIssueReason,
   ClaimsStats,
   BulkActionResponse,
+  ClaimItemAudit,
 } from "@/types/returns";
 
 // Return Query Keys
@@ -19,6 +21,9 @@ export const returnKeys = {
     [...returnKeys.analytics(), storeId] as const,
   analyticsByStoreAndRange: (storeId: string, startDate: string, endDate: string) =>
     [...returnKeys.analyticsByStore(storeId), { startDate, endDate }] as const,
+  returnedOrders: () => [...returnKeys.all, "returned-orders"] as const,
+  returnedOrdersByStoreAndRange: (storeId: string, startDate: string, endDate: string) =>
+    [...returnKeys.returnedOrders(), storeId, { startDate, endDate }] as const,
 };
 
 // Claims Query Keys
@@ -32,6 +37,7 @@ export const claimKeys = {
     [...claimKeys.details(), storeId, claimId] as const,
   stats: (storeId: string) => [...claimKeys.all, "stats", storeId] as const,
   issueReasons: () => [...claimKeys.all, "issue-reasons"] as const,
+  audit: (storeId: string, itemId: string) => [...claimKeys.all, "audit", storeId, itemId] as const,
 };
 
 // Get return analytics for a date range
@@ -65,6 +71,43 @@ export function useLast30DaysReturnAnalytics(storeId: string | undefined) {
     queryFn: () => returnsApi.getLast30DaysAnalytics(storeId!),
     enabled: !!storeId,
     staleTime: 2 * 60 * 1000, // 2 minutes
+  });
+}
+
+// =====================================================
+// Returned Orders & Resalable Decision Hooks
+// =====================================================
+
+// Get returned orders with cost breakdown for resalable decision
+export function useReturnedOrders(
+  storeId: string | undefined,
+  startDate: string,
+  endDate: string,
+) {
+  return useQuery<ReturnedOrderDecision[]>({
+    queryKey: returnKeys.returnedOrdersByStoreAndRange(storeId!, startDate, endDate),
+    queryFn: () => returnsApi.getReturnedOrders(storeId!, startDate, endDate),
+    enabled: !!storeId && !!startDate && !!endDate,
+    staleTime: 1 * 60 * 1000, // 1 minute
+  });
+}
+
+// Update resalable decision for a returned order
+export function useUpdateResalable() {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    void,
+    Error,
+    { storeId: string; orderNumber: string; isResalable: boolean }
+  >({
+    mutationFn: ({ storeId, orderNumber, isResalable }) =>
+      returnsApi.updateResalable(storeId, orderNumber, isResalable),
+    onSuccess: (_, { storeId }) => {
+      // Invalidate returned orders and analytics queries
+      queryClient.invalidateQueries({ queryKey: returnKeys.returnedOrders() });
+      queryClient.invalidateQueries({ queryKey: returnKeys.analytics() });
+    },
   });
 }
 
@@ -193,5 +236,19 @@ export function useBulkApproveClaims() {
       queryClient.invalidateQueries({ queryKey: claimKeys.lists() });
       queryClient.invalidateQueries({ queryKey: claimKeys.stats(storeId) });
     },
+  });
+}
+
+// Get claim item audit trail
+export function useClaimItemAudit(
+  storeId: string | undefined,
+  itemId: string | undefined,
+  enabled = false
+) {
+  return useQuery<ClaimItemAudit[]>({
+    queryKey: claimKeys.audit(storeId!, itemId!),
+    queryFn: () => claimsApi.getClaimItemAudit(storeId!, itemId!),
+    enabled: !!storeId && !!itemId && enabled,
+    staleTime: 2 * 60 * 1000, // 2 minutes
   });
 }

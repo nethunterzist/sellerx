@@ -25,6 +25,11 @@ public enum AlertType {
     ORDER,
 
     /**
+     * Return-related alerts (high return rate, return count spike)
+     */
+    RETURN,
+
+    /**
      * System alerts (sync failures, API errors)
      */
     SYSTEM

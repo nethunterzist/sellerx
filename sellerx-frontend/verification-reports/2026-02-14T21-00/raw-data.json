@@ -1,0 +1,135 @@
+{
+  "storeName": "Test Magazasi",
+  "storeEmail": "test@test.com",
+  "timestamp": "15.02.2026 00:00:29",
+  "sections": [
+    {
+      "title": "Dashboard Kartları",
+      "summary": {
+        "total": 11,
+        "matching": 11,
+        "warnings": 0,
+        "errors": 0,
+        "results": [
+          {
+            "field": "Bugun - Ciro",
+            "match": true,
+            "dbValue": 0,
+            "frontendValue": 0,
+            "trendyolValue": 0,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Bugun - Siparis Sayisi",
+            "match": true,
+            "dbValue": 0,
+            "frontendValue": 0,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Bugun - Iade",
+            "match": true,
+            "dbValue": 0,
+            "frontendValue": 0,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Dun - Ciro",
+            "match": true,
+            "dbValue": 187812.84,
+            "frontendValue": 187812.84,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Dun - Siparis Sayisi",
+            "match": true,
+            "dbValue": 138,
+            "frontendValue": 138,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Bu Ay - Ciro",
+            "match": true,
+            "dbValue": 2848160.06,
+            "frontendValue": 2848160.06,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Bu Ay - Siparis Sayisi",
+            "match": true,
+            "dbValue": 2242,
+            "frontendValue": 2242,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Bu Ay - Iade",
+            "match": true,
+            "dbValue": 0,
+            "frontendValue": 0,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Bu Ay - Brut Kar",
+            "match": true,
+            "dbValue": 1985200.06,
+            "frontendValue": 1985200.06,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Gecen Ay - Ciro",
+            "match": true,
+            "dbValue": 8514762.19,
+            "frontendValue": 8514762.19,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Gecen Ay - Siparis Sayisi",
+            "match": true,
+            "dbValue": 6999,
+            "frontendValue": 6999,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          }
+        ]
+      },
+      "screenshots": [
+        "01-dashboard-cards-sellerx.png",
+        "01-dashboard-cards-trendyol.png"
+      ]
+    },
+    {
+      "title": "Dashboard Urun Tablosu (Ilk 10)",
+      "summary": {
+        "total": 0,
+        "matching": 0,
+        "warnings": 0,
+        "errors": 0,
+        "results": []
+      },
+      "screenshots": [
+        "02-products-table-sellerx.png",
+        "02-products-table-trendyol.png"
+      ]
+    }
+  ]
+}

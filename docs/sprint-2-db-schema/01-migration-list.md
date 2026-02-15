@@ -88,7 +88,43 @@
 | V82 | V82__standardize_decimal_precision.sql | standardize_decimal_precision |
 | V83 | V83__normalize_store_status_enums_to_uppercase.sql | normalize_store_status_enums_to_uppercase |
 | V84 | V84__add_stock_entry_date_and_cost_source.sql | add_stock_entry_date_and_cost_source |
+| V85 | V85__add_delivery_date_and_hakedis_fields.sql | add_delivery_date_and_hakedis_fields |
+| V86 | V86__drop_hakedis_fields.sql | drop_hakedis_fields |
+| V87 | V87__add_auto_stock_detection_fields.sql | add_auto_stock_detection_fields |
+| V88 | V88__add_alert_status_field.sql | add_alert_status_field |
+| V89 | V89__add_customer_identity_fields.sql | add_customer_identity_fields |
+| V90 | V90__add_order_cancellation_fields.sql | add_order_cancellation_fields |
+| V91 | V91__add_impersonation_audit_log.sql | add_impersonation_audit_log |
+| V92 | V92__customer_id_analytics_indexes.sql | customer_id_analytics_indexes |
+| V93 | V93__drop_buybox_tables.sql | drop_buybox_tables |
+| V94 | V94__add_recurring_expense_fields.sql | add_recurring_expense_fields |
+| V95 | V95__fix_existing_recurring_expenses.sql | fix_existing_recurring_expenses |
+| V96 | V96__fix_instance_frequency_from_template.sql | fix_instance_frequency_from_template |
+| V97 | V97__add_store_id_to_expense_categories.sql | add_store_id_to_expense_categories |
+| V98 | V98__add_cpc_cvr_currency_otv_fields.sql | add_cpc_cvr_currency_otv_fields |
+| V99 | V99__add_missing_performance_indexes.sql | add_missing_performance_indexes |
+| V100 | V100__expression_indexes_for_scaling.sql | expression_indexes_for_scaling |
+| V101 | V101__create_email_queue_table.sql | create_email_queue_table |
+| V102 | V102__create_email_templates_table.sql | create_email_templates_table |
+| V103 | V103__create_password_reset_tokens.sql | create_password_reset_tokens |
+| V104 | V104__add_email_verification_fields.sql | add_email_verification_fields |
+| V105 | V105__create_email_base_layout.sql | create_email_base_layout |
+| V106 | V106__add_email_verification_template.sql | add_email_verification_template |
+| V107 | V107__normalize_city_names.sql | normalize_city_names |
+| V108 | V108__remove_duplicate_invoices.sql | remove_duplicate_invoices |
+| V109 | V109__fix_null_invoice_serial_numbers.sql | fix_null_invoice_serial_numbers |
+| V110 | V110__fix_corrupted_turkish_characters.sql | fix_corrupted_turkish_characters |
+| V111 | V111__create_sync_tasks_table.sql | create_sync_tasks_table |
+| V112 | V112__data_retention_policies.sql | data_retention_policies |
+| V113 | V113__dashboard_materialized_views.sql | dashboard_materialized_views |
+| V114 | V114__autovacuum_tuning.sql | autovacuum_tuning |
+| V115 | V115__add_commission_source.sql | add_commission_source |
+| V116 | V116__add_product_barcode_to_invoices.sql | add_product_barcode_to_invoices |
+| V117 | V117__add_default_expense_categories_to_empty_stores.sql | add_default_expense_categories_to_empty_stores |
+| V118 | V118__add_stoppage_order_matching_fields.sql | add_stoppage_order_matching_fields |
 
-**Toplam:** 84 migration. Flyway sırası V1 → V84; uygulama başlangıcında bu sırayla çalışır.
+**Toplam:** 118 migration. Flyway sırası V1 → V118; uygulama başlangıcında bu sırayla çalışır.
 
 **Not:** V61–V63 (kampanya tabloları: trendyol_campaigns, campaign_daily_stats, ad_reports.campaign_id) şu an kullanılmıyor (backend'de `ads/` servisi yok). Eski planlama doc'u: [archive/CAMPAIGNS.md](../archive/CAMPAIGNS.md).
+
+**Not:** V93 ile buybox tabloları kaldırıldı (drop_buybox_tables).

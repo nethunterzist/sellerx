@@ -20,6 +20,7 @@ public class SalesVatDto {
     private int totalItemsSold;
     private int itemsWithoutVatRate;
     private List<SalesVatByRateDto> byRate;
+    private List<ProductSalesVatDto> byProduct;
 
     @Data
     @Builder
@@ -30,5 +31,22 @@ public class SalesVatDto {
         private BigDecimal salesAmount;
         private BigDecimal vatAmount;
         private int itemCount;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ProductSalesVatDto {
+        private String barcode;
+        private String productName;
+        private int quantity;
+        private BigDecimal salesAmount;
+        private BigDecimal vatAmount;
+        private Integer vatRate;
+        // Product enrichment fields
+        private String image;          // Product image URL
+        private String brand;          // Brand name
+        private String productUrl;     // Trendyol product page URL
     }
 }

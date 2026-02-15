@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SellerX Dogrulama Raporu - 14.02.2026 23:00:07</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 24px; background: #f8f9fa; color: #1a1a2e; }
+  .container { max-width: 1200px; margin: 0 auto; }
+  h1 { font-size: 24px; margin-bottom: 8px; }
+  h2 { font-size: 18px; margin: 24px 0 12px; padding-bottom: 8px; border-bottom: 2px solid #e0e0e0; }
+  .meta { color: #666; font-size: 14px; margin-bottom: 24px; }
+  .summary-cards { display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
+  .summary-card { flex: 1; min-width: 150px; padding: 16px; border-radius: 8px; background: white; border: 1px solid #e0e0e0; text-align: center; }
+  .summary-card .num { font-size: 28px; font-weight: 700; }
+  .summary-card .label { font-size: 12px; color: #666; margin-top: 4px; }
+  .match { color: #16a34a; }
+  .warn { color: #f59e0b; }
+  .err { color: #dc2626; }
+  table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; margin-bottom: 24px; border: 1px solid #e0e0e0; }
+  th { background: #f1f5f9; text-align: left; padding: 10px 12px; font-size: 12px; font-weight: 600; color: #475569; text-transform: uppercase; }
+  td { padding: 10px 12px; font-size: 13px; border-top: 1px solid #f1f5f9; }
+  tr:hover { background: #f8fafc; }
+  .status-match { background: #dcfce7; color: #16a34a; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+  .status-warn { background: #fef3c7; color: #d97706; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+  .status-err { background: #fecaca; color: #dc2626; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+  .section-summary { font-size: 13px; color: #666; margin-bottom: 16px; }
+  .text-right { text-align: right; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>SellerX Dogrulama Raporu</h1>
+  <div class="meta">14.02.2026 23:00:07 | Test Magazasi (test@test.com)</div>
+
+  <div class="summary-cards">
+    <div class="summary-card">
+      <div class="num">37</div>
+      <div class="label">Toplam Kontrol</div>
+    </div>
+    <div class="summary-card">
+      <div class="num match">14 (37.8%)</div>
+      <div class="label">Eslesen</div>
+    </div>
+    <div class="summary-card">
+      <div class="num warn">1</div>
+      <div class="label">Uyari</div>
+    </div>
+    <div class="summary-card">
+      <div class="num err">22</div>
+      <div class="label">Hata</div>
+    </div>
+  </div>
+  <h2>Dashboard Kartları</h2>
+  <div class="section-summary">5/11 eslesen, 1 uyari, 5 hata</div>
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Alan</th>
+        <th class="text-right">DB</th>
+        <th class="text-right">SellerX</th>
+        <th class="text-right">Trendyol</th>
+        <th class="text-right">Sapma</th>
+        <th>Sonuc</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td>Bugun - Ciro<br><small style="color:#999">DB vs TY: diff=161773.14; FE vs TY: diff=161773.14</small></td>
+        <td class="text-right">161.773,14</td>
+        <td class="text-right">161.773,14</td>
+        <td class="text-right">0,00</td>
+        <td class="text-right">%100</td>
+        <td><span class="status-err">HATA</span></td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>Bugun - Siparis Sayisi</td>
+        <td class="text-right">122,00</td>
+        <td class="text-right">122,00</td>
+        <td class="text-right">-</td>
+        <td class="text-right">-</td>
+        <td><span class="status-match">OK</span></td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td>Bugun - Iade</td>
+        <td class="text-right">0,00</td>
+        <td class="text-right">0,00</td>
+        <td class="text-right">-</td>
+        <td class="text-right">-</td>
+        <td><span class="status-match">OK</span></td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td>Dun - Ciro</td>
+        <td class="text-right">269.612,43</td>
+        <td class="text-right">269.612,43</td>
+        <td class="text-right">-</td>
+        <td class="text-right">-</td>
+        <td><span class="status-match">OK</span></td>
+      </tr>
+      <tr>
+        <td>5</td>
+        <td>Dun - Siparis Sayisi</td>
+        <td class="text-right">195,00</td>
+        <td class="text-right">195,00</td>
+        <td class="text-right">-</td>
+        <td class="text-right">-</td>
+        <td><span class="status-match">OK</span></td>
+      </tr>
+      <tr>
+        <td>6</td>
+        <td>Bu Ay - Ciro<br><small style="color:#999">DB vs FE: diff=212361.85</small></td>
+        <td class="text-right">3.034.482,21</td>
+        <td class="text-right">2.822.120,36</td>
+        <td class="text-right">-</td>
+        <td class="text-right">%7</td>
+        <td><span class="status-err">HATA</span></td>
+      </tr>
+      <tr>
+        <td>7</td>
+        <td>Bu Ay - Siparis Sayisi<br><small style="color:#999">DB vs FE: diff=170.00</small></td>
+        <td class="text-right">2.396,00</td>
+        <td class="text-right">2.226,00</td>
+        <td class="text-right">-</td>
+        <td class="text-right">%7.1</td>
+        <td><span class="status-err">HATA</span></td>
+      </tr>
+      <tr>
+        <td>8</td>
+        <td>Bu Ay - Iade</td>
+        <td class="text-right">0,00</td>
+        <td class="text-right">0,00</td>
+        <td class="text-right">-</td>
+        <td class="text-right">-</td>
+        <td><span class="status-match">OK</span></td>
+      </tr>
+      <tr>
+        <td>9</td>
+        <td>Bu Ay - Brut Kar<br><small style="color:#999">DB vs FE: diff=323966.66</small></td>
+        <td class="text-right">1.641.985,70</td>
+        <td class="text-right">1.965.952,36</td>
+        <td class="text-right">-</td>
+        <td class="text-right">%19.73</td>
+        <td><span class="status-err">HATA</span></td>
+      </tr>
+      <tr>
+        <td>10</td>
+        <td>Gecen Ay - Ciro<br><small style="color:#999">DB vs FE: diff=42775.59</small></td>
+        <td class="text-right">8.557.537,78</td>
+        <td class="text-right">8.514.762,19</td>
+        <td class="text-right">-</td>
+        <td class="text-right">%0.5</td>
+        <td><span class="status-warn">UYARI</span></td>
+      </tr>
+      <tr>
+        <td>11</td>
+        <td>Gecen Ay - Siparis Sayisi<br><small style="color:#999">DB vs FE: diff=59.00</small></td>
+        <td class="text-right">7.058,00</td>
+        <td class="text-right">6.999,00</td>
+        <td class="text-right">-</td>
+        <td class="text-right">%0.84</td>
+        <td><span class="status-err">HATA</span></td>
+      </tr>
+    </tbody>
+  </table>
+  <h2>Dashboard Urun Tablosu (Ilk 10)</h2>
+  <div class="section-summary">0/0 eslesen</div>
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Alan</th>
+        <th class="text-right">DB</th>
+        <th class="text-right">SellerX</th>
+        <th class="text-right">Trendyol</th>
+        <th class="text-right">Sapma</th>
+        <th>Sonuc</th>
+      </tr>
+    </thead>
+    <tbody>
+    </tbody>
+  </table>
+  <h2>Donem Detay Modali (Bu Ay)</h2>
+  <div class="section-summary">0/4 eslesen, 4 hata</div>
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Alan</th>
+        <th class="text-right">DB</th>
+        <th class="text-right">SellerX</th>
+        <th class="text-right">Trendyol</th>
+        <th class="text-right">Sapma</th>
+        <th>Sonuc</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td>Bu Ay Modal - Ciro<br><small style="color:#999">DB vs FE: diff=3034468.21</small></td>
+        <td class="text-right">3.034.482,21</td>
+        <td class="text-right">14,00</td>
+        <td class="text-right">-</td>
+        <td class="text-right">%100</td>
+        <td><span class="status-err">HATA</span></td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>Bu Ay Modal - Siparis<br><small style="color:#999">DB vs FE: diff=2382.00</small></td>
+        <td class="text-right">2.396,00</td>
+        <td class="text-right">14,00</td>
+        <td class="text-right">-</td>
+        <td class="text-right">%99.42</td>
+        <td><span class="status-err">HATA</span></td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td>Bu Ay Modal - Komisyon<br><small style="color:#999">DB vs FE: diff=473657.51</small></td>
+        <td class="text-right">473.671,51</td>
+        <td class="text-right">14,00</td>
+        <td class="text-right">-</td>
+        <td class="text-right">%100</td>
+        <td><span class="status-err">HATA</span></td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td>Bu Ay Modal - Kargo<br><small style="color:#999">DB vs FE: diff=14.00</small></td>
+        <td class="text-right">0,00</td>
+        <td class="text-right">14,00</td>
+        <td class="text-right">-</td>
+        <td class="text-right">%100</td>
+        <td><span class="status-err">HATA</span></td>
+      </tr>
+    </tbody>
+  </table>
+  <h2>Siparisler Sayfasi</h2>
+  <div class="section-summary">0/6 eslesen, 6 hata</div>
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Alan</th>
+        <th class="text-right">DB</th>
+        <th class="text-right">SellerX</th>
+        <th class="text-right">Trendyol</th>
+        <th class="text-right">Sapma</th>
+        <th>Sonuc</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td>Son 7 Gun - Siparis Sayisi (DB vs FE tablo)<br><small style="color:#999">DB vs FE: diff=5.00</small></td>
+        <td class="text-right">10,00</td>
+        <td class="text-right">5,00</td>
+        <td class="text-right">-</td>
+        <td class="text-right">%50</td>
+        <td><span class="status-err">HATA</span></td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>Siparis #10965903256 - Tutar<br><small style="color:#999">DB vs FE: diff=873.20</small></td>
+        <td class="text-right">899,20</td>
+        <td class="text-right">26,00</td>
+        <td class="text-right">-</td>
+        <td class="text-right">%97.11</td>
+        <td><span class="status-err">HATA</span></td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td>Siparis #10965874399 - Tutar<br><small style="color:#999">DB vs FE: diff=1781.40</small></td>
+        <td class="text-right">1.798,40</td>
+        <td class="text-right">17,00</td>
+        <td class="text-right">-</td>
+        <td class="text-right">%99.05</td>
+        <td><span class="status-err">HATA</span></td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td>Siparis #10965853017 - Tutar<br><small style="color:#999">DB vs FE: diff=885.20</small></td>
+        <td class="text-right">899,20</td>
+        <td class="text-right">14,00</td>
+        <td class="text-right">-</td>
+        <td class="text-right">%98.44</td>
+        <td><span class="status-err">HATA</span></td>
+      </tr>
+      <tr>
+        <td>5</td>
+        <td>Siparis #10965839015 - Tutar<br><small style="color:#999">DB vs FE: diff=815.00</small></td>
+        <td class="text-right">819,00</td>
+        <td class="text-right">4,00</td>
+        <td class="text-right">-</td>
+        <td class="text-right">%99.51</td>
+        <td><span class="status-err">HATA</span></td>
+      </tr>
+      <tr>
+        <td>6</td>
+        <td>Siparis #10965814310 - Tutar<br><small style="color:#999">DB vs FE: diff=706.00</small></td>
+        <td class="text-right">760,00</td>
+        <td class="text-right">54,00</td>
+        <td class="text-right">-</td>
+        <td class="text-right">%92.89</td>
+        <td><span class="status-err">HATA</span></td>
+      </tr>
+    </tbody>
+  </table>
+  <h2>Faturalar Sayfasi (Son 30 Gun)</h2>
+  <div class="section-summary">7/11 eslesen, 4 hata</div>
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Alan</th>
+        <th class="text-right">DB</th>
+        <th class="text-right">SellerX</th>
+        <th class="text-right">Trendyol</th>
+        <th class="text-right">Sapma</th>
+        <th>Sonuc</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td>Fatura - KOMISYON Toplam<br><small style="color:#999">DB vs FE: diff=15.00</small></td>
+        <td class="text-right">0,00</td>
+        <td class="text-right">15,00</td>
+        <td class="text-right">-</td>
+        <td class="text-right">%100</td>
+        <td><span class="status-err">HATA</span></td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>Fatura - KOMISYON Adet</td>
+        <td class="text-right">0,00</td>
+        <td class="text-right">-</td>
+        <td class="text-right">-</td>
+        <td class="text-right">-</td>
+        <td><span class="status-match">OK</span></td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td>Fatura - KARGO Toplam<br><small style="color:#999">DB vs FE: diff=15.00</small></td>
+        <td class="text-right">0,00</td>
+        <td class="text-right">15,00</td>
+        <td class="text-right">-</td>
+        <td class="text-right">%100</td>
+        <td><span class="status-err">HATA</span></td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td>Fatura - KARGO Adet</td>
+        <td class="text-right">0,00</td>
+        <td class="text-right">-</td>
+        <td class="text-right">-</td>
+        <td class="text-right">-</td>
+        <td><span class="status-match">OK</span></td>
+      </tr>
+      <tr>
+        <td>5</td>
+        <td>Fatura - CEZA Toplam<br><small style="color:#999">DB vs FE: diff=110.00</small></td>
+        <td class="text-right">125,00</td>
+        <td class="text-right">15,00</td>
+        <td class="text-right">-</td>
+        <td class="text-right">%88</td>
+        <td><span class="status-err">HATA</span></td>
+      </tr>
+      <tr>
+        <td>6</td>
+        <td>Fatura - CEZA Adet</td>
+        <td class="text-right">2,00</td>
+        <td class="text-right">-</td>
+        <td class="text-right">-</td>
+        <td class="text-right">-</td>
+        <td><span class="status-match">OK</span></td>
+      </tr>
+      <tr>
+        <td>7</td>
+        <td>Fatura - IADE Toplam</td>
+        <td class="text-right">40,00</td>
+        <td class="text-right">-</td>
+        <td class="text-right">-</td>
+        <td class="text-right">-</td>
+        <td><span class="status-match">OK</span></td>
+      </tr>
+      <tr>
+        <td>8</td>
+        <td>Fatura - IADE Adet</td>
+        <td class="text-right">1,00</td>
+        <td class="text-right">-</td>
+        <td class="text-right">-</td>
+        <td class="text-right">-</td>
+        <td><span class="status-match">OK</span></td>
+      </tr>
+      <tr>
+        <td>9</td>
+        <td>Fatura - REKLAM Toplam<br><small style="color:#999">DB vs FE: diff=485.00</small></td>
+        <td class="text-right">500,00</td>
+        <td class="text-right">15,00</td>
+        <td class="text-right">-</td>
+        <td class="text-right">%97</td>
+        <td><span class="status-err">HATA</span></td>
+      </tr>
+      <tr>
+        <td>10</td>
+        <td>Fatura - REKLAM Adet</td>
+        <td class="text-right">2,00</td>
+        <td class="text-right">-</td>
+        <td class="text-right">-</td>
+        <td class="text-right">-</td>
+        <td><span class="status-match">OK</span></td>
+      </tr>
+      <tr>
+        <td>11</td>
+        <td>Toplam Fatura Sayisi (DB)</td>
+        <td class="text-right">7,00</td>
+        <td class="text-right">-</td>
+        <td class="text-right">-</td>
+        <td class="text-right">-</td>
+        <td><span class="status-match">OK</span></td>
+      </tr>
+    </tbody>
+  </table>
+  <h2>İadeler Sayfası (Son 30 Gün)</h2>
+  <div class="section-summary">1/4 eslesen, 3 hata</div>
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Alan</th>
+        <th class="text-right">DB</th>
+        <th class="text-right">SellerX</th>
+        <th class="text-right">Trendyol</th>
+        <th class="text-right">Sapma</th>
+        <th>Sonuc</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td>İade Adedi (Son 30 Gün)<br><small style="color:#999">DB vs FE: diff=11.00</small></td>
+        <td class="text-right">0,00</td>
+        <td class="text-right">11,00</td>
+        <td class="text-right">-</td>
+        <td class="text-right">%100</td>
+        <td><span class="status-err">HATA</span></td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>İade Oranı (%)<br><small style="color:#999">DB vs FE: diff=14.00</small></td>
+        <td class="text-right">0,00</td>
+        <td class="text-right">14,00</td>
+        <td class="text-right">-</td>
+        <td class="text-right">%100</td>
+        <td><span class="status-err">HATA</span></td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td>Toplam İade Kaybi<br><small style="color:#999">DB vs FE: diff=14.00</small></td>
+        <td class="text-right">0,00</td>
+        <td class="text-right">14,00</td>
+        <td class="text-right">-</td>
+        <td class="text-right">%100</td>
+        <td><span class="status-err">HATA</span></td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td>Toplam İade Tutari</td>
+        <td class="text-right">0,00</td>
+        <td class="text-right">-</td>
+        <td class="text-right">-</td>
+        <td class="text-right">-</td>
+        <td><span class="status-match">OK</span></td>
+      </tr>
+    </tbody>
+  </table>
+  <h2>Ürünler Sayfası (İlk 20)</h2>
+  <div class="section-summary">1/1 eslesen</div>
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Alan</th>
+        <th class="text-right">DB</th>
+        <th class="text-right">SellerX</th>
+        <th class="text-right">Trendyol</th>
+        <th class="text-right">Sapma</th>
+        <th>Sonuc</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td>Ürün Sayısı (DB vs FE tablo)</td>
+        <td class="text-right">20,00</td>
+        <td class="text-right">20,00</td>
+        <td class="text-right">-</td>
+        <td class="text-right">-</td>
+        <td><span class="status-match">OK</span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+</body>
+</html>

@@ -85,9 +85,31 @@ public class ProductCargoBreakdownDto {
     // ================================================================================
 
     /**
-     * List of recent shipments (limited to last 50)
+     * List of shipments (paginated)
      */
     private List<CargoShipmentDetailDto> shipments;
+
+    // ================================================================================
+    // Sayfalama Bilgisi (Pagination Info)
+    // ================================================================================
+
+    /**
+     * Current page number (0-based)
+     */
+    @Builder.Default
+    private int currentPage = 0;
+
+    /**
+     * Total number of pages
+     */
+    @Builder.Default
+    private int totalPages = 1;
+
+    /**
+     * Whether there are more pages to load
+     */
+    @Builder.Default
+    private boolean hasMore = false;
 
     /**
      * DTO for individual cargo shipment details

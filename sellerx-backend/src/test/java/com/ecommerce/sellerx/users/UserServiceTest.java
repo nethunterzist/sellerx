@@ -39,6 +39,12 @@ class UserServiceTest extends BaseUnitTest {
     @Mock
     private ReferralService referralService;
 
+    @Mock
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
+
+    @Mock
+    private com.ecommerce.sellerx.auth.EmailVerificationService emailVerificationService;
+
     @InjectMocks
     private UserService userService;
 

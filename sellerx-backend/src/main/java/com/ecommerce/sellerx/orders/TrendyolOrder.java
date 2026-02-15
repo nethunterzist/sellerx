@@ -83,7 +83,7 @@ public class TrendyolOrder {
     @Column(name = "stoppage", precision = 10, scale = 2)
     @Builder.Default
     private BigDecimal stoppage = BigDecimal.ZERO;
-    
+
     @Column(name = "estimated_commission", precision = 10, scale = 2)
     @Builder.Default
     private BigDecimal estimatedCommission = BigDecimal.ZERO;
@@ -99,6 +99,19 @@ public class TrendyolOrder {
     @Column(name = "is_shipping_estimated")
     @Builder.Default
     private Boolean isShippingEstimated = true; // true: tahmini, false: Kargo faturasından gerçek değer
+
+    @Column(name = "return_shipping_cost", precision = 10, scale = 2)
+    @Builder.Default
+    private BigDecimal returnShippingCost = BigDecimal.ZERO; // İade kargo maliyeti (from 'İade Kargo Bedeli' invoices)
+
+    /**
+     * Whether the returned product can be resold.
+     * null = decision pending (default: only shipping costs counted as loss)
+     * true = resalable (only shipping costs as loss)
+     * false = not resalable (shipping + product cost as loss)
+     */
+    @Column(name = "is_resalable")
+    private Boolean isResalable;
 
     /**
      * Difference between estimated and real commission after reconciliation.
@@ -179,6 +192,16 @@ public class TrendyolOrder {
     @Column(name = "data_source", nullable = false)
     @Builder.Default
     private String dataSource = "ORDER_API";
+
+    /**
+     * Source of commission data:
+     * - INVOICE: From Financial/Settlement API (lastCommissionRate) - most accurate
+     * - REFERENCE: From Product API (commissionRate) - category default
+     * - NONE: No commission data available
+     * - MANUAL: Manually entered (legacy sandbox data)
+     */
+    @Column(name = "commission_source")
+    private String commissionSource;
 
     // Financial summary of all order items (calculated field, not stored in DB)
     @Transient

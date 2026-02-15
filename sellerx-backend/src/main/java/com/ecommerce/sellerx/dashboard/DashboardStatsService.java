@@ -8,13 +8,14 @@ import com.ecommerce.sellerx.financial.TrendyolCargoInvoiceRepository;
 import com.ecommerce.sellerx.financial.TrendyolDeductionInvoiceRepository;
 import com.ecommerce.sellerx.financial.TrendyolInvoice;
 import com.ecommerce.sellerx.financial.TrendyolInvoiceRepository;
-import com.ecommerce.sellerx.financial.TrendyolStoppageRepository;
 import com.ecommerce.sellerx.orders.OrderItem;
 import com.ecommerce.sellerx.orders.TrendyolOrder;
 import com.ecommerce.sellerx.orders.TrendyolOrderRepository;
 import com.ecommerce.sellerx.products.TrendyolProduct;
 import com.ecommerce.sellerx.products.TrendyolProductRepository;
 import com.ecommerce.sellerx.returns.ReturnRecordRepository;
+import com.ecommerce.sellerx.returns.TrendyolClaim;
+import com.ecommerce.sellerx.returns.TrendyolClaimRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -50,10 +51,10 @@ public class DashboardStatsService {
     private final StoreExpenseRepository storeExpenseRepository;
     private final TrendyolProductRepository productRepository;
     private final ReturnRecordRepository returnRecordRepository;
-    private final TrendyolStoppageRepository stoppageRepository;
     private final TrendyolDeductionInvoiceRepository deductionInvoiceRepository;
     private final TrendyolCargoInvoiceRepository cargoInvoiceRepository;
     private final TrendyolInvoiceRepository invoiceRepository;
+    private final TrendyolClaimRepository claimRepository;
 
     // Turkey timezone
     private static final ZoneId TURKEY_ZONE = ZoneId.of("Europe/Istanbul");
@@ -280,10 +281,11 @@ public class DashboardStatsService {
         // TODO: If productBarcode is specified, filter the stats (requires additional implementation)
         // For now, we return all stats without product filtering
 
-        // Calculate derived metrics
-        BigDecimal netProfit = calculateNetProfit(baseStats);
-        BigDecimal profitMargin = calculateProfitMargin(baseStats.getGrossProfit(), baseStats.getTotalRevenue());
-        BigDecimal roi = calculateROI(netProfit, baseStats.getTotalProductCosts());
+        // Use the same values already calculated by calculateStatsForPeriod()
+        // (which includes platformFees, advertising cost, etc.)
+        BigDecimal netProfit = baseStats.getNetProfit();
+        BigDecimal profitMargin = baseStats.getProfitMargin();
+        BigDecimal roi = baseStats.getRoi();
 
         return PeriodStatsDto.builder()
                 .periodLabel(label)
@@ -317,29 +319,6 @@ public class DashboardStatsService {
                 // Gider Kategorileri
                 .expensesByCategory(baseStats.getExpensesByCategory())
                 .build();
-    }
-
-    private BigDecimal calculateNetProfit(DashboardStatsDto stats) {
-        // Net Profit = Gross Profit - Commission - Stoppage - Return Cost - Expenses - Shipping - InvoicedDeductions
-        // Bu formül DashboardStatsService.java:617-624 ile tutarlı olmalı
-        // NOT: Reklam maliyeti (CPC/CVR bazlı) burada dahil değil - invoicedDeductions zaten faturalı reklamları içeriyor
-        // Ürün bazlı reklam maliyeti dashboard ana hesaplamasında products'dan ayrıca hesaplanıyor
-        BigDecimal grossProfit = stats.getGrossProfit() != null ? stats.getGrossProfit() : BigDecimal.ZERO;
-        BigDecimal commission = stats.getTotalEstimatedCommission() != null ? stats.getTotalEstimatedCommission() : BigDecimal.ZERO;
-        BigDecimal stoppage = stats.getTotalStoppage() != null ? stats.getTotalStoppage() : BigDecimal.ZERO;
-        BigDecimal returnCost = stats.getReturnCost() != null ? stats.getReturnCost() : BigDecimal.ZERO;
-        BigDecimal expenses = stats.getTotalExpenseAmount() != null ? stats.getTotalExpenseAmount() : BigDecimal.ZERO;
-        // Eksik giderler eklendi (tutarlılık için)
-        BigDecimal shippingCost = stats.getTotalShippingCost() != null ? stats.getTotalShippingCost() : BigDecimal.ZERO;
-        BigDecimal invoicedDeductions = stats.getInvoicedDeductions() != null ? stats.getInvoicedDeductions() : BigDecimal.ZERO;
-
-        return grossProfit
-                .subtract(commission)
-                .subtract(stoppage)
-                .subtract(returnCost)
-                .subtract(expenses)
-                .subtract(shippingCost)
-                .subtract(invoicedDeductions);
     }
 
     private BigDecimal calculateProfitMargin(BigDecimal grossProfit, BigDecimal revenue) {
@@ -494,9 +473,23 @@ public class DashboardStatsService {
         List<TrendyolOrder> revenueOrders = orderRepository.findRevenueOrdersByStoreAndDateRange(
                 storeId, startDateTime, endDateTime);
 
-        // Get returned orders
-        List<TrendyolOrder> returnedOrders = orderRepository.findReturnedOrdersByStoreAndDateRange(
-                storeId, startDateTime, endDateTime);
+        // Get returned orders via claims (matches Trendyol's "İade Talep Tarihi" filter)
+        // Previously used orderRepository.findReturnedOrdersByStoreAndDateRange which filtered by orderDate
+        // (order creation date), not by return date — causing mismatches with Trendyol counts.
+        List<TrendyolClaim> claims = claimRepository.findByStoreIdAndDateRange(storeId, startDateTime, endDateTime);
+        Set<String> returnedOrderNumbers = claims.stream()
+                .map(TrendyolClaim::getOrderNumber)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        // Fetch actual order objects for cost calculation
+        List<TrendyolOrder> returnedOrders = new ArrayList<>();
+        for (String orderNumber : returnedOrderNumbers) {
+            List<TrendyolOrder> orders = orderRepository.findByStoreIdAndTyOrderNumber(storeId, orderNumber);
+            if (!orders.isEmpty()) {
+                returnedOrders.add(orders.get(0));
+            }
+        }
 
         // Calculate basic stats
         int totalOrders = revenueOrders.size();
@@ -505,7 +498,7 @@ public class DashboardStatsService {
         int returnQuantity = calculateTotalProductsSold(returnedOrders); // İade edilen ürün adedi
         int netUnitsSold = totalProductsSold - returnQuantity; // Net Satış Adedi
 
-        // Calculate revenue (Ciro = gross_amount - total_discount)
+        // Calculate revenue (Ciro = total_price, matches Trendyol panel)
         BigDecimal totalRevenue = calculateTotalRevenue(revenueOrders);
 
         // Calculate actual return cost from ReturnRecord table (dynamic, not hardcoded)
@@ -671,7 +664,7 @@ public class DashboardStatsService {
                 .netProfit(netProfit)
                 .profitMargin(profitMargin)
                 .vatDifference(vatDifference)
-                .totalStoppage(platformFees.getStoppageOnly()) // Sadece stopaj (platform fees'dan ayrı)
+                .totalStoppage(totalStoppage) // Siparişlerden hesaplanan %1 stopaj
                 .totalEstimatedCommission(totalEstimatedCommission)
                 .itemsWithoutCost(itemsWithoutCost)
                 .totalExpenseNumber(totalExpenseNumber)
@@ -739,11 +732,7 @@ public class DashboardStatsService {
     
     private BigDecimal calculateTotalRevenue(List<TrendyolOrder> orders) {
         return orders.stream()
-                .map(order -> {
-                    BigDecimal grossAmount = order.getGrossAmount() != null ? order.getGrossAmount() : BigDecimal.ZERO;
-                    BigDecimal totalDiscount = order.getTotalDiscount() != null ? order.getTotalDiscount() : BigDecimal.ZERO;
-                    return grossAmount.subtract(totalDiscount);
-                })
+                .map(order -> order.getTotalPrice() != null ? order.getTotalPrice() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
@@ -831,14 +820,16 @@ public class DashboardStatsService {
             for (TrendyolOrder order : returnedOrders) {
                 String orderNum = order.getTyOrderNumber();
 
-                // Product cost
+                // Product cost - sadece satılamaz (isResalable == false) ise dahil et
                 BigDecimal productCost = BigDecimal.ZERO;
-                if (order.getOrderItems() != null) {
-                    for (OrderItem item : order.getOrderItems()) {
-                        if (item.getCost() != null && item.getCost().compareTo(BigDecimal.ZERO) > 0) {
-                            int qty = item.getQuantity() != null ? item.getQuantity() : 1;
-                            productCost = productCost.add(
-                                    item.getCost().multiply(BigDecimal.valueOf(qty)));
+                if (Boolean.FALSE.equals(order.getIsResalable())) {
+                    if (order.getOrderItems() != null) {
+                        for (OrderItem item : order.getOrderItems()) {
+                            if (item.getCost() != null && item.getCost().compareTo(BigDecimal.ZERO) > 0) {
+                                int qty = item.getQuantity() != null ? item.getQuantity() : 1;
+                                productCost = productCost.add(
+                                        item.getCost().multiply(BigDecimal.valueOf(qty)));
+                            }
                         }
                     }
                 }
@@ -1631,9 +1622,6 @@ public class DashboardStatsService {
         // Diğer platform ücretleri: invoiced* sorgularıyla %100 çakışıyor, çift sayımı önlemek için kaldırıldı
         BigDecimal otherPlatformFees = BigDecimal.ZERO;
 
-        // Stopaj (vergi kesintisi) - hala TrendyolStoppage tablosundan
-        BigDecimal stoppageOnly = stoppageRepository.sumStoppageOnly(storeId, startDateTime, endDateTime);
-
         // Bu türler DeductionInvoices'ta yok, sıfır olarak döndür
         BigDecimal terminDelayFee = BigDecimal.ZERO;
         BigDecimal invoiceCreditFee = BigDecimal.ZERO;
@@ -1660,8 +1648,7 @@ public class DashboardStatsService {
                 photoShootingFee,
                 integrationFee,
                 storageServiceFee,
-                otherPlatformFees != null ? otherPlatformFees : BigDecimal.ZERO,
-                stoppageOnly != null ? stoppageOnly : BigDecimal.ZERO
+                otherPlatformFees != null ? otherPlatformFees : BigDecimal.ZERO
         );
     }
 
@@ -1803,28 +1790,40 @@ public class DashboardStatsService {
      * @return ShippingCostsResult (shippingCost ve shippingIncome)
      */
     private ShippingCostsResult calculateShippingCosts(UUID storeId, LocalDate startDate, LocalDate endDate) {
-        // TrendyolDeductionInvoice tablosundan fatura bazlı kargo toplamı
-        // Bu hesaplama Faturalar sayfasıyla tutarlı sonuç verir
         LocalDateTime startDateTime = startDate.atStartOfDay();
         LocalDateTime endDateTime = endDate.plusDays(1).atStartOfDay();
 
-        BigDecimal cargoAmount = deductionInvoiceRepository.sumCargoFeesByStoreIdAndDateRange(
+        // Priority 1: Real deduction invoices from Trendyol (Kargo Fatura/Faturası)
+        BigDecimal invoicedAmount = deductionInvoiceRepository.sumCargoFeesByStoreIdAndDateRange(
                 storeId, startDateTime, endDateTime);
-        if (cargoAmount == null) {
-            cargoAmount = BigDecimal.ZERO;
+        if (invoicedAmount == null) {
+            invoicedAmount = BigDecimal.ZERO;
         }
 
-        log.debug("Calculated shipping costs for store {} from {} to {}: invoiced={}",
-                storeId, startDate, endDate, cargoAmount);
+        // Priority 2: If no invoiced amount, use estimated shipping from orders as fallback
+        // (like commission: estimated until real invoice arrives)
+        BigDecimal cargoAmount;
+        if (invoicedAmount.compareTo(BigDecimal.ZERO) > 0) {
+            cargoAmount = invoicedAmount;
+            log.debug("Shipping costs for store {} [{} to {}]: invoiced={}",
+                    storeId, startDate, endDate, cargoAmount);
+        } else {
+            cargoAmount = orderRepository.sumEstimatedShippingCostByStoreAndDateRange(
+                    storeId, startDateTime, endDateTime);
+            if (cargoAmount == null) {
+                cargoAmount = BigDecimal.ZERO;
+            }
+            log.debug("Shipping costs for store {} [{} to {}]: estimated from orders={}",
+                    storeId, startDate, endDate, cargoAmount);
+        }
 
-        // shippingIncome'u 0 olarak döndür (müşteri kargo bedeli siparişte gelmiyor)
         return new ShippingCostsResult(cargoAmount, BigDecimal.ZERO);
     }
 
     // ============== RESULT HOLDER CLASSES ==============
 
     /**
-     * Platform ücretleri sonuç sınıfı (15 kategori + stoppage only).
+     * Platform ücretleri sonuç sınıfı (15 kategori).
      */
     private static class PlatformFeesResult {
         private final BigDecimal internationalServiceFee;
@@ -1842,7 +1841,6 @@ public class DashboardStatsService {
         private final BigDecimal integrationFee;
         private final BigDecimal storageServiceFee;
         private final BigDecimal otherPlatformFees;
-        private final BigDecimal stoppageOnly;
 
         public PlatformFeesResult(BigDecimal internationalServiceFee, BigDecimal overseasOperationFee,
                                    BigDecimal terminDelayFee, BigDecimal platformServiceFee,
@@ -1851,7 +1849,7 @@ public class DashboardStatsService {
                                    BigDecimal packagingServiceFee, BigDecimal warehouseServiceFee,
                                    BigDecimal callCenterFee, BigDecimal photoShootingFee,
                                    BigDecimal integrationFee, BigDecimal storageServiceFee,
-                                   BigDecimal otherPlatformFees, BigDecimal stoppageOnly) {
+                                   BigDecimal otherPlatformFees) {
             this.internationalServiceFee = internationalServiceFee;
             this.overseasOperationFee = overseasOperationFee;
             this.terminDelayFee = terminDelayFee;
@@ -1867,7 +1865,6 @@ public class DashboardStatsService {
             this.integrationFee = integrationFee;
             this.storageServiceFee = storageServiceFee;
             this.otherPlatformFees = otherPlatformFees;
-            this.stoppageOnly = stoppageOnly;
         }
 
         public BigDecimal getInternationalServiceFee() { return internationalServiceFee; }
@@ -1885,7 +1882,6 @@ public class DashboardStatsService {
         public BigDecimal getIntegrationFee() { return integrationFee; }
         public BigDecimal getStorageServiceFee() { return storageServiceFee; }
         public BigDecimal getOtherPlatformFees() { return otherPlatformFees; }
-        public BigDecimal getStoppageOnly() { return stoppageOnly; }
 
         public BigDecimal getTotal() {
             return internationalServiceFee.add(overseasOperationFee).add(terminDelayFee)
@@ -1893,7 +1889,7 @@ public class DashboardStatsService {
                     .add(azOverseasOperationFee).add(azPlatformServiceFee)
                     .add(packagingServiceFee).add(warehouseServiceFee).add(callCenterFee)
                     .add(photoShootingFee).add(integrationFee).add(storageServiceFee)
-                    .add(otherPlatformFees).add(stoppageOnly);
+                    .add(otherPlatformFees);
         }
     }
 

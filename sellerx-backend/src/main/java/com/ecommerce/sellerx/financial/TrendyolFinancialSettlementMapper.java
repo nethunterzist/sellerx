@@ -37,21 +37,33 @@ public class TrendyolFinancialSettlementMapper {
     }
     
     /**
-     * Determine status based on transaction type
+     * Determine status based on transaction type.
+     * Supports all 17 Trendyol settlement transaction types.
      */
     private String determineStatus(String transactionType) {
-        if ("Satış".equals(transactionType) || "Sale".equals(transactionType)) {
-            return "SOLD";
-        } else if ("İade".equals(transactionType) || "Return".equals(transactionType)) {
-            return "RETURNED";
-        } else if ("İptal".equals(transactionType) || "Cancel".equals(transactionType)) {
-            return "CANCELLED";
-        } else if ("İndirim".equals(transactionType) || "Discount".equals(transactionType)) {
-            return "DISCOUNT";
-        } else if ("Kupon".equals(transactionType) || "Coupon".equals(transactionType)) {
-            return "COUPON";
-        } else {
+        if (transactionType == null) {
             return "UNKNOWN";
         }
+        return switch (transactionType) {
+            case "Satış", "Sale" -> "SOLD";
+            case "İade", "Return" -> "RETURNED";
+            case "İptal", "Cancel" -> "CANCELLED";
+            case "İndirim", "Discount" -> "DISCOUNT";
+            case "Kupon", "Coupon" -> "COUPON";
+            case "ErkenÖdeme", "EarlyPayment" -> "EARLY_PAYMENT";
+            case "DiscountCancel" -> "DISCOUNT_CANCEL";
+            case "CouponCancel" -> "COUPON_CANCEL";
+            case "ManualRefund" -> "MANUAL_REFUND";
+            case "ManualRefundCancel" -> "MANUAL_REFUND_CANCEL";
+            case "TYDiscount" -> "TY_DISCOUNT";
+            case "TYDiscountCancel" -> "TY_DISCOUNT_CANCEL";
+            case "TYCoupon" -> "TY_COUPON";
+            case "TYCouponCancel" -> "TY_COUPON_CANCEL";
+            case "ProvisionPositive" -> "PROVISION_POSITIVE";
+            case "ProvisionNegative" -> "PROVISION_NEGATIVE";
+            case "CommissionPositive" -> "COMMISSION_POSITIVE";
+            case "CommissionNegative" -> "COMMISSION_NEGATIVE";
+            default -> "UNKNOWN";
+        };
     }
 }

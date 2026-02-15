@@ -29,7 +29,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Receipt } from "lucide-react";
+import { Loader2, Receipt, Repeat } from "lucide-react";
 import {
   useStoreExpenseCategories,
   useCreateExpense,
@@ -425,7 +425,7 @@ export function ExpenseFormModal({
             {/* Tekrarlayan gider bilgisi */}
             {isRecurring && (
               <div className="flex items-start gap-2 text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-3 py-2 rounded-md">
-                <span className="text-base">🔄</span>
+                <Repeat className="h-4 w-4 flex-shrink-0 mt-0.5" />
                 <span>
                   Bu gider <strong>{frequencyLabels[watchedFrequency as ExpenseFrequency]}</strong> olarak tekrarlanacak.
                   {!form.getValues("endDate") && " Bitiş tarihi belirlenmediği için süresiz tekrarlanır."}

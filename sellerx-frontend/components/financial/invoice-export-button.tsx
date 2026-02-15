@@ -6,8 +6,6 @@ import { useState } from "react";
 import type { InvoiceDetail } from "@/types/invoice";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
-import ExcelJS from "exceljs";
-import { saveAs } from "file-saver";
 
 interface InvoiceExportButtonProps {
   invoices: InvoiceDetail[];
@@ -28,6 +26,12 @@ export function InvoiceExportButton({
     setIsExporting(true);
 
     try {
+      // Dynamic import for Excel libraries (reduces initial bundle size)
+      const [ExcelJS, { saveAs }] = await Promise.all([
+        import("exceljs").then((m) => m.default),
+        import("file-saver"),
+      ]);
+
       // Prepare data for Excel
       const excelData = invoices.map((inv) => ({
         "Fatura No": inv.invoiceNumber || inv.invoiceTypeCode || "-",

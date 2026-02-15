@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "motion/react";
 import { useAuth } from "@/hooks/useAuth";
 import { useImpersonation } from "@/hooks/use-impersonation";
 import { cn } from "@/lib/utils";
@@ -37,11 +38,11 @@ import {
   Megaphone,
   BarChart3,
   Store,
-  Activity,
   Calculator,
   Compass,
   Truck,
   Users,
+  Trophy,
   LifeBuoy,
   PieChart as PieChartIcon,
   UserCheck,
@@ -73,6 +74,7 @@ import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 import { StoreSelectorDropdown } from "./store-selector-dropdown";
 import { NotificationCenter } from "@/components/alerts/notification-center";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 
 interface HeaderTab {
   icon: React.ElementType;
@@ -118,13 +120,13 @@ interface PageTitle {
 const pageTitles: Record<string, PageTitle> = {
   "/dashboard": { icon: LayoutDashboard, title: "Kontrol Paneli" },
   "/products": { icon: Package, title: "Ürünler" },
-  "/stock-tracking": { icon: Activity, title: "Stok Takip" },
   "/orders": { icon: ShoppingCart, title: "Siparişler" },
   "/expenses": { icon: Wallet, title: "Giderler" },
   "/profit": { icon: TrendingUp, title: "Kâr Analizi" },
   "/financial": { icon: DollarSign, title: "Finansal" },
   "/financial/invoices": { icon: FileText, title: "Faturalar" },
   "/kdv": { icon: Calculator, title: "KDV" },
+  "/kar-hesaplama": { icon: Calculator, title: "Kâr Hesaplama" },
   "/dumen": { icon: Compass, title: "Dümen" },
   "/purchasing": { icon: Truck, title: "Satın Alma" },
   "/purchasing/suppliers": { icon: Users, title: "Tedarikçiler" },
@@ -132,6 +134,7 @@ const pageTitles: Record<string, PageTitle> = {
   "/qa": { icon: Sparkles, title: "Müşteri Soruları" },
   "/customer-analytics": { icon: Users, title: "Müşteri Analizi" },
   "/alerts": { icon: Bell, title: "Uyarılar" },
+  "/buybox": { icon: Trophy, title: "Buybox Analizi" },
   "/new-store": { icon: Store, title: "Mağazalar" },
   "/support": { icon: LifeBuoy, title: "Destek" },
   "/settings": { icon: Settings, title: "Ayarlar" },
@@ -143,7 +146,6 @@ const pageTitles: Record<string, PageTitle> = {
 const notificationIcons: Record<NotificationType, { icon: React.ElementType; color: string }> = {
   VIDEO_ADDED: { icon: Info, color: "text-purple-500" },
   ORDER_UPDATE: { icon: ShoppingCart, color: "text-blue-500" },
-  STOCK_ALERT: { icon: Package, color: "text-orange-500" },
   SYSTEM: { icon: Info, color: "text-gray-500" },
   SUCCESS: { icon: CheckCircle, color: "text-green-500" },
   WARNING: { icon: AlertTriangle, color: "text-yellow-500" },
@@ -256,76 +258,55 @@ export function Header() {
 
         {/* Dashboard Tabs (only on dashboard) */}
         {isDashboard && (
-          <div className="flex items-center gap-1 ml-4 pl-4 border-l border-border">
-            {tabs.map((tab) => {
-              const Icon = tab.icon;
-              const isActive = activeTab === tab.value;
-              return (
-                <button
-                  key={tab.value}
-                  onClick={() => handleTabChange(tab.value)}
-                  className={cn(
-                    "flex items-center gap-1.5 rounded px-3 py-1.5 text-sm transition-colors",
-                    isActive
-                      ? "bg-[#E8F1FE] dark:bg-[#1D70F1]/20 text-[#1D70F1]"
-                      : "text-foreground/70 hover:text-foreground hover:bg-muted/50"
-                  )}
-                >
-                  <Icon className="h-4 w-4" />
-                  <span className="hidden sm:inline">{tab.label}</span>
-                </button>
-              );
-            })}
+          <div className="flex items-center gap-4 ml-4">
+            <div className="h-8 w-px bg-border" />
+            <SegmentedControl
+              tabs={tabs.map(tab => ({
+                id: tab.value,
+                label: tab.label,
+                icon: tab.icon as any,
+              }))}
+              activeTab={activeTab}
+              onTabChange={handleTabChange}
+              ariaLabel="Dashboard görünümü seçin"
+              className="px-0"
+            />
           </div>
         )}
 
         {/* Purchasing Tabs (only on purchasing pages) */}
         {isPurchasing && (
-          <div className="flex items-center gap-1 ml-4 pl-4 border-l border-border">
-            {purchasingLinks.map((link) => {
-              const Icon = link.icon;
-              const isActive = currentPath === link.href;
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={cn(
-                    "flex items-center gap-1.5 rounded px-3 py-1.5 text-sm transition-colors",
-                    isActive
-                      ? "bg-[#E8F1FE] dark:bg-[#1D70F1]/20 text-[#1D70F1]"
-                      : "text-foreground/70 hover:text-foreground hover:bg-muted/50"
-                  )}
-                >
-                  <Icon className="h-4 w-4" />
-                  <span className="hidden sm:inline">{link.label}</span>
-                </Link>
-              );
-            })}
+          <div className="flex items-center gap-4 ml-4">
+            <div className="h-8 w-px bg-border" />
+            <SegmentedControl
+              tabs={purchasingLinks.map(link => ({
+                id: link.href,
+                label: link.label,
+                icon: link.icon as any,
+              }))}
+              activeTab={currentPath}
+              onTabChange={(href) => router.push(href)}
+              ariaLabel="Satın alma navigasyonu"
+              className="px-0"
+            />
           </div>
         )}
 
         {/* Customer Analytics Tabs */}
         {isCustomerAnalytics && (
-          <div className="flex items-center gap-1 ml-4 pl-4 border-l border-border">
-            {customerAnalyticsTabs.map((tab) => {
-              const Icon = tab.icon;
-              const isActive = activeTab === tab.value;
-              return (
-                <button
-                  key={tab.value}
-                  onClick={() => handleTabChange(tab.value)}
-                  className={cn(
-                    "flex items-center gap-1.5 rounded px-3 py-1.5 text-sm transition-colors",
-                    isActive
-                      ? "bg-[#E8F1FE] dark:bg-[#1D70F1]/20 text-[#1D70F1]"
-                      : "text-foreground/70 hover:text-foreground hover:bg-muted/50"
-                  )}
-                >
-                  <Icon className="h-4 w-4" />
-                  <span className="hidden sm:inline">{tab.label}</span>
-                </button>
-              );
-            })}
+          <div className="flex items-center gap-4 ml-4">
+            <div className="h-8 w-px bg-border" />
+            <SegmentedControl
+              tabs={customerAnalyticsTabs.map(tab => ({
+                id: tab.value,
+                label: tab.label,
+                icon: tab.icon as any,
+              }))}
+              activeTab={activeTab}
+              onTabChange={handleTabChange}
+              ariaLabel="Müşteri analizi navigasyonu"
+              className="px-0"
+            />
           </div>
         )}
       </div>
@@ -419,15 +400,33 @@ export function Header() {
           className="h-8 w-8 text-foreground"
           onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
         >
-          {mounted ? (
-            resolvedTheme === "dark" ? (
-              <Sun className="h-4 w-4" />
+          <AnimatePresence mode="wait" initial={false}>
+            {mounted ? (
+              resolvedTheme === "dark" ? (
+                <motion.div
+                  key="sun"
+                  initial={{ rotate: -90, opacity: 0, scale: 0.5 }}
+                  animate={{ rotate: 0, opacity: 1, scale: 1 }}
+                  exit={{ rotate: 90, opacity: 0, scale: 0.5 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <Sun className="h-4 w-4" />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="moon"
+                  initial={{ rotate: 90, opacity: 0, scale: 0.5 }}
+                  animate={{ rotate: 0, opacity: 1, scale: 1 }}
+                  exit={{ rotate: -90, opacity: 0, scale: 0.5 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <Moon className="h-4 w-4" />
+                </motion.div>
+              )
             ) : (
-              <Moon className="h-4 w-4" />
-            )
-          ) : (
-            <Sun className="h-4 w-4" />
-          )}
+              <Sun className="h-4 w-4" />
+            )}
+          </AnimatePresence>
         </Button>
 
         {/* Last Sync Time */}

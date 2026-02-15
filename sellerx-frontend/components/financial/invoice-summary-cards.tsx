@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { StaggerChildren } from "@/components/motion";
 import { useCurrency } from "@/lib/contexts/currency-context";
 import {
   Tooltip,
@@ -21,11 +22,12 @@ import {
   Info,
   Percent,
   Wrench,
+  Building2,
 } from "lucide-react";
 import type { InvoiceSummary, CategorySummary } from "@/types/invoice";
 import { getCategoryDisplayName } from "@/types/invoice";
 
-type CategoryKey = "KOMISYON" | "KARGO" | "ULUSLARARASI" | "CEZA" | "REKLAM" | "IADE" | "DIGER" | "ALL" | "KESINTI" | "STOPAJ" | "HIZMET_BEDELI";
+type CategoryKey = "KOMISYON" | "KARGO" | "ULUSLARARASI" | "CEZA" | "REKLAM" | "IADE" | "DIGER" | "ALL" | "KESINTI" | "STOPAJ" | "HIZMET_BEDELI" | "PLATFORM_UCRETLERI";
 
 interface InvoiceSummaryCardsProps {
   summary: InvoiceSummary | undefined;
@@ -47,6 +49,7 @@ const categoryDescriptions: Record<string, string> = {
   DIGER: "Diger finansal islemler",
   STOPAJ: "Stopaj/Tevkifat kesintileri (Gelir vergisi stopaji)",
   HIZMET_BEDELI: "Depo, paketleme, cagri merkezi gibi hizmet bedelleri",
+  PLATFORM_UCRETLERI: "Platform hizmet bedeli ve AZ-Platform hizmet bedeli",
 };
 
 // Category colors matching the plan
@@ -106,6 +109,11 @@ const categoryColors: Record<CategoryKey, { bg: string; border: string; hoverBor
     border: "border-b-cyan-500",
     hoverBorder: "hover:border-b-cyan-300",
   },
+  PLATFORM_UCRETLERI: {
+    bg: "bg-violet-500",
+    border: "border-b-violet-500",
+    hoverBorder: "hover:border-b-violet-300",
+  },
 };
 
 // Category icons
@@ -121,6 +129,7 @@ const categoryIcons: Record<CategoryKey, React.ReactNode> = {
   DIGER: <FileText className="h-4 w-4" />,
   STOPAJ: <Percent className="h-4 w-4" />,
   HIZMET_BEDELI: <Wrench className="h-4 w-4" />,
+  PLATFORM_UCRETLERI: <Building2 className="h-4 w-4" />,
 };
 
 interface SummaryCardProps {
@@ -379,7 +388,7 @@ export function InvoiceSummaryCards({
   allCards.sort((a, b) => Math.abs(b.totalAmount) - Math.abs(a.totalAmount));
 
   return (
-    <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-border">
+    <StaggerChildren className="flex gap-4 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-border" staggerDelay={0.04}>
       {allCards.map((card) => (
         <SummaryCard
           key={card.key}
@@ -392,6 +401,6 @@ export function InvoiceSummaryCards({
           onClick={card.onClick}
         />
       ))}
-    </div>
+    </StaggerChildren>
   );
 }

@@ -297,15 +297,42 @@ public class PurchaseReportService {
                 }
             }
 
-            // Calculate average cost per unit (from purchase history or zero if no history)
-            BigDecimal averageCost = historyQuantity > 0
-                    ? weightedCost.divide(BigDecimal.valueOf(historyQuantity), 2, RoundingMode.HALF_UP)
-                    : BigDecimal.ZERO;
+            // Get fallback cost from most recent entry (regardless of remaining quantity)
+            // First try to find entry with unitCost > 0, then fall back to any entry with unitCost
+            BigDecimal fallbackCost = BigDecimal.ZERO;
+            if (costHistory != null && !costHistory.isEmpty()) {
+                // First: Try to find entry with unitCost > 0
+                CostAndStockInfo mostRecent = costHistory.stream()
+                        .filter(c -> c.getUnitCost() != null && c.getUnitCost() > 0)
+                        .max(Comparator.comparing(c -> c.getStockDate() != null ? c.getStockDate() : LocalDate.MIN))
+                        .orElse(null);
 
-            // If we have no purchase history but have Trendyol stock, estimate value using average cost
+                // Second fallback: If no entry with cost > 0, get the most recent entry with any unitCost
+                if (mostRecent == null) {
+                    mostRecent = costHistory.stream()
+                            .filter(c -> c.getUnitCost() != null)
+                            .max(Comparator.comparing(c -> c.getStockDate() != null ? c.getStockDate() : LocalDate.MIN))
+                            .orElse(null);
+                }
+
+                if (mostRecent != null) {
+                    fallbackCost = BigDecimal.valueOf(mostRecent.getUnitCost());
+                }
+            }
+
+            // Calculate average cost per unit (from purchase history or fallback to most recent cost)
+            BigDecimal averageCost;
+            if (historyQuantity > 0) {
+                averageCost = weightedCost.divide(BigDecimal.valueOf(historyQuantity), 2, RoundingMode.HALF_UP);
+            } else {
+                // Fallback to most recent cost entry (even if all stock is used)
+                averageCost = fallbackCost;
+            }
+
+            // If we have no purchase history but have Trendyol stock, estimate value using fallback cost
             if (historyQuantity == 0 && trendyolStock > 0) {
-                // No purchase history, can't calculate FIFO value accurately
-                productValue = BigDecimal.ZERO;
+                // Use fallback cost × Trendyol stock for estimated value
+                productValue = averageCost.multiply(BigDecimal.valueOf(trendyolStock));
             }
 
             int daysInStock = oldestDate != null ? (int) ChronoUnit.DAYS.between(oldestDate, today) : 0;
@@ -348,7 +375,7 @@ public class PurchaseReportService {
                     .oldestStockDate(oldestDate)
                     .daysInStock(daysInStock)
                     .agingCategory(agingCategory)
-                    .stockDepleted(Boolean.TRUE.equals(product.getStockDepleted()))
+                    .stockDepleted(product.getStockDepleted() != null && product.getStockDepleted())  // Use actual FIFO depletion status from entity
                     .averageDailySales(avgDailySales)
                     .estimatedDepletionDate(estimatedDepletionDate)
                     .daysUntilDepletion(daysUntilDepletion)

@@ -61,7 +61,7 @@ export function ReturnSummaryCards({
       icon: TrendingDown,
       iconBg: "bg-red-100",
       iconColor: "text-red-600",
-      tooltip: "Ürün maliyeti + Kargo + Komisyon + Ambalaj",
+      tooltip: "Ürün maliyeti + Kargo + Ambalaj",
     },
     {
       title: "Ortalama Zarar/İade",

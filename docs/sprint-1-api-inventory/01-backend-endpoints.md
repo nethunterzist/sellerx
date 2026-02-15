@@ -28,6 +28,7 @@ Tüm REST controller'lar ve endpoint'ler. ExceptionHandler, ControllerAdvice, Te
 - [Currency](#currency)
 - [Trendyol & Health](#trendyol--health)
 - [Admin](#admin)
+- [Customer Analytics](#customer-analytics)
 - [Test](#test)
 
 ---
@@ -40,6 +41,12 @@ Tüm REST controller'lar ve endpoint'ler. ExceptionHandler, ControllerAdvice, Te
 | AuthController | /auth | /logout | POST | /auth/logout | - | Public |
 | AuthController | /auth | /refresh | POST | /auth/refresh | - | Public |
 | AuthController | /auth | /me | GET | /auth/me | - | Auth |
+| EmailVerificationController | /auth | /verify-email | GET | /auth/verify-email | token (query) | Public |
+| EmailVerificationController | /auth | /resend-verification | POST | /auth/resend-verification | - | Auth |
+| EmailVerificationController | /auth | /verification-status | GET | /auth/verification-status | - | Auth |
+| PasswordResetController | /auth | /forgot-password | POST | /auth/forgot-password | body | Public |
+| PasswordResetController | /auth | /verify-reset-token | GET | /auth/verify-reset-token | token (query) | Public |
+| PasswordResetController | /auth | /reset-password | POST | /auth/reset-password | body | Public |
 
 ---
 
@@ -118,6 +125,9 @@ Tüm REST controller'lar ve endpoint'ler. ExceptionHandler, ControllerAdvice, Te
 | TrendyolOrderController | /api/orders | /stores/{storeId}/by-date-range | GET | /api/orders/stores/{storeId}/by-date-range | storeId, startDate, endDate, page, size | Auth |
 | TrendyolOrderController | /api/orders | /stores/{storeId}/by-status | GET | /api/orders/stores/{storeId}/by-status | storeId, status, page, size | Auth |
 | TrendyolOrderController | /api/orders | /stores/{storeId}/statistics | GET | /api/orders/stores/{storeId}/statistics | storeId | Auth |
+| TrendyolOrderController | /api/orders | /stores/{storeId}/sync/async | POST | /api/orders/stores/{storeId}/sync/async | storeId | Auth |
+| TrendyolOrderController | /api/orders | /stores/{storeId}/sync/status/{taskId} | GET | /api/orders/stores/{storeId}/sync/status/{taskId} | storeId, taskId | Auth |
+| TrendyolOrderController | /api/orders | /stores/{storeId}/statistics/by-date-range | GET | /api/orders/stores/{storeId}/statistics/by-date-range | storeId, startDate, endDate | Auth |
 | TrendyolOrderController | /api/orders | /stores/{storeId}/recalculate-commissions | POST | /api/orders/stores/{storeId}/recalculate-commissions | storeId | Auth |
 | StockOrderSynchronizationController | /api/orders/stock-sync | /synchronize/{storeId} | POST | /api/orders/stock-sync/synchronize/{storeId} | storeId, fromDate (query) | Auth |
 | StockOrderSynchronizationController | /api/orders/stock-sync | /status/{storeId} | GET | /api/orders/stock-sync/status/{storeId} | storeId | Auth |
@@ -461,6 +471,55 @@ Tüm REST controller'lar ve endpoint'ler. ExceptionHandler, ControllerAdvice, Te
 | AdminDashboardController | /api/admin/dashboard | /stats | GET | /api/admin/dashboard/stats | - | Admin |
 | AdminNotificationController | /api/admin/notifications | /stats | GET | /api/admin/notifications/stats | - | Admin |
 | AdminNotificationController | /api/admin/notifications | /broadcast | POST | /api/admin/notifications/broadcast | body | Admin |
+| AdminSandboxController | /api/admin/sandbox | /products | GET | /api/admin/sandbox/products | - | Admin |
+| AdminSandboxController | /api/admin/sandbox | /products | POST | /api/admin/sandbox/products | body | Admin |
+| AdminSandboxController | /api/admin/sandbox | /products/{id} | DELETE | /api/admin/sandbox/products/{id} | id | Admin |
+| AdminSandboxController | /api/admin/sandbox | /orders | GET | /api/admin/sandbox/orders | - | Admin |
+| AdminSandboxController | /api/admin/sandbox | /orders | POST | /api/admin/sandbox/orders | body | Admin |
+| AdminSandboxController | /api/admin/sandbox | /orders/{id} | DELETE | /api/admin/sandbox/orders/{id} | id | Admin |
+| AdminSandboxController | /api/admin/sandbox | /orders/{id}/settle | POST | /api/admin/sandbox/orders/{id}/settle | id | Admin |
+| AdminSandboxController | /api/admin/sandbox | /orders/settle-all | POST | /api/admin/sandbox/orders/settle-all | - | Admin |
+| AdminSandboxController | /api/admin/sandbox | /invoices | GET | /api/admin/sandbox/invoices | - | Admin |
+| AdminSandboxController | /api/admin/sandbox | /invoices | POST | /api/admin/sandbox/invoices | body | Admin |
+| AdminSandboxController | /api/admin/sandbox | /invoices/{id} | PUT | /api/admin/sandbox/invoices/{id} | id | Admin |
+| AdminSandboxController | /api/admin/sandbox | /invoices/{id} | DELETE | /api/admin/sandbox/invoices/{id} | id | Admin |
+| AdminSandboxController | /api/admin/sandbox | /returns | GET | /api/admin/sandbox/returns | - | Admin |
+| AdminSandboxController | /api/admin/sandbox | /returns | POST | /api/admin/sandbox/returns | body | Admin |
+| AdminSandboxController | /api/admin/sandbox | /returns/{id} | DELETE | /api/admin/sandbox/returns/{id} | id | Admin |
+| AdminEmailTemplateController | /api/admin/email-templates | | GET | /api/admin/email-templates | - | Admin |
+| AdminEmailTemplateController | /api/admin/email-templates | /{type} | GET | /api/admin/email-templates/{type} | type | Admin |
+| AdminEmailTemplateController | /api/admin/email-templates | /{type} | PUT | /api/admin/email-templates/{type} | type, body | Admin |
+| AdminEmailTemplateController | /api/admin/email-templates | /{type}/preview | POST | /api/admin/email-templates/{type}/preview | type, body | Admin |
+| AdminEmailTemplateController | /api/admin/email-templates | /{type}/test | POST | /api/admin/email-templates/{type}/test | type, body | Admin |
+| AdminEmailTemplateController | /api/admin/email-templates | /variables | GET | /api/admin/email-templates/variables | - | Admin |
+| AdminEmailTemplateController | /api/admin/email-templates | /base-layout | GET | /api/admin/email-templates/base-layout | - | Admin |
+| AdminEmailTemplateController | /api/admin/email-templates | /base-layout | PUT | /api/admin/email-templates/base-layout | body | Admin |
+| AdminResilienceController | /api/admin/resilience | /status | GET | /api/admin/resilience/status | - | Admin |
+| AdminResilienceController | /api/admin/resilience | /circuit-breakers | GET | /api/admin/resilience/circuit-breakers | - | Admin |
+| AdminResilienceController | /api/admin/resilience | /rate-limiters | GET | /api/admin/resilience/rate-limiters | - | Admin |
+| AdminResilienceController | /api/admin/resilience | /bulkheads | GET | /api/admin/resilience/bulkheads | - | Admin |
+| AdminResilienceController | /api/admin/resilience | /circuit-breakers/{name}/reset | POST | /api/admin/resilience/circuit-breakers/{name}/reset | name | Admin |
+| AdminResilienceController | /api/admin/resilience | /circuit-breakers/{name}/close | POST | /api/admin/resilience/circuit-breakers/{name}/close | name | Admin |
+
+---
+
+## Customer Analytics
+
+| Controller | Base path | Method path | HTTP | Full path | Path/query params | Not |
+|------------|-----------|-------------|------|-----------|-------------------|-----|
+| CustomerAnalyticsController | /api/stores/{storeId}/customer-analytics | /summary | GET | /api/stores/{storeId}/customer-analytics/summary | storeId | Auth |
+| CustomerAnalyticsController | /api/stores/{storeId}/customer-analytics | /lifecycle | GET | /api/stores/{storeId}/customer-analytics/lifecycle | storeId | Auth |
+| CustomerAnalyticsController | /api/stores/{storeId}/customer-analytics | /cohorts | GET | /api/stores/{storeId}/customer-analytics/cohorts | storeId | Auth |
+| CustomerAnalyticsController | /api/stores/{storeId}/customer-analytics | /frequency-distribution | GET | /api/stores/{storeId}/customer-analytics/frequency-distribution | storeId | Auth |
+| CustomerAnalyticsController | /api/stores/{storeId}/customer-analytics | /clv-summary | GET | /api/stores/{storeId}/customer-analytics/clv-summary | storeId | Auth |
+| CustomerAnalyticsController | /api/stores/{storeId}/customer-analytics | /customers | GET | /api/stores/{storeId}/customer-analytics/customers | storeId, page, size, search, segment, sortBy, sortDirection | Auth |
+| CustomerAnalyticsController | /api/stores/{storeId}/customer-analytics | /customers/{customerId}/orders | GET | /api/stores/{storeId}/customer-analytics/customers/{customerId}/orders | storeId, customerId | Auth |
+| CustomerAnalyticsController | /api/stores/{storeId}/customer-analytics | /product-repeat | GET | /api/stores/{storeId}/customer-analytics/product-repeat | storeId | Auth |
+| CustomerAnalyticsController | /api/stores/{storeId}/customer-analytics | /products/{barcode} | GET | /api/stores/{storeId}/customer-analytics/products/{barcode} | storeId, barcode | Auth |
+| CustomerAnalyticsController | /api/stores/{storeId}/customer-analytics | /products/{barcode}/buyers | GET | /api/stores/{storeId}/customer-analytics/products/{barcode}/buyers | storeId, barcode, page, size | Auth |
+| CustomerAnalyticsController | /api/stores/{storeId}/customer-analytics | /cross-sell | GET | /api/stores/{storeId}/customer-analytics/cross-sell | storeId | Auth |
+| CustomerAnalyticsController | /api/stores/{storeId}/customer-analytics | /backfill-status | GET | /api/stores/{storeId}/customer-analytics/backfill-status | storeId | Auth |
+| CustomerAnalyticsController | /api/stores/{storeId}/customer-analytics | /trigger-backfill | POST | /api/stores/{storeId}/customer-analytics/trigger-backfill | storeId | Auth |
 
 ---
 

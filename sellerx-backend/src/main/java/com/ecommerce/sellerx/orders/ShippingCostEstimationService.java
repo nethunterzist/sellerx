@@ -23,7 +23,8 @@ import java.util.stream.Collectors;
  * - Uses lastShippingCostPerUnit from TrendyolProduct (set by TrendyolOtherFinancialsService when cargo invoice arrives)
  * - If no shipping data available, returns 0 (cannot estimate)
  *
- * Formula: totalShipping = sum(quantity × lastShippingCostPerUnit) for each item
+ * Formula: totalShipping = MAX(lastShippingCostPerUnit) across all items in the order
+ * (Trendyol charges shipping per PACKAGE, not per item — one order = one package = one shipping fee)
  *
  * When real cargo invoice arrives:
  * - TrendyolOtherFinancialsService updates order.estimatedShippingCost with real value
@@ -39,10 +40,11 @@ public class ShippingCostEstimationService {
 
     /**
      * Calculate estimated shipping cost for an entire order.
-     * Sums up the estimated shipping cost for all order items.
+     * Uses MAX(lastShippingCostPerUnit) across all items because Trendyol charges
+     * shipping per PACKAGE (not per item). One order = one package = one shipping fee.
      *
      * @param order The order to estimate shipping for
-     * @return Total estimated shipping cost for the order
+     * @return Estimated shipping cost for the order (package-level)
      */
     public BigDecimal calculateOrderEstimatedShipping(TrendyolOrder order) {
         if (order.getOrderItems() == null || order.getOrderItems().isEmpty()) {
@@ -54,15 +56,28 @@ public class ShippingCostEstimationService {
         // Build product cache for all barcodes in the order
         Map<String, TrendyolProduct> productCache = buildProductCache(order, storeId);
 
-        BigDecimal totalShipping = BigDecimal.ZERO;
+        // Trendyol charges shipping per PACKAGE, not per item.
+        // Use MAX across all items as the package shipping cost estimate.
+        BigDecimal maxShippingCost = BigDecimal.ZERO;
 
         for (OrderItem item : order.getOrderItems()) {
-            BigDecimal itemShipping = calculateItemEstimatedShipping(item, productCache);
-            totalShipping = totalShipping.add(itemShipping);
+            if (item.getBarcode() == null || item.getBarcode().isEmpty()) {
+                continue;
+            }
+
+            TrendyolProduct product = productCache.get(item.getBarcode());
+            if (product == null) {
+                continue;
+            }
+
+            BigDecimal cost = orderCostCalculator.getEffectiveShippingCostPerUnit(product);
+            if (cost.compareTo(maxShippingCost) > 0) {
+                maxShippingCost = cost;
+            }
         }
 
-        log.debug("Order {} total estimated shipping: {}", order.getTyOrderNumber(), totalShipping);
-        return totalShipping;
+        log.debug("Order {} estimated package shipping (MAX): {}", order.getTyOrderNumber(), maxShippingCost);
+        return maxShippingCost;
     }
 
     /**

@@ -402,8 +402,8 @@ class StoreExpenseServiceTest extends BaseUnitTest {
             ExpenseCategoryDto dto2 = mock(ExpenseCategoryDto.class);
 
             when(expenseCategoryRepository.findAllByOrderByNameAsc()).thenReturn(List.of(cat1, cat2));
-            when(expenseCategoryMapper.toDto(eq(cat1), anyLong())).thenReturn(dto1);
-            when(expenseCategoryMapper.toDto(eq(cat2), anyLong())).thenReturn(dto2);
+            lenient().when(expenseCategoryMapper.toDto(eq(cat1), anyLong())).thenReturn(dto1);
+            lenient().when(expenseCategoryMapper.toDto(eq(cat2), anyLong())).thenReturn(dto2);
 
             // When
             List<ExpenseCategoryDto> result = expenseService.getAllExpenseCategories();

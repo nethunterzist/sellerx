@@ -1,5 +1,7 @@
 package com.ecommerce.sellerx.stores;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -31,4 +33,20 @@ public interface StoreRepository extends JpaRepository<Store, UUID> {
 
     // Find all stores that have completed initial sync (ready for scheduled operations)
     List<Store> findByInitialSyncCompletedTrue();
+
+    // Count by sync status (for admin dashboard stats)
+    long countBySyncStatus(SyncStatus syncStatus);
+
+    // Count stores with sync errors (FAILED status or has error message)
+    @Query("SELECT COUNT(s) FROM Store s WHERE s.syncStatus = 'FAILED' OR s.syncErrorMessage IS NOT NULL")
+    long countWithSyncErrors();
+
+    // Count stores with webhook errors (FAILED status or has error message)
+    @Query("SELECT COUNT(s) FROM Store s WHERE s.webhookStatus = 'FAILED' OR s.webhookErrorMessage IS NOT NULL")
+    long countWithWebhookErrors();
+
+    // Paginated search by store name or user email (for admin search)
+    @Query("SELECT s FROM Store s WHERE LOWER(s.storeName) LIKE LOWER(CONCAT('%', :query, '%')) " +
+           "OR LOWER(s.user.email) LIKE LOWER(CONCAT('%', :query, '%'))")
+    Page<Store> searchByStoreNameOrUserEmail(@Param("query") String query, Pageable pageable);
 }

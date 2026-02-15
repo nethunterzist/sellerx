@@ -1,0 +1,122 @@
+{
+  "storeName": "Test Magazasi",
+  "storeEmail": "test@test.com",
+  "timestamp": "15.02.2026 00:00:03",
+  "sections": [
+    {
+      "title": "Dashboard Kartları",
+      "summary": {
+        "total": 11,
+        "matching": 10,
+        "warnings": 0,
+        "errors": 1,
+        "results": [
+          {
+            "field": "Bugun - Ciro",
+            "match": false,
+            "dbValue": 187812.84,
+            "frontendValue": 187812.84,
+            "trendyolValue": 0,
+            "deviation": 100,
+            "severity": "critical",
+            "note": "DB vs TY: diff=187812.84; FE vs TY: diff=187812.84"
+          },
+          {
+            "field": "Bugun - Siparis Sayisi",
+            "match": true,
+            "dbValue": 138,
+            "frontendValue": 138,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Bugun - Iade",
+            "match": true,
+            "dbValue": 0,
+            "frontendValue": 0,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Dun - Ciro",
+            "match": true,
+            "dbValue": 269612.43,
+            "frontendValue": 269612.43,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Dun - Siparis Sayisi",
+            "match": true,
+            "dbValue": 195,
+            "frontendValue": 195,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Bu Ay - Ciro",
+            "match": true,
+            "dbValue": 2848160.06,
+            "frontendValue": 2848160.06,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Bu Ay - Siparis Sayisi",
+            "match": true,
+            "dbValue": 2242,
+            "frontendValue": 2242,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Bu Ay - Iade",
+            "match": true,
+            "dbValue": 0,
+            "frontendValue": 0,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Bu Ay - Brut Kar",
+            "match": true,
+            "dbValue": 1985200.06,
+            "frontendValue": 1985200.06,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Gecen Ay - Ciro",
+            "match": true,
+            "dbValue": 8514762.19,
+            "frontendValue": 8514762.19,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Gecen Ay - Siparis Sayisi",
+            "match": true,
+            "dbValue": 6999,
+            "frontendValue": 6999,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          }
+        ]
+      },
+      "screenshots": [
+        "01-dashboard-cards-sellerx.png",
+        "01-dashboard-cards-trendyol.png"
+      ]
+    }
+  ]
+}

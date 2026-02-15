@@ -24,6 +24,7 @@ import java.util.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 class AdminUserServiceTest extends BaseUnitTest {
@@ -166,34 +167,41 @@ class AdminUserServiceTest extends BaseUnitTest {
     class SearchUsers {
 
         @Test
-        @DisplayName("should find users by email")
+        @DisplayName("should find users by email using paginated query")
         void shouldFindUsersByEmail() {
-            when(userRepository.findAll()).thenReturn(List.of(testUser));
+            Pageable pageable = PageRequest.of(0, 20);
+            Page<User> userPage = new PageImpl<>(List.of(testUser), pageable, 1);
+            when(userRepository.searchByEmailOrName(eq("test@"), any(Pageable.class))).thenReturn(userPage);
 
-            List<AdminUserListDto> result = adminUserService.searchUsers("test@");
+            Page<AdminUserListDto> result = adminUserService.searchUsers("test@", pageable);
 
-            assertThat(result).hasSize(1);
-            assertThat(result.get(0).getEmail()).isEqualTo("test@test.com");
+            assertThat(result.getContent()).hasSize(1);
+            assertThat(result.getContent().get(0).getEmail()).isEqualTo("test@test.com");
+            verify(userRepository).searchByEmailOrName(eq("test@"), any(Pageable.class));
         }
 
         @Test
-        @DisplayName("should find users by name (case insensitive)")
+        @DisplayName("should find users by name (case insensitive) using paginated query")
         void shouldFindUsersByNameCaseInsensitive() {
-            when(userRepository.findAll()).thenReturn(List.of(testUser));
+            Pageable pageable = PageRequest.of(0, 20);
+            Page<User> userPage = new PageImpl<>(List.of(testUser), pageable, 1);
+            when(userRepository.searchByEmailOrName(eq("TEST USER"), any(Pageable.class))).thenReturn(userPage);
 
-            List<AdminUserListDto> result = adminUserService.searchUsers("TEST USER");
+            Page<AdminUserListDto> result = adminUserService.searchUsers("TEST USER", pageable);
 
-            assertThat(result).hasSize(1);
+            assertThat(result.getContent()).hasSize(1);
         }
 
         @Test
-        @DisplayName("should return empty list when no match")
+        @DisplayName("should return empty page when no match")
         void shouldReturnEmptyWhenNoMatch() {
-            when(userRepository.findAll()).thenReturn(List.of(testUser));
+            Pageable pageable = PageRequest.of(0, 20);
+            Page<User> emptyPage = new PageImpl<>(List.of(), pageable, 0);
+            when(userRepository.searchByEmailOrName(eq("nonexistent"), any(Pageable.class))).thenReturn(emptyPage);
 
-            List<AdminUserListDto> result = adminUserService.searchUsers("nonexistent");
+            Page<AdminUserListDto> result = adminUserService.searchUsers("nonexistent", pageable);
 
-            assertThat(result).isEmpty();
+            assertThat(result.getContent()).isEmpty();
         }
     }
 

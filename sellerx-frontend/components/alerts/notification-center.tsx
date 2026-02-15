@@ -1,14 +1,22 @@
 'use client';
 
 import { useState } from 'react';
-import { Bell, Check, CheckCheck, X, Package, DollarSign, Tag, ShoppingCart, Settings } from 'lucide-react';
+import { motion, AnimatePresence } from "motion/react";
+import { Bell, Check, CheckCheck, X, Package, DollarSign, Tag, ShoppingCart, Settings, Wifi, WifiOff, Undo2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useUnreadAlertCount, useUnreadAlerts, useMarkAlertAsRead, useMarkAllAlertsAsRead, useApproveStockAlert, useDismissStockAlert } from '@/hooks/queries/use-alerts';
+import { useWebSocketContext } from '@/components/providers/websocket-provider';
 import type { AlertHistory, AlertType, AlertSeverity } from '@/types/alert';
 import { cn } from '@/lib/utils';
 import { useTranslations } from 'next-intl';
@@ -19,6 +27,7 @@ const alertTypeIcons: Record<AlertType, React.ElementType> = {
   PROFIT: DollarSign,
   PRICE: Tag,
   ORDER: ShoppingCart,
+  RETURN: Undo2,
   SYSTEM: Settings,
 };
 
@@ -181,14 +190,20 @@ export function NotificationCenter() {
   const [open, setOpen] = useState(false);
   const t = useTranslations('notifications');
 
-  const { data: countData } = useUnreadAlertCount();
-  const { data: unreadAlerts, isLoading } = useUnreadAlerts();
+  // WebSocket connection state - disables polling when connected
+  const wsContext = useWebSocketContext();
+  const isWsConnected = wsContext?.isConnected ?? false;
+
+  // Use WebSocket unread count if connected, otherwise fall back to API
+  const { data: countData } = useUnreadAlertCount({ disablePolling: isWsConnected });
+  const { data: unreadAlerts, isLoading } = useUnreadAlerts({ disablePolling: isWsConnected });
   const markAsRead = useMarkAlertAsRead();
   const markAllAsRead = useMarkAllAlertsAsRead();
   const approveAlert = useApproveStockAlert();
   const dismissAlert = useDismissStockAlert();
 
-  const unreadCount = countData?.count || 0;
+  // Prefer WebSocket count (real-time), fallback to API count
+  const unreadCount = isWsConnected ? (wsContext?.unreadCount ?? 0) : (countData?.count || 0);
 
   const handleMarkAsRead = (id: string) => {
     markAsRead.mutate(id);
@@ -231,9 +246,28 @@ export function NotificationCenter() {
       >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800">
-          <h3 className="font-semibold text-gray-900 dark:text-gray-100">
-            {t('title') || 'Bildirimler'}
-          </h3>
+          <div className="flex items-center gap-2">
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100">
+              {t('title') || 'Bildirimler'}
+            </h3>
+            {/* WebSocket connection indicator */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="flex items-center">
+                    {isWsConnected ? (
+                      <Wifi className="h-3 w-3 text-green-500" />
+                    ) : (
+                      <WifiOff className="h-3 w-3 text-gray-400" />
+                    )}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  {isWsConnected ? 'Gerçek zamanlı bağlantı aktif' : 'Gerçek zamanlı bağlantı yok'}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
           <div className="flex items-center gap-2">
             {unreadCount > 0 && (
               <Button
@@ -257,9 +291,16 @@ export function NotificationCenter() {
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500" />
             </div>
           ) : unreadAlerts && unreadAlerts.length > 0 ? (
-            unreadAlerts.slice(0, 10).map((alert) => (
-              <NotificationItem
+            <AnimatePresence initial={false}>
+            {unreadAlerts.slice(0, 10).map((alert, index) => (
+              <motion.div
                 key={alert.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, height: 0, overflow: "hidden" }}
+                transition={{ duration: 0.2, delay: index * 0.03, ease: [0.25, 0.1, 0.25, 1] as const }}
+              >
+              <NotificationItem
                 alert={alert}
                 onMarkAsRead={handleMarkAsRead}
                 onApprove={handleApprove}
@@ -267,7 +308,9 @@ export function NotificationCenter() {
                 isApproving={approveAlert.isPending}
                 isDismissing={dismissAlert.isPending}
               />
-            ))
+              </motion.div>
+            ))}
+            </AnimatePresence>
           ) : (
             <div className="flex flex-col items-center justify-center py-8 px-4">
               <Bell className="h-12 w-12 text-gray-300 dark:text-gray-600 mb-3" />

@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
@@ -19,6 +20,7 @@ import java.util.UUID;
 public class ClaimsController {
 
     private final TrendyolClaimsService claimsService;
+    private final ReturnAnalyticsService returnAnalyticsService;
 
     /**
      * Get claims for a store with pagination
@@ -167,6 +169,60 @@ public class ClaimsController {
     public ResponseEntity<ClaimsStatsDto> getStats(@PathVariable UUID storeId) {
         ClaimsStatsDto stats = claimsService.getStats(storeId);
         return ResponseEntity.ok(stats);
+    }
+
+    /**
+     * Get audit trail for a claim item
+     * GET /api/returns/stores/{storeId}/claims/items/{itemId}/audit
+     */
+    @GetMapping("/stores/{storeId}/claims/items/{itemId}/audit")
+    @PreAuthorize("@userSecurityRules.canAccessStore(authentication, #storeId)")
+    public ResponseEntity<List<ClaimItemAuditDto>> getClaimItemAudit(
+            @PathVariable UUID storeId,
+            @PathVariable String itemId) {
+        List<ClaimItemAuditDto> audit = claimsService.getClaimItemAudit(storeId, itemId);
+        return ResponseEntity.ok(audit);
+    }
+
+    // =====================================================
+    // RETURNED ORDERS & RESALABLE DECISION
+    // =====================================================
+
+    /**
+     * Get returned orders with cost breakdown for resalable decision.
+     * GET /api/returns/stores/{storeId}/returned-orders?startDate=&endDate=
+     */
+    @GetMapping("/stores/{storeId}/returned-orders")
+    @PreAuthorize("@userSecurityRules.canAccessStore(authentication, #storeId)")
+    public ResponseEntity<List<ReturnedOrderDto>> getReturnedOrders(
+            @PathVariable UUID storeId,
+            @RequestParam String startDate,
+            @RequestParam String endDate) {
+
+        LocalDate start = LocalDate.parse(startDate);
+        LocalDate end = LocalDate.parse(endDate);
+        List<ReturnedOrderDto> orders = returnAnalyticsService.getReturnedOrders(storeId, start, end);
+        return ResponseEntity.ok(orders);
+    }
+
+    /**
+     * Update resalable decision for a returned order.
+     * PUT /api/returns/stores/{storeId}/orders/{orderNumber}/resalable
+     */
+    @PutMapping("/stores/{storeId}/orders/{orderNumber}/resalable")
+    @PreAuthorize("@userSecurityRules.canAccessStore(authentication, #storeId)")
+    public ResponseEntity<Void> updateResalable(
+            @PathVariable UUID storeId,
+            @PathVariable String orderNumber,
+            @RequestBody UpdateResalableRequest request) {
+
+        returnAnalyticsService.updateResalable(storeId, orderNumber, request.getIsResalable());
+        return ResponseEntity.ok().build();
+    }
+
+    @lombok.Data
+    public static class UpdateResalableRequest {
+        private Boolean isResalable;
     }
 
     // =====================================================

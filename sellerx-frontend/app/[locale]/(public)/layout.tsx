@@ -17,6 +17,9 @@ export default function PublicLayout({
             <span className="text-xl font-bold text-primary">SellerX</span>
           </Link>
           <nav className="flex items-center gap-4">
+            <Link href="/hesaplama">
+              <Button variant="ghost">Hesaplama</Button>
+            </Link>
             <Link href="/pricing">
               <Button variant="ghost">Fiyatlandırma</Button>
             </Link>
@@ -87,17 +90,17 @@ export default function PublicLayout({
               <h4 className="font-medium mb-4">Yasal</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li>
-                  <Link href="#" className="hover:text-foreground">
+                  <Link href="/privacy" className="hover:text-foreground">
                     Gizlilik Politikası
                   </Link>
                 </li>
                 <li>
-                  <Link href="#" className="hover:text-foreground">
+                  <Link href="/terms" className="hover:text-foreground">
                     Kullanım Koşulları
                   </Link>
                 </li>
                 <li>
-                  <Link href="#" className="hover:text-foreground">
+                  <Link href="/privacy#kvkk" className="hover:text-foreground">
                     KVKK
                   </Link>
                 </li>

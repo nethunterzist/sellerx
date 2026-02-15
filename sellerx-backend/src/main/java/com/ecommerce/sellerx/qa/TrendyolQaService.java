@@ -68,11 +68,11 @@ public class TrendyolQaService {
         int size = 50; // Max allowed by Trendyol API
         boolean hasMore = true;
 
-        log.info("[QA] Son 14 günlük müşteri soruları çekiliyor...");
+        log.info("[QA] Son 90 günlük müşteri soruları çekiliyor...");
 
-        // Trendyol Q&A API requires date range (max 2 weeks)
+        // Trendyol Q&A API date range - using 90 days for comprehensive coverage
         long endDate = System.currentTimeMillis();
-        long startDate = endDate - (14L * 24 * 60 * 60 * 1000); // 14 days ago
+        long startDate = endDate - (90L * 24 * 60 * 60 * 1000); // 90 days ago
 
         try {
             while (hasMore) {

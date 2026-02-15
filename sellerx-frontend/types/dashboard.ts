@@ -1,6 +1,14 @@
 // Dashboard types matching backend DTOs
 import type { ExpenseFrequency } from "./expense";
 
+// Backend: DeductionBreakdownDto
+// Used for dashboard detail panel to show all invoice types individually
+export interface DeductionBreakdown {
+  transactionType: string;
+  totalDebt: number;
+  totalCredit: number;
+}
+
 export type PeriodType = "today" | "yesterday" | "thisMonth" | "lastMonth";
 
 // Custom date range types
@@ -19,12 +27,6 @@ export type DateRangePreset =
   | "thisQuarter"  // Single card: this quarter
   | "lastQuarter"  // Single card: last quarter
   | "custom";
-
-// Comparison mode for period analysis
-export type ComparisonMode =
-  | "none"
-  | "previous_period"
-  | "same_period_last_year";
 
 // Period definition for dynamic card rendering
 export interface PeriodDefinition {
@@ -64,7 +66,6 @@ export interface TabFilterState {
   selectedPeriodGroup: DateRangePreset;
   customDateRange: CustomDateRange | null;
   selectedPeriod: PeriodType;
-  selectedComparison: ComparisonMode;
   selectedCurrency: string;
 }
 
@@ -76,7 +77,6 @@ export interface ViewFilterConfig {
   usesProducts: boolean;
   usesDateRange: boolean;
   usesCurrency: boolean;
-  usesComparison: boolean;
   singleProductOnly?: boolean;
 }
 
@@ -331,6 +331,11 @@ export type PLPeriodType = "monthly" | "weekly" | "daily";
 export type PLPeriodPreset =
   | "last12months"      // Son 12 ay, aylık
   | "last3monthsWeekly" // Son 3 ay, haftalık
+  | "q1Weekly"          // 1. Çeyrek haftalık
+  | "q2Weekly"          // 2. Çeyrek haftalık
+  | "q3Weekly"          // 3. Çeyrek haftalık
+  | "q4Weekly"          // 4. Çeyrek haftalık
+  | "yearlyWeekly"      // Yıllık haftalık (52 hafta)
   | "last30days"        // Son 30 gün, günlük
   | "custom";
 
@@ -339,6 +344,10 @@ export interface PLPeriodPresetConfig {
   label: string;
   periodType: PLPeriodType;
   periodCount: number;
+  // For quarterly presets, specify which quarter (1-4) to enable dynamic calculation
+  quarter?: 1 | 2 | 3 | 4;
+  // For yearly weekly
+  isYearly?: boolean;
 }
 
 // Backend: PeriodStatsDto (single period for multi-period response)
@@ -432,5 +441,72 @@ export interface MultiPeriodStatsResponse {
 export const PL_PERIOD_PRESETS: PLPeriodPresetConfig[] = [
   { id: "last12months", label: "Son 12 ay, aylık", periodType: "monthly", periodCount: 12 },
   { id: "last3monthsWeekly", label: "Son 3 ay, haftalık", periodType: "weekly", periodCount: 13 },
+  { id: "q1Weekly", label: "1. Çeyrek haftalık (Oca-Mar)", periodType: "weekly", periodCount: 13, quarter: 1 },
+  { id: "q2Weekly", label: "2. Çeyrek haftalık (Nis-Haz)", periodType: "weekly", periodCount: 13, quarter: 2 },
+  { id: "q3Weekly", label: "3. Çeyrek haftalık (Tem-Eyl)", periodType: "weekly", periodCount: 13, quarter: 3 },
+  { id: "q4Weekly", label: "4. Çeyrek haftalık (Eki-Ara)", periodType: "weekly", periodCount: 13, quarter: 4 },
+  { id: "yearlyWeekly", label: "Yıllık haftalık", periodType: "weekly", periodCount: 52, isYearly: true },
   { id: "last30days", label: "Son 30 gün, günlük", periodType: "daily", periodCount: 30 },
 ];
+
+/**
+ * Calculate the dynamic period count for quarterly and yearly presets
+ * Backend always calculates backwards from today, so:
+ * - For quarters: we calculate weeks from today back to quarter start
+ * - For yearly: we calculate weeks from today back to Jan 1
+ *
+ * @param preset - The preset configuration
+ * @returns The calculated periodCount (number of weeks)
+ */
+export function calculateDynamicPeriodCount(preset: PLPeriodPresetConfig): number {
+  const now = new Date();
+  const currentYear = now.getFullYear();
+
+  // Helper: get Monday of the week containing a date
+  const getWeekStart = (date: Date): Date => {
+    const d = new Date(date);
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Monday
+    return new Date(d.setDate(diff));
+  };
+
+  // Helper: calculate weeks between two dates
+  const weeksBetween = (start: Date, end: Date): number => {
+    const diffTime = end.getTime() - start.getTime();
+    return Math.ceil(diffTime / (7 * 24 * 60 * 60 * 1000));
+  };
+
+  // For yearly weekly - calculate weeks from Jan 1 to today
+  if (preset.isYearly) {
+    const yearStart = new Date(currentYear, 0, 1);
+    const weeks = weeksBetween(yearStart, now);
+    return Math.max(1, Math.min(52, weeks));
+  }
+
+  // For quarterly presets - calculate weeks from quarter start to today (or end of quarter if past)
+  if (preset.quarter) {
+    const quarterStartMonth = (preset.quarter - 1) * 3; // Q1=0, Q2=3, Q3=6, Q4=9
+    const quarterStart = new Date(currentYear, quarterStartMonth, 1);
+    const quarterEnd = new Date(currentYear, quarterStartMonth + 3, 0); // Last day of quarter
+
+    const currentMonth = now.getMonth();
+    const currentQuarter = Math.floor(currentMonth / 3) + 1;
+
+    // If asking for current quarter - show from quarter start to today
+    if (preset.quarter === currentQuarter) {
+      const weeks = weeksBetween(quarterStart, now);
+      return Math.max(1, weeks + 1); // +1 to include current week
+    }
+
+    // If asking for a past quarter this year - show full quarter (13 weeks)
+    if (preset.quarter < currentQuarter) {
+      return 13; // Full quarter
+    }
+
+    // If asking for a future quarter - show previous year's quarter (13 weeks)
+    return 13; // Full quarter from previous year
+  }
+
+  // Default: return the preset's static periodCount
+  return preset.periodCount;
+}

@@ -149,7 +149,21 @@ public class TrendyolProduct {
     @com.fasterxml.jackson.annotation.JsonProperty("costAndStockInfo")
     @com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
     private List<CostAndStockInfo> costAndStockInfo = new ArrayList<>();
-    
+
+    // ============== Buybox Bilgileri ==============
+    @Column(name = "buybox_order")
+    private Integer buyboxOrder;
+
+    @Column(name = "buybox_price", precision = 10, scale = 2)
+    private BigDecimal buyboxPrice;
+
+    @Column(name = "has_multiple_seller")
+    @Builder.Default
+    private Boolean hasMultipleSeller = false;
+
+    @Column(name = "buybox_updated_at")
+    private LocalDateTime buyboxUpdatedAt;
+
     @Column(name = "created_at")
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();

@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Eye, EyeOff, Gift, Loader2 } from "lucide-react";
+import { FadeIn } from "@/components/motion";
 
 export function RegisterForm() {
   const router = useRouter();
@@ -51,7 +52,8 @@ export function RegisterForm() {
       { name, email, password, ...(referralCode ? { referralCode } : {}) },
       {
         onSuccess: () => {
-          router.push("/dashboard");
+          // Redirect to verification pending page with email
+          router.push(`/verification-pending?email=${encodeURIComponent(email)}`);
         },
         onError: (err: any) => {
           setError(err.message || "Kayıt başarısız. Lütfen tekrar deneyin.");
@@ -61,6 +63,7 @@ export function RegisterForm() {
   };
 
   return (
+    <FadeIn direction="up" duration={0.4}>
     <div className="w-full max-w-md mx-auto">
       {/* Logo */}
       <div className="text-center mb-8">
@@ -215,5 +218,6 @@ export function RegisterForm() {
         </p>
       </div>
     </div>
+    </FadeIn>
   );
 }

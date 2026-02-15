@@ -42,8 +42,7 @@ public class CreateAlertRuleRequest {
     /**
      * Product barcode - null means all products.
      */
-    @Size(max = 100, message = "Product barcode must be at most 100 characters")
-    private String productBarcode;
+    private String productBarcode; // Comma-separated for multiple products
 
     /**
      * Category name - null means all categories.

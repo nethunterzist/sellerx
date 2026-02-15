@@ -60,6 +60,7 @@ export const INVOICE_CATEGORIES = {
   IADE: 'IADE',
   STOPAJ: 'STOPAJ',
   HIZMET_BEDELI: 'HIZMET_BEDELI',
+  PLATFORM_UCRETLERI: 'PLATFORM_UCRETLERI',
 } as const;
 
 export type InvoiceCategory = (typeof INVOICE_CATEGORIES)[keyof typeof INVOICE_CATEGORIES];
@@ -124,6 +125,22 @@ export interface SalesVatByRate {
 }
 
 /**
+ * Product-level sales VAT breakdown for KDV page
+ */
+export interface ProductSalesVat {
+  barcode: string;
+  productName: string;
+  quantity: number;
+  salesAmount: number;
+  vatAmount: number;
+  vatRate: number;
+  // Product enrichment fields (optional - may not exist for all products)
+  image?: string;       // Product image URL
+  brand?: string;       // Brand name
+  productUrl?: string;  // Trendyol product page URL
+}
+
+/**
  * Sales VAT summary for KDV page
  */
 export interface SalesVat {
@@ -132,6 +149,7 @@ export interface SalesVat {
   totalItemsSold: number;
   itemsWithoutVatRate: number;
   byRate: SalesVatByRate[];
+  byProduct?: ProductSalesVat[];
 }
 
 export interface InvoiceSummary {
@@ -269,6 +287,8 @@ export function getCategoryDisplayName(category: string): string {
       return 'Stopaj';
     case INVOICE_CATEGORIES.HIZMET_BEDELI:
       return 'Hizmet Bedeli';
+    case INVOICE_CATEGORIES.PLATFORM_UCRETLERI:
+      return 'Platform Ücretleri';
     default:
       return category;
   }
@@ -673,8 +693,14 @@ export interface ProductCargoBreakdown {
   averageDesi: number;
   /** Average cost per shipment */
   averageCostPerShipment: number;
-  /** List of recent shipments (limited to last 50) */
+  /** List of shipments (paginated) */
   shipments: CargoShipmentDetail[];
+  /** Current page number (0-based) */
+  currentPage?: number;
+  /** Total number of pages */
+  totalPages?: number;
+  /** Whether there are more pages to load */
+  hasMore?: boolean;
 }
 
 // ========================================
@@ -788,4 +814,58 @@ export interface StoppageSummary {
   totalElements?: number;
   totalPages?: number;
   hasNext?: boolean;
+}
+
+// ========================================
+// Product Expense Breakdown Types
+// For "Detay" panel - Giderler section
+// ========================================
+
+/**
+ * Individual expense item within a breakdown category
+ */
+export interface ExpenseItem {
+  transactionType: string;
+  description?: string;
+  amount: number;
+  vatAmount: number;
+  orderNumber?: string;
+  invoiceSerialNumber?: string;
+}
+
+/**
+ * Product expense breakdown response
+ * Shows all expenses related to a specific product (barcode) within a date range.
+ * Expenses are categorized by type: platform fees, penalties, international, other.
+ */
+export interface ProductExpenseBreakdown {
+  barcode: string;
+  productName?: string;
+  productImageUrl?: string;
+
+  // Platform Hizmet Bedeli (Platform Service Fees)
+  platformServiceFee: number;
+  platformServiceFeeCount: number;
+
+  // Uluslararası Kargo (International Shipping)
+  internationalShippingFee: number;
+  internationalShippingCount: number;
+
+  // Cezalar (Penalties)
+  penaltyFee: number;
+  penaltyCount: number;
+  penaltyItems?: ExpenseItem[];
+
+  // Diğer Giderler (Other Expenses)
+  otherExpenses: number;
+  otherExpenseCount: number;
+  otherExpenseItems?: ExpenseItem[];
+
+  // Toplam (Totals)
+  totalExpenses: number;
+  totalVatAmount: number;
+  totalTransactionCount: number;
+
+  // Whether any expense data was found
+  hasExpenseData: boolean;
 }

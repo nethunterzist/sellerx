@@ -164,7 +164,7 @@
     "dumen": "Helm",
     "returns": "Returns",
     "ads": "Ads",
-    "qa": "Customer Questions",
+    "qa": "AI Assistant",
     "stores": "Stores",
     "reports": "Reports",
     "billing": "Billing",
@@ -614,7 +614,11 @@
       "color": "Color",
       "reason": "Reason",
       "auto_accepted": "Auto Accepted",
-      "seller_accepted": "Seller Accepted"
+      "seller_accepted": "Seller Accepted",
+      "auditHistory": "Status History",
+      "auditLoading": "Loading history...",
+      "auditEmpty": "No history found",
+      "auditError": "Failed to load history"
     },
     "detail_modal": {
       "title": "Return Details",
@@ -1045,25 +1049,125 @@
     }
   },
   "qa": {
-    "title": "Customer Questions",
-    "description": "View and manage customer questions from Trendyol",
-    "noStoreSelected": "Select a store to view questions",
-    "syncButton": "Sync",
-    "syncing": "Syncing...",
-    "syncSuccess": "Sync completed",
-    "syncResultMessage": "{newQuestions} new questions, {updatedQuestions} updated questions",
-    "aiEnabled": "AI Answer Active",
-    "aiDisabled": "AI Answer Inactive",
-    "aiEnabledDescription": "You can get AI-powered answer suggestions for pending questions. Click the 'Suggest AI Answer' button below each question.",
-    "aiDisabledDescription": "AI answer feature is inactive. Go to Settings > AI Answer to enable it.",
-    "aiSettings": "Settings",
-    "questionsTitle": "Question List",
-    "questionsDescription": "Questions from your customers about your products",
+    "title": "AI Assistant",
+    "description": "AI-powered automatic customer response system",
+    "noStoreSelected": "Select a store to use AI Assistant",
+    "hero": {
+      "title": "AI Assistant",
+      "aiActive": "AI Active",
+      "aiInactive": "AI Inactive",
+      "answered": "Answered",
+      "pending": "Pending",
+      "avgConfidence": "Avg. Confidence",
+      "timeSaved": "Time Saved",
+      "minutes": "min",
+      "toggleOn": "Enable AI",
+      "toggleOff": "Disable AI"
+    },
     "mainTabs": {
-      "questions": "Questions",
-      "suggestions": "AI Suggestions",
-      "seniority": "Seniority Status",
-      "alerts": "Alerts"
+      "answerFlow": "Answer Flow",
+      "aiBrain": "AI Brain",
+      "rules": "Rules",
+      "performance": "Performance",
+      "crossSell": "Cross-Sell"
+    },
+    "answerFlow": {
+      "pendingApproval": "Pending Approval",
+      "autoAnswered": "Auto Answered",
+      "humanRequired": "Human Required",
+      "approveAndSend": "Approve & Send",
+      "edit": "Edit",
+      "reject": "Reject",
+      "answeredAt": "Answered",
+      "answerQuestion": "Answer",
+      "aiSuggest": "AI Suggest",
+      "noQuestions": "No questions in this category",
+      "source": {
+        "product": "Product",
+        "historical_qa": "Past Q&A",
+        "knowledge_base": "Knowledge Base",
+        "template": "Template"
+      },
+      "generating": "AI is generating answer...",
+      "lowConfidence": "Low confidence score - review needed",
+      "edited": "Answer was edited",
+      "suggestedAnswer": "Suggested Answer",
+      "generateButton": "Generate AI Answer",
+      "generateError": "Failed to generate AI answer",
+      "approveSuccess": "Answer approved and sent",
+      "approveError": "Failed to approve answer",
+      "showAnswer": "Show answer",
+      "hideAnswer": "Hide answer",
+      "manualAnswer": "Answer Manually",
+      "saveEdit": "Save",
+      "cancelEdit": "Cancel"
+    },
+    "aiBrain": {
+      "knowledgeBase": "Knowledge Base",
+      "learningSuggestions": "Learning Suggestions",
+      "addKnowledge": "Add Knowledge",
+      "editKnowledge": "Edit Knowledge",
+      "emptyKnowledge": "Add knowledge to help AI provide better answers",
+      "emptySuggestions": "AI has not detected any new learning suggestions yet",
+      "category": "Category",
+      "titleField": "Title",
+      "content": "Content",
+      "keywords": "Keywords",
+      "keywordsPlaceholder": "Separate with commas",
+      "priority": "Priority",
+      "save": "Save",
+      "saving": "Saving...",
+      "cancel": "Cancel",
+      "deleteConfirm": "Are you sure you want to delete this knowledge?",
+      "activeItems": "{count} active items"
+    },
+    "rules": {
+      "toneAndStyle": "Tone & Style",
+      "safetyRules": "Safety Rules",
+      "autoAnswerPolicy": "Auto Answer Policy",
+      "tone": "AI Tone",
+      "toneOptions": {
+        "professional": "Professional",
+        "friendly": "Friendly",
+        "formal": "Formal"
+      },
+      "language": "Language",
+      "maxLength": "Max Answer Length",
+      "maxLengthChars": "characters",
+      "includeGreeting": "Include Greeting",
+      "includeSignature": "Include Signature",
+      "signatureText": "Signature Text",
+      "confidenceThreshold": "Confidence Threshold",
+      "autoAnswer": "Auto Answer",
+      "autoAnswerWarning": "Questions exceeding the confidence threshold will be answered automatically",
+      "saveSettings": "Save Settings",
+      "saving": "Saving...",
+      "saved": "Settings saved",
+      "safetyRule": {
+        "legalRisk": "Legal statements are automatically blocked",
+        "healthSafety": "Health topics require human approval",
+        "knowledgeConflict": "Warning when knowledge conflict is detected",
+        "brandInconsistency": "Warning when brand inconsistency is detected"
+      },
+      "goToAiBrain": "Go to AI Brain",
+      "policyDescription": "Active entries in the knowledge base are used by AI to generate answers"
+    },
+    "performance": {
+      "summary": "AI Performance Summary",
+      "totalPatterns": "Total Patterns",
+      "autoSubmitEligible": "Auto-Submit Eligible",
+      "activeAlerts": "Active Alerts",
+      "avgApprovalRate": "Avg. Approval Rate",
+      "seniorityStatus": "Seniority Status",
+      "alerts": "Alerts",
+      "noAlerts": "No active alerts"
+    },
+    "activityFeed": {
+      "title": "Recent AI Activity",
+      "empty": "No AI activity yet",
+      "answered": "answered",
+      "approved": "approved",
+      "generated": "generated"
     },
     "tabs": {
       "all": "All",
@@ -1092,7 +1196,8 @@
       "answerButton": "Answer",
       "aiSuggestButton": "AI Suggest",
       "closeAiPanel": "Close AI Panel",
-      "aiDisabledNote": "Enable AI from Settings > AI Answer to use AI suggestions"
+      "aiDisabledNote": "Enable AI from Settings > AI Answer to use AI suggestions",
+      "noProduct": "No product info"
     },
     "emptyState": {
       "title": "No customer questions yet",
@@ -1127,7 +1232,9 @@
       "contentLabel": "Content",
       "save": "Save and Approve",
       "cancel": "Cancel",
-      "saving": "Saving..."
+      "saving": "Saving...",
+      "suggestedTitle": "Suggested Title",
+      "newSuggestions": "new suggestions"
     },
     "seniority": {
       "title": "AI Seniority Status",
@@ -1204,6 +1311,107 @@
       "success": "Answer saved successfully",
       "error": "Failed to submit answer",
       "cancel": "Cancel"
+    },
+    "crossSell": {
+      "rulesTitle": "Cross-Sell Rules",
+      "createRule": "New Rule",
+      "analytics": {
+        "impressions": "Impressions",
+        "clicks": "Clicks",
+        "conversions": "Conversions",
+        "conversionRate": "Conversion Rate"
+      },
+      "globalToggle": {
+        "title": "Cross-Sell System",
+        "description": "Show product recommendations in AI answers",
+        "active": "Active",
+        "inactive": "Inactive",
+        "enabled": "Cross-sell enabled",
+        "disabled": "Cross-sell disabled",
+        "error": "Failed to update setting"
+      },
+      "ruleBuilder": {
+        "createTitle": "New Cross-Sell Rule",
+        "editTitle": "Edit Rule",
+        "name": "Rule Name",
+        "namePlaceholder": "e.g.: Case recommendations",
+        "description": "Description",
+        "descriptionPlaceholder": "When should this rule trigger?",
+        "triggers": "Triggers",
+        "triggerValuePlaceholder": "Enter value and press Enter",
+        "triggerTypes": {
+          "keyword": "Keyword",
+          "category": "Category",
+          "product": "Product",
+          "questionPattern": "Question Pattern"
+        },
+        "recommendationType": "Recommendation Type",
+        "recommendationTypes": {
+          "complementary": "Complementary",
+          "upsell": "Upsell",
+          "alternative": "Alternative",
+          "bundle": "Bundle"
+        },
+        "products": "Recommended Products",
+        "maxRecommendations": "Max Recommendations",
+        "messageTemplate": "Message Template",
+        "messageTemplatePlaceholder": "e.g.: You might also like these products:",
+        "status": "Status",
+        "statusActive": "Active",
+        "statusInactive": "Inactive",
+        "statusDraft": "Draft",
+        "cancel": "Cancel",
+        "create": "Create",
+        "update": "Update",
+        "createSuccess": "Rule created",
+        "updateSuccess": "Rule updated",
+        "createError": "Failed to create rule",
+        "updateError": "Failed to update rule",
+        "validation": {
+          "nameRequired": "Rule name is required",
+          "triggersRequired": "Add at least one trigger",
+          "productsRequired": "Select at least one product"
+        }
+      },
+      "ruleCard": {
+        "status": {
+          "active": "Active",
+          "inactive": "Inactive",
+          "draft": "Draft"
+        },
+        "edit": "Edit",
+        "delete": "Delete",
+        "impressions": "impressions",
+        "conversion": "conversion",
+        "products": "products"
+      },
+      "ruleList": {
+        "count": "{count} rules",
+        "empty": "No cross-sell rules yet",
+        "emptyHint": "Get started by creating a new rule",
+        "deleteConfirm": "Are you sure you want to delete this rule?",
+        "deleteSuccess": "Rule deleted",
+        "deleteError": "Failed to delete rule",
+        "activated": "Rule activated",
+        "deactivated": "Rule deactivated",
+        "toggleError": "Failed to update status"
+      },
+      "productSelector": {
+        "searchPlaceholder": "Search products (barcode or name)...",
+        "limitReached": "Max {max} products can be selected",
+        "searching": "Searching...",
+        "noResults": "No products found",
+        "outOfStock": "Out of stock",
+        "selectedCount": "{count}/{max} products selected"
+      },
+      "preview": {
+        "title": "Live Preview",
+        "customerQuestion": "Customer Question",
+        "aiAnswer": "AI Answer",
+        "sampleAnswer": "Detailed information about our product...",
+        "defaultTemplate": "You might also like these products:",
+        "emptyProducts": "Select products to recommend"
+      }
     }
   },
   "Billing": {
@@ -2038,162 +2246,6 @@
       "daily_average": "Daily average",
       "no_expenses": "No expenses defined yet",
       "add_hint": "You can add expenses from the settings page"
-    }
-  },
-  "stockTracking": {
-    "title": "Competitor Stock Tracking",
-    "description": "Track competitor product stock levels",
-    "noStore": "Select a store to track stock",
-    "refresh": "Refresh",
-    "mockModeEnabled": "Mock mode active - Showing sample data",
-    "addProduct": "Add Product",
-    "trackedProducts": "Tracked Products",
-    "trackedProductsDesc": "{count}/{max} products tracked",
-    "backToList": "Back to List",
-    "productNotFound": "Product not found",
-    "dashboard": {
-      "totalTracked": "Total Tracked",
-      "trackedProducts": "Tracked Products",
-      "outOfStock": "Out of Stock",
-      "lowStock": "Low Stock",
-      "inStock": "In Stock",
-      "unreadAlerts": "Unread Alerts",
-      "description": "tracked products",
-      "criticalProducts": "critical products",
-      "belowThreshold": "below threshold",
-      "stockAvailable": "stock available"
-    },
-    "table": {
-      "image": "Image",
-      "product": "Product",
-      "stock": "Stock",
-      "price": "Price",
-      "currentStock": "Current Stock",
-      "lastChecked": "Last Checked",
-      "status": "Status",
-      "actions": "Actions",
-      "noProducts": "No tracked products yet",
-      "noProductsDesc": "Add products to track competitor inventory",
-      "checkNow": "Check Now",
-      "checkSuccess": "Stock check completed",
-      "checkError": "Stock check failed",
-      "remove": "Remove",
-      "removeConfirm": "Are you sure you want to stop tracking this product?",
-      "removeSuccess": "Product removed from tracking",
-      "removeError": "Failed to remove product",
-      "delete": "Delete",
-      "deleteConfirmTitle": "Delete Product",
-      "deleteConfirmDescription": "Are you sure you want to stop tracking this product?",
-      "confirmDelete": "Delete",
-      "deleteSuccess": "Product removed from tracking",
-      "deleteError": "Failed to remove product",
-      "outOfStock": "Out of Stock",
-      "lowStock": "Low Stock",
-      "inStock": "In Stock",
-      "noData": "No Data",
-      "unit": "units",
-      "viewDetails": "View Details",
-      "viewDetail": "View Details",
-      "openTrendyol": "Open in Trendyol",
-      "empty": "No tracked products yet"
-    },
-    "addModal": {
-      "title": "Add Product",
-      "description": "Enter the Trendyol URL of the competitor product you want to track",
-      "urlLabel": "Trendyol Product URL",
-      "urlPlaceholder": "https://www.trendyol.com/...",
-      "urlHelp": "Paste the full URL of the Trendyol product page",
-      "thresholdLabel": "Low Stock Threshold",
-      "thresholdHelp": "You'll be notified when stock falls below this level",
-      "cancel": "Cancel",
-      "add": "Add",
-      "adding": "Adding...",
-      "success": "Product added to tracking",
-      "error": "Failed to add product",
-      "invalidUrl": "Please enter a valid Trendyol URL",
-      "limitReached": "Maximum 10 products can be tracked"
-    },
-    "addProductForm": {
-      "title": "Add Product",
-      "description": "Enter the Trendyol URL of the competitor product you want to track",
-      "urlLabel": "Trendyol Product URL",
-      "urlHint": "Paste the full URL of the Trendyol product page",
-      "alertSettings": "Alert Settings",
-      "urlRequired": "Please enter a URL",
-      "invalidUrl": "Please enter a valid Trendyol URL",
-      "invalidProductUrl": "Unrecognized Trendyol product page. Please enter a product detail page URL (e.g., trendyol.com/brand/product-p-123456)",
-      "validating": "Fetching product info...",
-      "productNotFound": "Product not found",
-      "previewError": "Could not fetch product info",
-      "inStock": "In Stock",
-      "outOfStock": "Out of Stock",
-      "pieces": "pcs",
-      "success": "Product added to tracking",
-      "error": "Failed to add product",
-      "submit": "Add"
-    },
-    "common": {
-      "cancel": "Cancel"
-    },
-    "alerts": {
-      "title": "Stock Alerts",
-      "empty": "No alerts yet",
-      "noAlerts": "No alerts yet",
-      "noAlertsDesc": "You'll receive notifications here when stock changes",
-      "markAsRead": "Mark as Read",
-      "markAllRead": "Mark All as Read",
-      "types": {
-        "OUT_OF_STOCK": "Out of Stock",
-        "LOW_STOCK": "Low Stock",
-        "BACK_IN_STOCK": "Back in Stock",
-        "STOCK_INCREASED": "Stock Increased"
-      },
-      "severity": {
-        "LOW": "Low",
-        "MEDIUM": "Medium",
-        "HIGH": "High",
-        "CRITICAL": "Critical"
-      }
-    },
-    "detail": {
-      "currentStock": "Current Stock",
-      "price": "Price",
-      "minStock": "Min. Stock",
-      "maxStock": "Max. Stock",
-      "avgStock": "Avg. Stock",
-      "totalChecks": "Total Checks",
-      "outOfStockCount": "Out of Stock Count",
-      "lastOutOfStock": "Last out of stock",
-      "last30Days": "Last 30 days",
-      "paused": "Paused"
-    },
-    "chart": {
-      "title": "Stock History",
-      "noData": "No stock data yet",
-      "stock": "Stock",
-      "change": "Change",
-      "price": "Price",
-      "stockLevel": "Stock Level",
-      "lowStockThreshold": "Low Stock Threshold",
-      "lowStockLine": "Low stock"
-    },
-    "settings": {
-      "title": "Alert Settings",
-      "isActive": "Tracking Active",
-      "isActiveDesc": "Enable/disable stock tracking for this product",
-      "alertOnOutOfStock": "Alert on Out of Stock",
-      "alertOnOutOfStockDesc": "Get notified when competitor runs out of stock",
-      "alertOnLowStock": "Alert on Low Stock",
-      "alertOnLowStockDesc": "Get notified when stock falls below threshold",
-      "lowStockThreshold": "Low Stock Threshold",
-      "lowStockThresholdDesc": "Stock below this level is considered low",
-      "alertOnBackInStock": "Alert on Back in Stock",
-      "alertOnBackInStockDesc": "Get notified when competitor restocks",
-      "alertOnStockIncrease": "Alert on Stock Increase",
-      "alertOnStockIncreaseDesc": "Get notified when competitor significantly increases stock",
-      "save": "Save",
-      "saveSuccess": "Settings saved",
-      "saveError": "Failed to save settings"
     }
   },
   "referral": {

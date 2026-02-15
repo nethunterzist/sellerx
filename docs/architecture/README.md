@@ -365,6 +365,7 @@ Bu klasördeki tüm mimari dokümanlar (tek yerden erişim):
 | [SYNC_SYSTEM.md](./SYNC_SYSTEM.md) | Hybrid sync ve scheduled job özeti |
 | [TEST_INFRASTRUCTURE.md](./TEST_INFRASTRUCTURE.md) | Test altyapısı — TestContainers, base class'lar |
 | [TRENDYOL_API_LIMITS.md](./TRENDYOL_API_LIMITS.md) | Trendyol API limitleri ve workaround'lar |
+| [STOPPAGE_SYSTEM.md](./STOPPAGE_SYSTEM.md) | Stoppage (durdurma) sistemi — Trendyol stoppage verisi |
 | [WEBHOOK_SYSTEM.md](./WEBHOOK_SYSTEM.md) | Webhook altyapısı ve idempotency |
 
 ---
@@ -382,7 +383,7 @@ export JWT_SECRET='sellerx-development-jwt-secret-key-2026-minimum-256-bits-requ
 
 # 3. Frontend'i başlat
 cd sellerx-frontend
-npm run dev
+npm run build && npm start
 
 # Test kullanıcısı:
 # Email: test@test.com
@@ -395,6 +396,8 @@ npm run dev
 
 | Versiyon | Tarih | Değişiklikler |
 |----------|-------|---------------|
+| 2.5.0 | 2026-02 | **Ölçeklendirme tamamlandı** — Resilience4j, WebSocket, DB optimizasyonları, frontend optimizasyonları |
+| 2.4.0 | 2026-02 | **Email sistemi ve auth geliştirmeleri** — email verification, password reset, auth rate limiter, queue-based email |
 | 2.3.0 | 2026-02 | **Admin Impersonation eklendi** — kullanıcı hesabına salt okunur giriş, audit log, çift katmanlı koruma |
 | 2.2.0 | 2026-02 | **Otomatik Stok Algilama eklendi** — stok artisi algilama, auto maliyet kaydi, PO duplicate onleme |
 | 2.1.0 | 2026-01 | **Uyarı/Alarm sistemi eklendi** - kullanıcı tanımlı kurallar, email entegrasyonu |

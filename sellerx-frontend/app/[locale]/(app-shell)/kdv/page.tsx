@@ -1,6 +1,9 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { motion } from "motion/react";
+import { FadeIn } from "@/components/motion/fade-in";
+import { NumberTicker } from "@/components/motion/number-ticker";
 import { useSelectedStore } from "@/hooks/queries/use-stores";
 import { useInvoiceSummary } from "@/hooks/queries/use-invoices";
 import { useCurrency } from "@/lib/contexts/currency-context";
@@ -217,6 +220,7 @@ export default function KdvPage() {
   const { formatCurrency } = useCurrency();
 
   const { data: expensesData } = useStoreExpenses(storeId || undefined);
+  const [productsExpanded, setProductsExpanded] = useState(false);
   const [salesVatExpanded, setSalesVatExpanded] = useState(true);
   const [purchaseVatExpanded, setPurchaseVatExpanded] = useState(true);
   const [expensesExpanded, setExpensesExpanded] = useState(true);
@@ -460,82 +464,79 @@ export default function KdvPage() {
 
           {/* ─── Distribution Bar ─── */}
           {totalBar > 0 && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />
-                  Hesaplanan KDV ({salesPercent.toFixed(0)}%)
-                </span>
-                <span className="flex items-center gap-1.5">
-                  Indirilecek KDV ({(100 - salesPercent).toFixed(0)}%)
-                  <span className="w-2.5 h-2.5 rounded-full bg-red-400 inline-block" />
-                </span>
+            <FadeIn direction="up" delay={0.2} duration={0.4}>
+              <div className="space-y-2">
+                {/* Labels with animated percentages */}
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />
+                    Hesaplanan KDV (
+                    <NumberTicker value={salesPercent} decimals={0} suffix="%" />
+                    )
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    Indirilecek KDV (
+                    <NumberTicker value={100 - salesPercent} decimals={0} suffix="%" />
+                    )
+                    <span className="w-2.5 h-2.5 rounded-full bg-red-400 inline-block" />
+                  </span>
+                </div>
+
+                {/* Progress Bar with Motion */}
+                <div className="h-3 rounded-full overflow-hidden flex bg-muted/30 border relative group">
+                  {/* Hesaplanan KDV (Yeşil) */}
+                  <motion.div
+                    className="bg-emerald-500 dark:bg-emerald-400 relative overflow-hidden"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${salesPercent}%` }}
+                    transition={{
+                      type: "spring",
+                      stiffness: 100,
+                      damping: 20,
+                      duration: 0.6,
+                    }}
+                  >
+                    {/* Shimmer effect */}
+                    <motion.div
+                      className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                      initial={{ x: "-100%" }}
+                      animate={{ x: "200%" }}
+                      transition={{
+                        duration: 2,
+                        repeat: Infinity,
+                        ease: "linear",
+                      }}
+                    />
+                  </motion.div>
+
+                  {/* İndirilecek KDV (Kırmızı) */}
+                  <motion.div
+                    className="bg-red-400 dark:bg-red-500"
+                    initial={{ width: "100%" }}
+                    animate={{ width: `${100 - salesPercent}%` }}
+                    transition={{
+                      type: "spring",
+                      stiffness: 100,
+                      damping: 20,
+                      duration: 0.6,
+                    }}
+                  />
+
+                  {/* Hover tooltip */}
+                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span className="text-[10px] font-bold text-white drop-shadow-md">
+                      {formatCurrency(salesVatKdv)} / {formatCurrency(totalGiderKdv)}
+                    </span>
+                  </div>
+                </div>
               </div>
-              <div className="h-3 rounded-full overflow-hidden flex bg-muted/30 border">
-                <div
-                  className="bg-emerald-500 dark:bg-emerald-400 transition-all duration-500"
-                  style={{ width: `${salesPercent}%` }}
-                />
-                <div
-                  className="bg-red-400 dark:bg-red-500 transition-all duration-500"
-                  style={{ width: `${100 - salesPercent}%` }}
-                />
-              </div>
-            </div>
+            </FadeIn>
           )}
 
-          {/* ─── Detail Cards (2x2 grid) ─── */}
+          {/* ─── Row 1: Trendyol Fatura KDV'leri | Diğer Gider KDV'leri (50%-50%) ─── */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
-            {/* Card A — Satis KDV'si */}
-            <DetailCard
-              title="Satis KDV'si (Tahsil Edilen)"
-              icon={<ShoppingBag className="h-4 w-4" />}
-              headerColor="bg-emerald-600"
-              tooltip="Musteriden tahsil edilen KDV. Satislariniz uzerinden hesaplanan KDV tutarlari."
-              isEmpty={!summary?.salesVat || summary.salesVat.totalSalesAmount === 0}
-              stats={[
-                { label: "Toplam Adet", value: String(summary?.salesVat?.totalItemsSold ?? 0) },
-                { label: "KDV Tutari", value: formatCurrency(salesVatKdv) },
-              ]}
-            >
-              {/* Expandable rate breakdown */}
-              <div className="mb-3">
-                <button
-                  className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors w-full"
-                  onClick={() => setSalesVatExpanded(!salesVatExpanded)}
-                >
-                  Oran Bazli Kirilim
-                  {salesVatExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                </button>
-                {salesVatExpanded && summary?.salesVat?.byRate && (
-                  <div className="mt-2 space-y-1.5">
-                    {summary.salesVat.byRate.map((rate) => (
-                      <div key={rate.vatRate} className="flex items-center justify-between text-xs bg-muted/30 rounded-md px-3 py-2">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">%{rate.vatRate}</span>
-                          <span className="text-muted-foreground">({rate.itemCount} adet)</span>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <span className="text-muted-foreground">{formatCurrency(rate.salesAmount)}</span>
-                          <span className="font-semibold text-emerald-600 dark:text-emerald-400 min-w-[80px] text-right">
-                            {formatCurrency(rate.vatAmount)}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                    {summary.salesVat.itemsWithoutVatRate > 0 && (
-                      <div className="flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400 px-3 py-2 bg-amber-50 dark:bg-amber-950/30 rounded-md">
-                        <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
-                        {summary.salesVat.itemsWithoutVatRate} adet urunun KDV orani bulunamadi.
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </DetailCard>
-
-            {/* Card B — Fatura KDV'leri */}
+            {/* Left: Trendyol Fatura KDV'leri */}
             <DetailCard
               title="Trendyol Fatura KDV'leri"
               icon={<FileText className="h-4 w-4" />}
@@ -568,7 +569,181 @@ export default function KdvPage() {
               </div>
             </DetailCard>
 
-            {/* Card C — Mal Alis KDV'si */}
+            {/* Right: Diğer Gider KDV'leri */}
+            <DetailCard
+              title="Diger Gider KDV'leri"
+              icon={<Receipt className="h-4 w-4" />}
+              headerColor="bg-purple-500"
+              tooltip="Platform disinda odediginiz giderlerin KDV'si (ofis, muhasebe, paketleme vb.)"
+              isEmpty={monthlyExpenses.length === 0}
+              stats={[
+                { label: "Kalem Sayisi", value: `${monthlyExpenses.length} kalem` },
+                { label: "KDV Tutari", value: formatCurrency(expenseKdv) },
+              ]}
+            >
+              <div className="mb-3">
+                <button
+                  className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors w-full"
+                  onClick={() => setExpensesExpanded(!expensesExpanded)}
+                >
+                  Gider Detaylari ({monthlyExpenses.length} kalem)
+                  {expensesExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                </button>
+                {expensesExpanded && (
+                  <div className="mt-2 space-y-1.5">
+                    {monthlyExpenses.map((exp) => (
+                      <div key={exp.id} className="flex items-center justify-between text-xs bg-muted/30 rounded-md px-3 py-2">
+                        <div className="flex items-center gap-2 min-w-0 flex-1 mr-4">
+                          <span className="font-medium truncate">
+                            {exp.expenseCategoryName}
+                            {exp.name && <span className="text-muted-foreground"> — {exp.name}</span>}
+                          </span>
+                          {exp.vatRate != null && (
+                            <span className="text-muted-foreground flex-shrink-0">%{exp.vatRate}</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-4 flex-shrink-0">
+                          <span className="text-muted-foreground">{formatCurrency(exp.amount + (exp.vatAmount ?? 0))}</span>
+                          <span className="font-semibold text-purple-600 dark:text-purple-400 min-w-[80px] text-right">
+                            {exp.vatAmount ? formatCurrency(exp.vatAmount) : "—"}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </DetailCard>
+          </div>
+
+          {/* ─── Row 2: Satış KDV'si | Mal Alış KDV'si (50%-50%) ─── */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+            {/* Left: Satış KDV'si */}
+            <DetailCard
+              title="Satis KDV'si (Tahsil Edilen)"
+              icon={<ShoppingBag className="h-4 w-4" />}
+              headerColor="bg-emerald-600"
+              tooltip="Musteriden tahsil edilen KDV. Satislariniz uzerinden hesaplanan KDV tutarlari."
+              isEmpty={!summary?.salesVat || summary.salesVat.totalSalesAmount === 0}
+              stats={[
+                { label: "Toplam Adet", value: String(summary?.salesVat?.totalItemsSold ?? 0) },
+                { label: "KDV Tutari", value: formatCurrency(salesVatKdv) },
+              ]}
+            >
+            {/* Product-based breakdown */}
+            {summary?.salesVat?.byProduct && summary.salesVat.byProduct.length > 0 && (
+              <div className="mb-3">
+                <button
+                  className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors w-full"
+                  onClick={() => setProductsExpanded(!productsExpanded)}
+                >
+                  Urun Bazli Kirilim ({summary.salesVat.byProduct.length} urun)
+                  {productsExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                </button>
+                {productsExpanded && (
+                  <div className="mt-2 space-y-1.5 max-h-[400px] overflow-y-auto">
+                    {summary.salesVat.byProduct.map((product) => (
+                      <div key={product.barcode} className="flex items-center gap-3 text-xs bg-muted/30 rounded-md px-3 py-2.5 hover:bg-muted/50 transition-colors">
+                        {/* Ürün Görseli */}
+                        {product.image ? (
+                          <img
+                            src={product.image}
+                            alt={product.productName}
+                            className="w-12 h-12 object-cover rounded-md flex-shrink-0"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                        ) : (
+                          <div className="w-12 h-12 bg-muted rounded-md flex items-center justify-center flex-shrink-0">
+                            <ShoppingBag className="h-6 w-6 text-muted-foreground" />
+                          </div>
+                        )}
+
+                        {/* Ürün Detayları */}
+                        <div className="flex items-center justify-between min-w-0 flex-1">
+                          <div className="flex flex-col gap-1 min-w-0 flex-1">
+                            {/* Ürün Adı + Link */}
+                            {product.productUrl ? (
+                              <a
+                                href={product.productUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="font-medium truncate hover:text-emerald-600 transition-colors"
+                              >
+                                {product.productName}
+                              </a>
+                            ) : (
+                              <span className="font-medium truncate">{product.productName}</span>
+                            )}
+
+                            {/* Marka + Adet + KDV Oranı */}
+                            <div className="flex items-center gap-2 text-muted-foreground flex-shrink-0">
+                              {product.brand && (
+                                <>
+                                  <span className="font-medium">{product.brand}</span>
+                                  <span>•</span>
+                                </>
+                              )}
+                              <span>{product.quantity} adet</span>
+                              <span>•</span>
+                              <span>%{product.vatRate} KDV</span>
+                            </div>
+                          </div>
+
+                          {/* Tutar Bilgileri */}
+                          <div className="flex items-center gap-4 ml-4 flex-shrink-0">
+                            <span className="text-muted-foreground">{formatCurrency(product.salesAmount)}</span>
+                            <span className="font-semibold text-emerald-600 dark:text-emerald-400 min-w-[80px] text-right">
+                              {formatCurrency(product.vatAmount)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Rate-based breakdown */}
+            <div className="mb-3">
+              <button
+                className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors w-full"
+                onClick={() => setSalesVatExpanded(!salesVatExpanded)}
+              >
+                Oran Bazli Kirilim
+                {salesVatExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+              </button>
+              {salesVatExpanded && summary?.salesVat?.byRate && (
+                <div className="mt-2 space-y-1.5">
+                  {summary.salesVat.byRate.map((rate) => (
+                    <div key={rate.vatRate} className="flex items-center justify-between text-xs bg-muted/30 rounded-md px-3 py-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">%{rate.vatRate}</span>
+                        <span className="text-muted-foreground">({rate.itemCount} adet)</span>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <span className="text-muted-foreground">{formatCurrency(rate.salesAmount)}</span>
+                        <span className="font-semibold text-emerald-600 dark:text-emerald-400 min-w-[80px] text-right">
+                          {formatCurrency(rate.vatAmount)}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                  {summary.salesVat.itemsWithoutVatRate > 0 && (
+                    <div className="flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400 px-3 py-2 bg-amber-50 dark:bg-amber-950/30 rounded-md">
+                      <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
+                      {summary.salesVat.itemsWithoutVatRate} adet urunun KDV orani bulunamadi.
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </DetailCard>
+
+            {/* Right: Mal Alış KDV'si */}
             <DetailCard
               title="Mal Alis KDV'si"
               icon={<Package className="h-4 w-4" />}
@@ -616,52 +791,6 @@ export default function KdvPage() {
                       </div>
                     )}
                   </>
-                )}
-              </div>
-            </DetailCard>
-
-            {/* Card D — Diger Gider KDV'leri */}
-            <DetailCard
-              title="Diger Gider KDV'leri"
-              icon={<Receipt className="h-4 w-4" />}
-              headerColor="bg-purple-500"
-              tooltip="Platform disinda odediginiz giderlerin KDV'si (ofis, muhasebe, paketleme vb.)"
-              isEmpty={monthlyExpenses.length === 0}
-              stats={[
-                { label: "Kalem Sayisi", value: `${monthlyExpenses.length} kalem` },
-                { label: "KDV Tutari", value: formatCurrency(expenseKdv) },
-              ]}
-            >
-              <div className="mb-3">
-                <button
-                  className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors w-full"
-                  onClick={() => setExpensesExpanded(!expensesExpanded)}
-                >
-                  Gider Detaylari ({monthlyExpenses.length} kalem)
-                  {expensesExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                </button>
-                {expensesExpanded && (
-                  <div className="mt-2 space-y-1.5">
-                    {monthlyExpenses.map((exp) => (
-                      <div key={exp.id} className="flex items-center justify-between text-xs bg-muted/30 rounded-md px-3 py-2">
-                        <div className="flex items-center gap-2 min-w-0 flex-1 mr-4">
-                          <span className="font-medium truncate">
-                            {exp.expenseCategoryName}
-                            {exp.name && <span className="text-muted-foreground"> — {exp.name}</span>}
-                          </span>
-                          {exp.vatRate != null && (
-                            <span className="text-muted-foreground flex-shrink-0">%{exp.vatRate}</span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-4 flex-shrink-0">
-                          <span className="text-muted-foreground">{formatCurrency(exp.amount + (exp.vatAmount ?? 0))}</span>
-                          <span className="font-semibold text-purple-600 dark:text-purple-400 min-w-[80px] text-right">
-                            {exp.vatAmount ? formatCurrency(exp.vatAmount) : "—"}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
                 )}
               </div>
             </DetailCard>

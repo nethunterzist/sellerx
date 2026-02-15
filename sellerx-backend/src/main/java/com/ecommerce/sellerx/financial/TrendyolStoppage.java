@@ -52,6 +52,20 @@ public class TrendyolStoppage {
     @Column(name = "description")
     private String description;
 
+    /**
+     * Trendyol order number for matching stoppage to order.
+     * Comes from OtherFinancials API.
+     */
+    @Column(name = "order_number", length = 50)
+    private String orderNumber;
+
+    /**
+     * Trendyol shipment package ID for matching stoppage to order.
+     * Comes from OtherFinancials API.
+     */
+    @Column(name = "shipment_package_id")
+    private Long shipmentPackageId;
+
     @Column(name = "period_start")
     private LocalDate periodStart;
 

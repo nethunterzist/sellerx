@@ -77,7 +77,10 @@ public class SecurityConfig {
                     c.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED));
                     c.accessDeniedHandler(((request, response, accessDeniedException) ->
                             response.setStatus(HttpStatus.FORBIDDEN.value())));
-                });
+                })
+                .headers(headers -> headers
+                    .cacheControl(cache -> cache.disable())
+                );
 
         return http.build();
     }

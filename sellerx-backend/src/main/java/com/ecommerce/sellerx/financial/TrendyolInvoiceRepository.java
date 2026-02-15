@@ -154,4 +154,9 @@ public interface TrendyolInvoiceRepository extends JpaRepository<TrendyolInvoice
     );
 
     void deleteByStoreId(UUID storeId);
+
+    /**
+     * Find all invoices for a store, ordered by invoice date descending.
+     */
+    List<TrendyolInvoice> findByStoreIdOrderByInvoiceDateDesc(UUID storeId);
 }

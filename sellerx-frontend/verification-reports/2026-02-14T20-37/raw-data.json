@@ -1,0 +1,328 @@
+{
+  "storeName": "Test Magazasi",
+  "storeEmail": "test@test.com",
+  "timestamp": "14.02.2026 23:38:02",
+  "sections": [
+    {
+      "title": "Ürünler Sayfası (İlk 10)",
+      "summary": {
+        "total": 33,
+        "matching": 24,
+        "warnings": 0,
+        "errors": 9,
+        "results": [
+          {
+            "field": "Ürün Sayısı (DB vs FE tablo)",
+            "match": false,
+            "dbValue": 200,
+            "frontendValue": 10,
+            "trendyolValue": null,
+            "deviation": 95,
+            "severity": "critical",
+            "note": "DB vs FE: diff=190.00"
+          },
+          {
+            "field": "Ürün 1 (8809686120352) - Ad Eşleşme",
+            "match": false,
+            "dbValue": 1,
+            "frontendValue": 1,
+            "trendyolValue": 0,
+            "deviation": 100,
+            "severity": "critical",
+            "note": "DB vs TY: diff=1.00; FE vs TY: diff=1.00"
+          },
+          {
+            "field": "Ürün 1 (8809686120352) - Satış Fiyatı",
+            "match": true,
+            "dbValue": 1133,
+            "frontendValue": 1133,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Ürün 1 (8809686120352) - Stok",
+            "match": true,
+            "dbValue": 713,
+            "frontendValue": 713,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Ürün 1 (8809686120352) - Komisyon Oranı",
+            "match": true,
+            "dbValue": 19,
+            "frontendValue": null,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Ürün 2 (769915190311) - Ad Eşleşme",
+            "match": false,
+            "dbValue": 1,
+            "frontendValue": 1,
+            "trendyolValue": 0,
+            "deviation": 100,
+            "severity": "critical",
+            "note": "DB vs TY: diff=1.00; FE vs TY: diff=1.00"
+          },
+          {
+            "field": "Ürün 2 (769915190311) - Satış Fiyatı",
+            "match": true,
+            "dbValue": 546,
+            "frontendValue": 546,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Ürün 2 (769915190311) - Stok",
+            "match": true,
+            "dbValue": 72,
+            "frontendValue": 72,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Ürün 2 (769915190311) - Komisyon Oranı",
+            "match": true,
+            "dbValue": 14.2,
+            "frontendValue": null,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Ürün 3 (8809686120321) - Ad Eşleşme",
+            "match": false,
+            "dbValue": 1,
+            "frontendValue": 1,
+            "trendyolValue": 0,
+            "deviation": 100,
+            "severity": "critical",
+            "note": "DB vs TY: diff=1.00; FE vs TY: diff=1.00"
+          },
+          {
+            "field": "Ürün 3 (8809686120321) - Satış Fiyatı",
+            "match": true,
+            "dbValue": 1133,
+            "frontendValue": 1133,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Ürün 3 (8809686120321) - Stok",
+            "match": true,
+            "dbValue": 303,
+            "frontendValue": 303,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Ürün 3 (8809686120321) - Komisyon Oranı",
+            "match": true,
+            "dbValue": 19,
+            "frontendValue": null,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Ürün 5 (8809640733550) - Ad Eşleşme",
+            "match": false,
+            "dbValue": 1,
+            "frontendValue": 1,
+            "trendyolValue": 0,
+            "deviation": 100,
+            "severity": "critical",
+            "note": "DB vs TY: diff=1.00; FE vs TY: diff=1.00"
+          },
+          {
+            "field": "Ürün 5 (8809640733550) - Satış Fiyatı",
+            "match": true,
+            "dbValue": 1199,
+            "frontendValue": 1199,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Ürün 5 (8809640733550) - Stok",
+            "match": true,
+            "dbValue": 57,
+            "frontendValue": 57,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Ürün 5 (8809640733550) - Komisyon Oranı",
+            "match": true,
+            "dbValue": 19,
+            "frontendValue": null,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Ürün 6 (8803463007300) - Ad Eşleşme",
+            "match": false,
+            "dbValue": 1,
+            "frontendValue": 1,
+            "trendyolValue": 0,
+            "deviation": 100,
+            "severity": "critical",
+            "note": "DB vs TY: diff=1.00; FE vs TY: diff=1.00"
+          },
+          {
+            "field": "Ürün 6 (8803463007300) - Satış Fiyatı",
+            "match": true,
+            "dbValue": 580,
+            "frontendValue": 580,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Ürün 6 (8803463007300) - Stok",
+            "match": true,
+            "dbValue": 20,
+            "frontendValue": 20,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Ürün 6 (8803463007300) - Komisyon Oranı",
+            "match": true,
+            "dbValue": 19,
+            "frontendValue": null,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Ürün 7 (8809625246082) - Ad Eşleşme",
+            "match": false,
+            "dbValue": 1,
+            "frontendValue": 1,
+            "trendyolValue": 0,
+            "deviation": 100,
+            "severity": "critical",
+            "note": "DB vs TY: diff=1.00; FE vs TY: diff=1.00"
+          },
+          {
+            "field": "Ürün 7 (8809625246082) - Satış Fiyatı",
+            "match": true,
+            "dbValue": 499,
+            "frontendValue": 499,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Ürün 7 (8809625246082) - Stok",
+            "match": true,
+            "dbValue": 1,
+            "frontendValue": 1,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Ürün 7 (8809625246082) - Komisyon Oranı",
+            "match": true,
+            "dbValue": 19,
+            "frontendValue": null,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Ürün 8 (8809782551814) - Ad Eşleşme",
+            "match": false,
+            "dbValue": 1,
+            "frontendValue": 1,
+            "trendyolValue": 0,
+            "deviation": 100,
+            "severity": "critical",
+            "note": "DB vs TY: diff=1.00; FE vs TY: diff=1.00"
+          },
+          {
+            "field": "Ürün 8 (8809782551814) - Satış Fiyatı",
+            "match": true,
+            "dbValue": 870,
+            "frontendValue": 870,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Ürün 8 (8809782551814) - Stok",
+            "match": true,
+            "dbValue": 33,
+            "frontendValue": 33,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Ürün 8 (8809782551814) - Komisyon Oranı",
+            "match": true,
+            "dbValue": 19,
+            "frontendValue": null,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Ürün 10 (8809679696468) - Ad Eşleşme",
+            "match": false,
+            "dbValue": 1,
+            "frontendValue": 1,
+            "trendyolValue": 0,
+            "deviation": 100,
+            "severity": "critical",
+            "note": "DB vs TY: diff=1.00; FE vs TY: diff=1.00"
+          },
+          {
+            "field": "Ürün 10 (8809679696468) - Satış Fiyatı",
+            "match": true,
+            "dbValue": 1199,
+            "frontendValue": 1199,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Ürün 10 (8809679696468) - Stok",
+            "match": true,
+            "dbValue": 10,
+            "frontendValue": 10,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Ürün 10 (8809679696468) - Komisyon Oranı",
+            "match": true,
+            "dbValue": 17.8,
+            "frontendValue": null,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          }
+        ]
+      },
+      "screenshots": [
+        "07-products-sellerx.png",
+        "07-products-trendyol.png"
+      ]
+    }
+  ]
+}

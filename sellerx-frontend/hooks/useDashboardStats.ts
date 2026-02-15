@@ -19,6 +19,7 @@ import { tr } from "date-fns/locale";
 import type {
   DashboardStats,
   DashboardStatsResponse,
+  DeductionBreakdown,
   OrderDetail,
   ProductDetail,
   PeriodExpense,
@@ -36,6 +37,8 @@ export const dashboardKeys = {
     [...dashboardKeys.all, "stats", "range", storeId, startDate, endDate] as const,
   multiPeriod: (storeId: string, periodType: PLPeriodType, periodCount: number, productBarcode?: string) =>
     [...dashboardKeys.all, "stats", "multi-period", storeId, periodType, periodCount, productBarcode] as const,
+  deductionBreakdown: (storeId: string, startDate: string, endDate: string) =>
+    [...dashboardKeys.all, "deductions", "breakdown", storeId, startDate, endDate] as const,
 };
 
 export const useDashboardStats = (storeId?: string) => {
@@ -448,7 +451,7 @@ export function calculateMultiPeriodRanges(preset: DateRangePreset): PeriodRange
  */
 export const useDashboardStatsByPreset = (
   storeId: string | undefined,
-  preset: DateRangePreset
+  preset: DateRangePreset,
 ) => {
   const periodRanges = calculateMultiPeriodRanges(preset);
 
@@ -490,6 +493,9 @@ export const useDashboardStatsByPreset = (
         shortLabel: periodRanges[index].shortLabel,
         dateRange: `${periodRanges[index].startDate} - ${periodRanges[index].endDate}`,
         color: periodRanges[index].color,
+        // ISO dates for API calls (deduction breakdown, etc.)
+        startDate: periodRanges[index].startDate,
+        endDate: periodRanges[index].endDate,
       }))
     : null;
 
@@ -516,6 +522,31 @@ export const useMultiPeriodStats = (
     queryKey: dashboardKeys.multiPeriod(storeId!, periodType, periodCount, productBarcode),
     queryFn: () => dashboardApi.getMultiPeriodStats(storeId!, periodType, periodCount, productBarcode),
     enabled: !!storeId,
+    staleTime: 5 * 60 * 1000, // 5 dakika boyunca fresh kabul et
+    gcTime: 15 * 60 * 1000, // 15 dakika cache'te tut
+    retry: 2,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
+    refetchOnWindowFocus: false,
+  });
+};
+
+/**
+ * Hook for fetching deduction invoice breakdown by transaction type.
+ * Used for dashboard detail panel to show all invoice types individually.
+ *
+ * @param storeId Store UUID
+ * @param startDate ISO date string (e.g., "2025-01-01")
+ * @param endDate ISO date string (e.g., "2025-01-15")
+ */
+export const useDeductionBreakdown = (
+  storeId: string | undefined,
+  startDate: string | undefined,
+  endDate: string | undefined,
+) => {
+  return useQuery<DeductionBreakdown[]>({
+    queryKey: dashboardKeys.deductionBreakdown(storeId!, startDate!, endDate!),
+    queryFn: () => dashboardApi.getDeductionBreakdown(storeId!, startDate!, endDate!),
+    enabled: !!storeId && !!startDate && !!endDate,
     staleTime: 5 * 60 * 1000, // 5 dakika boyunca fresh kabul et
     gcTime: 15 * 60 * 1000, // 15 dakika cache'te tut
     retry: 2,

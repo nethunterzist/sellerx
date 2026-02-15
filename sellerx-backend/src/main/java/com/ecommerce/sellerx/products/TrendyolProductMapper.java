@@ -53,6 +53,13 @@ public class TrendyolProductMapper {
                 .defaultExchangeRate(product.getDefaultExchangeRate())
                 // ÖTV
                 .otvRate(product.getOtvRate())
+                // Kargo Maliyeti
+                .lastShippingCostPerUnit(product.getLastShippingCostPerUnit())
+                // Buybox
+                .buyboxOrder(product.getBuyboxOrder())
+                .buyboxPrice(product.getBuyboxPrice())
+                .hasMultipleSeller(product.getHasMultipleSeller())
+                .buyboxUpdatedAt(product.getBuyboxUpdatedAt())
                 .approved(product.getApproved())
                 .archived(product.getArchived())
                 .blacklisted(product.getBlacklisted())

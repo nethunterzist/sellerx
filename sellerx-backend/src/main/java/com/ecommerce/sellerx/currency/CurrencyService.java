@@ -1,5 +1,6 @@
 package com.ecommerce.sellerx.currency;
 
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -32,8 +33,41 @@ public class CurrencyService {
     public static final String EUR = "EUR";
 
     /**
+     * On startup, check if exchange rates are missing or expired and refresh from TCMB.
+     */
+    @PostConstruct
+    @CacheEvict(value = "exchangeRates", allEntries = true)
+    public void initRates() {
+        log.info("Checking exchange rates on startup...");
+        Optional<ExchangeRate> usdTry = exchangeRateRepository
+                .findByBaseCurrencyAndTargetCurrency(USD, TRY);
+
+        boolean needsRefresh = usdTry.isEmpty() || !usdTry.get().isValid();
+
+        if (needsRefresh) {
+            log.info("Exchange rates missing or expired, fetching from TCMB...");
+            try {
+                TcmbRates rates = tcmbApiClient.fetchRates();
+
+                saveRate(USD, TRY, rates.getUsdTry());
+                saveRate(TRY, USD, BigDecimal.ONE.divide(rates.getUsdTry(), 8, RoundingMode.HALF_UP));
+                saveRate(EUR, TRY, rates.getEurTry());
+                saveRate(TRY, EUR, BigDecimal.ONE.divide(rates.getEurTry(), 8, RoundingMode.HALF_UP));
+
+                log.info("Exchange rates refreshed on startup: USD/TRY={}, EUR/TRY={}",
+                        rates.getUsdTry(), rates.getEurTry());
+            } catch (Exception e) {
+                log.error("Failed to refresh exchange rates on startup. Stale rates will be used as fallback.", e);
+            }
+        } else {
+            log.info("Exchange rates are valid (USD/TRY={}, expires={})",
+                    usdTry.get().getRate(), usdTry.get().getValidUntil());
+        }
+    }
+
+    /**
      * Get exchange rate from cache or database.
-     * Returns BigDecimal.ONE if same currency or rate not found.
+     * Falls back to stale (expired) rates before returning BigDecimal.ONE.
      */
     @Cacheable(value = "exchangeRates", key = "#baseCurrency + '_' + #targetCurrency")
     public BigDecimal getRate(String baseCurrency, String targetCurrency) {
@@ -48,11 +82,23 @@ public class CurrencyService {
             return rate.get().getRate();
         }
 
-        // Fallback: try inverse rate
+        // Fallback: try inverse rate (valid)
         Optional<ExchangeRate> inverseRate = exchangeRateRepository
                 .findByBaseCurrencyAndTargetCurrency(targetCurrency, baseCurrency);
 
         if (inverseRate.isPresent() && inverseRate.get().isValid()) {
+            return BigDecimal.ONE.divide(inverseRate.get().getRate(), 8, RoundingMode.HALF_UP);
+        }
+
+        // Fallback: use stale (expired) rate rather than returning 1.0
+        if (rate.isPresent()) {
+            log.warn("Using stale exchange rate for {} -> {} (expired at {})",
+                    baseCurrency, targetCurrency, rate.get().getValidUntil());
+            return rate.get().getRate();
+        }
+        if (inverseRate.isPresent()) {
+            log.warn("Using stale inverse exchange rate for {} -> {} (expired at {})",
+                    baseCurrency, targetCurrency, inverseRate.get().getValidUntil());
             return BigDecimal.ONE.divide(inverseRate.get().getRate(), 8, RoundingMode.HALF_UP);
         }
 
@@ -132,7 +178,7 @@ public class CurrencyService {
         entity.setRate(rate);
         entity.setSource("TCMB");
         entity.setFetchedAt(LocalDateTime.now());
-        entity.setValidUntil(LocalDateTime.now().plusDays(1));
+        entity.setValidUntil(LocalDateTime.now().plusDays(3));
 
         exchangeRateRepository.save(entity);
     }

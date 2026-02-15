@@ -3,13 +3,8 @@
 import React, { useState, useMemo } from "react";
 import { useSelectedStore } from "@/hooks/queries/use-stores";
 import { useOrdersByDateRange, useOrdersByStatus } from "@/hooks/queries/use-orders";
-import type { DateRange } from "react-day-picker";
-import { format } from "date-fns";
-import {
-  OrderDateFilter,
-  getOrderPresetRange,
-  type OrderDatePreset,
-} from "@/components/orders/order-date-filter";
+import { format, subDays } from "date-fns";
+import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { OrderStatsCards } from "@/components/orders/order-stats-cards";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +24,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   Search,
   ChevronLeft,
   ChevronRight,
@@ -37,8 +38,10 @@ import {
   ChevronUp,
   Filter,
   X,
+  HelpCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { FadeIn } from "@/components/motion";
 import type { TrendyolOrder, OrderItem, OrderStatus } from "@/types/order";
 import { orderStatusLabels } from "@/types/order";
 import { useCurrency } from "@/lib/contexts/currency-context";
@@ -74,6 +77,12 @@ function getStatusColor(status: string): string {
     default:
       return "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300";
   }
+}
+
+// Check if order is cancelled or returned
+function isCancelledOrReturned(status: string): boolean {
+  const normalizedStatus = status?.toLowerCase();
+  return normalizedStatus === "cancelled" || normalizedStatus === "returned";
 }
 
 function OrderItemsRow({ items }: { items: OrderItem[] }) {
@@ -127,7 +136,7 @@ function OrdersPageSkeleton() {
         ))}
       </div>
       <FilterBarSkeleton showSearch={true} buttonCount={3} />
-      <TableSkeleton columns={10} rows={10} />
+      <TableSkeleton columns={12} rows={10} />
       <PaginationSkeleton />
     </div>
   );
@@ -143,10 +152,10 @@ export default function OrdersPage() {
   );
 
   // Date filter state - default to last 7 days
-  const [datePreset, setDatePreset] = useState<OrderDatePreset>("last7days");
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(() =>
-    getOrderPresetRange("last7days")
-  );
+  const [dateRange, setDateRange] = useState<{ from: Date; to: Date } | undefined>(() => ({
+    from: subDays(new Date(), 7),
+    to: new Date(),
+  }));
 
   const { data: selectedStore, isLoading: storeLoading } = useSelectedStore();
   const storeId = selectedStore?.selectedStoreId;
@@ -209,22 +218,30 @@ export default function OrdersPage() {
     }
   };
 
-  const handleDateRangeChange = (
-    range: DateRange | undefined,
-    preset: OrderDatePreset
-  ) => {
+  const handleDateRangeChange = (range: { from: Date; to: Date } | undefined) => {
     setDateRange(range);
-    setDatePreset(preset);
     setPage(0);
   };
 
   const clearFilters = () => {
     setStatusFilter(undefined);
     setSearchQuery("");
-    setDatePreset("last7days");
-    setDateRange(getOrderPresetRange("last7days"));
+    setDateRange({
+      from: subDays(new Date(), 7),
+      to: new Date(),
+    });
     setPage(0);
   };
+
+  // Check if filters are different from default
+  const hasActiveFilters = useMemo(() => {
+    if (statusFilter || searchQuery) return true;
+    if (!dateRange) return true;
+
+    const defaultFrom = subDays(new Date(), 7);
+    const daysDiff = Math.abs(dateRange.from.getTime() - defaultFrom.getTime()) / (1000 * 60 * 60 * 24);
+    return daysDiff > 1; // Allow 1 day tolerance
+  }, [statusFilter, searchQuery, dateRange]);
 
   // Filter orders by search query only (status is handled server-side)
   const filteredOrders =
@@ -244,9 +261,6 @@ export default function OrdersPage() {
       }
       return true;
     }) || [];
-
-  const hasActiveFilters =
-    statusFilter || searchQuery || datePreset !== "last7days";
 
   if (!storeId && !storeLoading) {
     return (
@@ -270,14 +284,19 @@ export default function OrdersPage() {
           </p>
         </div>
 
-        <OrderDateFilter
-          dateRange={dateRange}
-          onDateRangeChange={handleDateRangeChange}
+        <DateRangePicker
+          value={dateRange}
+          onChange={handleDateRangeChange}
+          defaultPreset="7d"
+          locale="tr"
+          placeholder="Tarih aralığı seçin"
         />
       </div>
 
-      {/* Statistics Cards */}
-      <OrderStatsCards storeId={storeId} />
+      {/* Statistics Cards - now with date filter */}
+      <FadeIn>
+        <OrderStatsCards storeId={storeId} startDate={startDate} endDate={endDate} />
+      </FadeIn>
 
       {/* Error State */}
       {error && (
@@ -353,10 +372,42 @@ export default function OrdersPage() {
                 <TableHead>Sipariş No</TableHead>
                 <TableHead>Tarih</TableHead>
                 <TableHead className="text-right">Toplam</TableHead>
+                <TableHead className="text-right">
+                  <div className="flex items-center justify-end gap-1">
+                    <span>Maliyet</span>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <HelpCircle className="h-3 w-3 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent side="top">
+                          <p className="text-xs">Toplam ürün maliyeti</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+                </TableHead>
                 <TableHead className="text-right">Komisyon</TableHead>
                 <TableHead className="text-right">Stopaj</TableHead>
                 <TableHead className="text-right">Kargo</TableHead>
+                <TableHead className="text-right">Platform</TableHead>
                 <TableHead className="text-right">Kar Marjı</TableHead>
+                <TableHead className="text-right">
+                  <div className="flex items-center justify-end gap-1">
+                    <span>ROI</span>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <HelpCircle className="h-3 w-3 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent side="top">
+                          <p className="text-xs">Return on Investment - Yatırım Getirisi</p>
+                          <p className="text-xs text-muted-foreground">(Net Kar / Maliyet) x 100</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+                </TableHead>
                 <TableHead className="text-center">Durum</TableHead>
                 <TableHead className="text-center">Kalem</TableHead>
               </TableRow>
@@ -365,7 +416,7 @@ export default function OrdersPage() {
               {filteredOrders.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={10}
+                    colSpan={13}
                     className="h-24 text-center text-muted-foreground"
                   >
                     <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
@@ -375,110 +426,164 @@ export default function OrdersPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredOrders.map((order: TrendyolOrder) => (
-                  <React.Fragment key={order.id}>
-                    <TableRow
-                      className="hover:bg-muted cursor-pointer"
-                      onClick={() => toggleOrderExpand(order.id)}
-                    >
-                      <TableCell>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                          {expandedOrders.has(order.id) ? (
-                            <ChevronUp className="h-4 w-4" />
-                          ) : (
-                            <ChevronDown className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </TableCell>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium text-sm">
-                            {order.tyOrderNumber}
-                          </p>
+                filteredOrders.map((order: TrendyolOrder) => {
+                  const isCancelled = isCancelledOrReturned(order.status);
+
+                  // Calculate totals for this order
+                  const totalCost = order.orderItems.reduce(
+                    (sum, item) => sum + (item.cost || 0) * item.quantity,
+                    0
+                  );
+                  const expenses =
+                    (order.estimatedCommission || 0) +
+                    (order.stoppage || 0) +
+                    (order.estimatedShippingCost || 0) +
+                    (order.platformServiceFee || 0);
+                  const netProfit = order.totalPrice - totalCost - expenses;
+                  const margin =
+                    order.totalPrice > 0
+                      ? (netProfit / order.totalPrice) * 100
+                      : 0;
+                  const roi =
+                    totalCost > 0
+                      ? (netProfit / totalCost) * 100
+                      : 0;
+
+                  return (
+                    <React.Fragment key={order.id}>
+                      <TableRow
+                        className="hover:bg-muted cursor-pointer"
+                        onClick={() => toggleOrderExpand(order.id)}
+                      >
+                        <TableCell>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                            {expandedOrders.has(order.id) ? (
+                              <ChevronUp className="h-4 w-4" />
+                            ) : (
+                              <ChevronDown className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </TableCell>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium text-sm">
+                              {order.tyOrderNumber}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Paket: {order.packageNo}
+                            </p>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          {formatDate(order.orderDate)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <span className="font-medium">
+                            {formatCurrency(order.totalPrice)}
+                          </span>
                           <p className="text-xs text-muted-foreground">
-                            Paket: {order.packageNo}
+                            Brüt: {formatCurrency(order.grossAmount)}
                           </p>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        {formatDate(order.orderDate)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <span className="font-medium">
-                          {formatCurrency(order.totalPrice)}
-                        </span>
-                        <p className="text-xs text-muted-foreground">
-                          Brüt: {formatCurrency(order.grossAmount)}
-                        </p>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <span className="text-sm text-orange-600">
-                          {formatCurrency(order.estimatedCommission)}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <span className="text-sm text-red-600">
-                          {formatCurrency(order.stoppage)}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <span className="text-sm text-blue-600">
-                          {formatCurrency(order.estimatedShippingCost || 0)}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {(() => {
-                          // Calculate profit margin
-                          const totalCost = order.orderItems.reduce(
-                            (sum, item) => sum + (item.cost || 0) * item.quantity,
-                            0
-                          );
-                          const expenses =
-                            (order.estimatedCommission || 0) +
-                            (order.stoppage || 0) +
-                            (order.estimatedShippingCost || 0);
-                          const netProfit = order.totalPrice - totalCost - expenses;
-                          const margin =
-                            order.totalPrice > 0
-                              ? (netProfit / order.totalPrice) * 100
-                              : 0;
-                          return (
+                        </TableCell>
+                        {/* Maliyet (Cost) */}
+                        <TableCell className="text-right">
+                          <span className="text-sm text-muted-foreground">
+                            {formatCurrency(totalCost)}
+                          </span>
+                        </TableCell>
+                        {/* Komisyon */}
+                        <TableCell className="text-right">
+                          {isCancelled ? (
+                            <span className="text-sm text-muted-foreground">-</span>
+                          ) : (
+                            <span className="text-sm text-orange-600">
+                              {formatCurrency(order.estimatedCommission)}
+                            </span>
+                          )}
+                        </TableCell>
+                        {/* Stopaj */}
+                        <TableCell className="text-right">
+                          {isCancelled ? (
+                            <span className="text-sm text-muted-foreground">-</span>
+                          ) : (
+                            <span className="text-sm text-red-600">
+                              {formatCurrency(order.stoppage)}
+                            </span>
+                          )}
+                        </TableCell>
+                        {/* Kargo */}
+                        <TableCell className="text-right">
+                          {isCancelled ? (
+                            <span className="text-sm text-muted-foreground">-</span>
+                          ) : (
+                            <span className="text-sm text-blue-600">
+                              {formatCurrency(order.estimatedShippingCost || 0)}
+                            </span>
+                          )}
+                        </TableCell>
+                        {/* Platform */}
+                        <TableCell className="text-right">
+                          {isCancelled ? (
+                            <span className="text-sm text-muted-foreground">-</span>
+                          ) : (
+                            <span className="text-sm text-purple-600">
+                              {formatCurrency(order.platformServiceFee || 0)}
+                            </span>
+                          )}
+                        </TableCell>
+                        {/* Kar Marjı */}
+                        <TableCell className="text-right">
+                          {isCancelled ? (
+                            <span className="text-sm text-muted-foreground">-</span>
+                          ) : (
                             <span
                               className={`text-sm font-medium ${margin >= 0 ? "text-green-600" : "text-red-600"}`}
                             >
                               %{margin.toFixed(1)}
                             </span>
-                          );
-                        })()}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <span
-                          className={cn(
-                            "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
-                            getStatusColor(order.status)
                           )}
-                        >
-                          {orderStatusLabels[order.status as OrderStatus] ||
-                            order.status}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-muted text-xs font-medium">
-                          {order.orderItems.length}
-                        </span>
-                      </TableCell>
-                    </TableRow>
-                    {expandedOrders.has(order.id) && (
-                      <TableRow>
-                        <TableCell colSpan={10} className="p-0">
-                          <div className="px-4 pb-4">
-                            <OrderItemsRow items={order.orderItems} />
-                          </div>
+                        </TableCell>
+                        {/* ROI */}
+                        <TableCell className="text-right">
+                          {isCancelled ? (
+                            <span className="text-sm text-muted-foreground">-</span>
+                          ) : (
+                            <span
+                              className={`text-sm font-medium ${roi >= 0 ? "text-green-600" : "text-red-600"}`}
+                            >
+                              %{roi.toFixed(1)}
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <span
+                            className={cn(
+                              "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
+                              getStatusColor(order.status)
+                            )}
+                          >
+                            {orderStatusLabels[order.status as OrderStatus] ||
+                              order.status}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-muted text-xs font-medium">
+                            {order.orderItems.length}
+                          </span>
                         </TableCell>
                       </TableRow>
-                    )}
-                  </React.Fragment>
-                ))
+                      {expandedOrders.has(order.id) && (
+                        <TableRow>
+                          <TableCell colSpan={13} className="p-0">
+                            <div className="px-4 pb-4">
+                              <OrderItemsRow items={order.orderItems} />
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </React.Fragment>
+                  );
+                })
               )}
             </TableBody>
           </Table>

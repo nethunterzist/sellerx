@@ -98,4 +98,10 @@ public interface ReturnRecordRepository extends JpaRepository<ReturnRecord, UUID
 
     // Check if return record exists for order and barcode
     boolean existsByOrderIdAndBarcode(UUID orderId, String barcode);
+
+    // Find all returns for a store (used by Sandbox)
+    List<ReturnRecord> findByStoreId(UUID storeId);
+
+    // Find return records by order ID
+    List<ReturnRecord> findByOrderId(UUID orderId);
 }

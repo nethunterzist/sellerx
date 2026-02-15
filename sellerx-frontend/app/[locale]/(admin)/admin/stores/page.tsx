@@ -30,6 +30,7 @@ import {
   Clock,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { FadeIn } from "@/components/motion";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 
@@ -109,6 +110,7 @@ export default function AdminStoresPage() {
   };
 
   return (
+    <FadeIn>
     <div className="space-y-6">
       {/* Page Header */}
       <div className="flex items-center justify-between">
@@ -263,5 +265,6 @@ export default function AdminStoresPage() {
         </CardContent>
       </Card>
     </div>
+    </FadeIn>
   );
 }

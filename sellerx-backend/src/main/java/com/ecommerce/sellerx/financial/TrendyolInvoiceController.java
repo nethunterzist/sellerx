@@ -12,6 +12,7 @@ import com.ecommerce.sellerx.financial.dto.InvoiceSummaryDto;
 import com.ecommerce.sellerx.financial.dto.OrderInvoiceItemsDto;
 import com.ecommerce.sellerx.financial.dto.ProductCargoBreakdownDto;
 import com.ecommerce.sellerx.financial.dto.ProductCommissionBreakdownDto;
+import com.ecommerce.sellerx.financial.dto.ProductExpenseBreakdownDto;
 import com.ecommerce.sellerx.financial.dto.StoppageSummaryDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -581,6 +582,44 @@ public class TrendyolInvoiceController {
             @PathVariable UUID storeId,
             @PathVariable String barcode,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size) {
+
+        // Default to last 30 days if dates not provided
+        if (endDate == null) {
+            endDate = LocalDate.now();
+        }
+        if (startDate == null) {
+            startDate = endDate.minusDays(30);
+        }
+
+        // Limit max page size to 200
+        size = Math.min(size, 200);
+
+        log.info("Getting cargo breakdown for product {} in store: {} from {} to {} (page: {}, size: {})",
+                barcode, storeId, startDate, endDate, page, size);
+
+        ProductCargoBreakdownDto breakdown = invoiceService.getProductCargoBreakdown(
+                storeId, barcode, startDate, endDate, page, size);
+        return ResponseEntity.ok(breakdown);
+    }
+
+    // ================================================================================
+    // Product Expense Breakdown (for "Detay" panel - Giderler section)
+    // ================================================================================
+
+    /**
+     * Get expense breakdown for a specific product (barcode).
+     * Used for "Detay" panel to show product-specific expenses.
+     * Categorizes: platform service fee, international shipping, penalties, other.
+     */
+    @PreAuthorize("@userSecurityRules.canAccessStore(authentication, #storeId)")
+    @GetMapping("/stores/{storeId}/products/{barcode}/expense-breakdown")
+    public ResponseEntity<ProductExpenseBreakdownDto> getProductExpenseBreakdown(
+            @PathVariable UUID storeId,
+            @PathVariable String barcode,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
 
         // Default to last 30 days if dates not provided
@@ -591,10 +630,10 @@ public class TrendyolInvoiceController {
             startDate = endDate.minusDays(30);
         }
 
-        log.info("Getting cargo breakdown for product {} in store: {} from {} to {}",
+        log.info("Getting expense breakdown for product {} in store: {} from {} to {}",
                 barcode, storeId, startDate, endDate);
 
-        ProductCargoBreakdownDto breakdown = invoiceService.getProductCargoBreakdown(
+        ProductExpenseBreakdownDto breakdown = invoiceService.getProductExpenseBreakdown(
                 storeId, barcode, startDate, endDate);
         return ResponseEntity.ok(breakdown);
     }

@@ -1,8 +1,11 @@
 package com.ecommerce.sellerx.users;
 
+import com.ecommerce.sellerx.auth.EmailVerificationService;
+import com.ecommerce.sellerx.email.event.UserRegisteredEvent;
 import com.ecommerce.sellerx.referral.ReferralService;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -19,6 +22,8 @@ public class UserService {
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
     private final ReferralService referralService;
+    private final ApplicationEventPublisher eventPublisher;
+    private final EmailVerificationService emailVerificationService;
 
     public Iterable<UserDto> getAllUsers(String sortBy) {
         if (!Set.of("name", "email").contains(sortBy))
@@ -67,6 +72,17 @@ public class UserService {
                 log.warn("Referral recording failed for user {}: {}", user.getId(), e.getMessage());
                 // Don't block registration if referral fails
             }
+        }
+
+        // Publish event for welcome email
+        eventPublisher.publishEvent(new UserRegisteredEvent(this, user.getId(), user.getEmail(), user.getName()));
+
+        // Send email verification
+        try {
+            emailVerificationService.sendVerificationEmail(user.getId());
+        } catch (Exception e) {
+            log.warn("Email verification send failed for user {}: {}", user.getId(), e.getMessage());
+            // Don't block registration if verification email fails
         }
 
         return userMapper.toDto(user);

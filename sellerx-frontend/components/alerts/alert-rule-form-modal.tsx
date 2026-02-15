@@ -20,13 +20,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Search, X, Package } from "lucide-react";
+import { Loader2, Search, X, Package, Check } from "lucide-react";
 import { useMyStores } from "@/hooks/queries/use-stores";
 import { useProductsByStore } from "@/hooks/queries/use-products";
 import { useCreateAlertRule, useUpdateAlertRule } from "@/hooks/queries/use-alerts";
@@ -52,7 +47,7 @@ interface SelectedProduct {
   image?: string;
 }
 
-const ALERT_TYPES: AlertType[] = ["STOCK", "PROFIT", "PRICE", "ORDER"];
+const ALERT_TYPES: AlertType[] = ["STOCK", "PROFIT", "PRICE", "ORDER", "RETURN"];
 const CONDITION_TYPES: AlertConditionType[] = ["BELOW", "ABOVE", "EQUALS", "ZERO", "CHANGED"];
 
 // Conditions that require a threshold value
@@ -71,21 +66,19 @@ export function AlertRuleFormModal({ open, onOpenChange, rule }: AlertRuleFormMo
   const [conditionType, setConditionType] = useState<AlertConditionType>("BELOW");
   const [threshold, setThreshold] = useState<string>("");
   const [storeId, setStoreId] = useState<string>("");
-  const [selectedProduct, setSelectedProduct] = useState<SelectedProduct | null>(null);
+  const [selectedProducts, setSelectedProducts] = useState<SelectedProduct[]>([]);
   const [categoryName, setCategoryName] = useState("");
   const [emailEnabled, setEmailEnabled] = useState(true);
   const [inAppEnabled, setInAppEnabled] = useState(true);
-  const [cooldownMinutes, setCooldownMinutes] = useState<string>("60");
 
   // Product search state
-  const [productSearchOpen, setProductSearchOpen] = useState(false);
   const [productSearchQuery, setProductSearchQuery] = useState("");
 
   const [error, setError] = useState<string | null>(null);
 
   // Fetch products for selected store
   const { data: productsData, isLoading: productsLoading } = useProductsByStore(storeId);
-  const products = productsData || [];
+  const products = Array.isArray(productsData) ? productsData : (productsData as any)?.products ?? [];
 
   // Filter products by search query
   const filteredProducts = products.filter((p: any) =>
@@ -104,27 +97,19 @@ export function AlertRuleFormModal({ open, onOpenChange, rule }: AlertRuleFormMo
       setCategoryName(rule.categoryName || "");
       setEmailEnabled(rule.emailEnabled);
       setInAppEnabled(rule.inAppEnabled);
-      setCooldownMinutes(rule.cooldownMinutes.toString());
 
-      // Handle selected product from barcode
+      // Handle selected products from comma-separated barcodes
       if (rule.productBarcode) {
-        // Try to find product in current products list
-        const product = products.find((p: any) => p.barcode === rule.productBarcode);
-        if (product) {
-          setSelectedProduct({
-            barcode: product.barcode,
-            title: product.title,
-            image: product.image,
-          });
-        } else {
-          // If product not found, just set barcode
-          setSelectedProduct({
-            barcode: rule.productBarcode,
-            title: rule.productBarcode, // Show barcode as title
-          });
-        }
+        const barcodes = rule.productBarcode.split(",").map(b => b.trim());
+        const selected: SelectedProduct[] = barcodes.map(barcode => {
+          const product = products.find((p: any) => p.barcode === barcode);
+          return product
+            ? { barcode: product.barcode, title: product.title, image: product.image }
+            : { barcode, title: barcode };
+        });
+        setSelectedProducts(selected);
       } else {
-        setSelectedProduct(null);
+        setSelectedProducts([]);
       }
     } else {
       // Reset form for new rule
@@ -133,51 +118,64 @@ export function AlertRuleFormModal({ open, onOpenChange, rule }: AlertRuleFormMo
       setConditionType("BELOW");
       setThreshold("");
       setStoreId("");
-      setSelectedProduct(null);
+      setSelectedProducts([]);
       setCategoryName("");
       setEmailEnabled(true);
       setInAppEnabled(true);
-      setCooldownMinutes("60");
     }
     setError(null);
     setProductSearchQuery("");
   }, [rule, open]);
 
-  // Update selected product when products load (for editing)
+  // Update selected products titles when products load (for editing)
   useEffect(() => {
-    if (rule?.productBarcode && products.length > 0 && selectedProduct?.barcode === rule.productBarcode) {
-      const product = products.find((p: any) => p.barcode === rule.productBarcode);
-      if (product && selectedProduct.title === rule.productBarcode) {
-        setSelectedProduct({
-          barcode: product.barcode,
-          title: product.title,
-          image: product.image,
-        });
+    if (rule?.productBarcode && products.length > 0 && selectedProducts.length > 0) {
+      const updated = selectedProducts.map(sp => {
+        if (sp.title === sp.barcode) {
+          const product = products.find((p: any) => p.barcode === sp.barcode);
+          if (product) {
+            return { barcode: product.barcode, title: product.title, image: product.image };
+          }
+        }
+        return sp;
+      });
+      const hasChanges = updated.some((u, i) => u.title !== selectedProducts[i].title);
+      if (hasChanges) {
+        setSelectedProducts(updated);
       }
     }
   }, [products, rule?.productBarcode]);
 
-  // Clear selected product when store changes
+  // Clear selected products when store changes
   useEffect(() => {
     if (!isEditing) {
-      setSelectedProduct(null);
+      setSelectedProducts([]);
     }
   }, [storeId, isEditing]);
 
   const requiresThreshold = CONDITIONS_WITH_THRESHOLD.includes(conditionType);
 
-  const handleProductSelect = (product: any) => {
-    setSelectedProduct({
-      barcode: product.barcode,
-      title: product.title,
-      image: product.image,
-    });
-    setProductSearchOpen(false);
-    setProductSearchQuery("");
+  const isProductSelected = (barcode: string) =>
+    selectedProducts.some(sp => sp.barcode === barcode);
+
+  const handleProductToggle = (product: any) => {
+    if (isProductSelected(product.barcode)) {
+      setSelectedProducts(prev => prev.filter(sp => sp.barcode !== product.barcode));
+    } else {
+      setSelectedProducts(prev => [...prev, {
+        barcode: product.barcode,
+        title: product.title,
+        image: product.image,
+      }]);
+    }
   };
 
-  const handleClearProduct = () => {
-    setSelectedProduct(null);
+  const handleRemoveProduct = (barcode: string) => {
+    setSelectedProducts(prev => prev.filter(sp => sp.barcode !== barcode));
+  };
+
+  const handleClearAll = () => {
+    setSelectedProducts([]);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -194,6 +192,11 @@ export function AlertRuleFormModal({ open, onOpenChange, rule }: AlertRuleFormMo
       return;
     }
 
+    // Build comma-separated barcodes
+    const productBarcode = selectedProducts.length > 0
+      ? selectedProducts.map(sp => sp.barcode).join(",")
+      : undefined;
+
     try {
       if (isEditing && rule) {
         const updateData: UpdateAlertRuleRequest = {
@@ -202,11 +205,11 @@ export function AlertRuleFormModal({ open, onOpenChange, rule }: AlertRuleFormMo
           conditionType,
           threshold: requiresThreshold ? parseFloat(threshold) : undefined,
           storeId: storeId || undefined,
-          productBarcode: selectedProduct?.barcode || undefined,
+          productBarcode,
           categoryName: categoryName.trim() || undefined,
           emailEnabled,
           inAppEnabled,
-          cooldownMinutes: parseInt(cooldownMinutes) || 60,
+          cooldownMinutes: 60,
         };
         await updateMutation.mutateAsync({ id: rule.id, data: updateData });
       } else {
@@ -216,11 +219,11 @@ export function AlertRuleFormModal({ open, onOpenChange, rule }: AlertRuleFormMo
           conditionType,
           threshold: requiresThreshold ? parseFloat(threshold) : undefined,
           storeId: storeId || undefined,
-          productBarcode: selectedProduct?.barcode || undefined,
+          productBarcode,
           categoryName: categoryName.trim() || undefined,
           emailEnabled,
           inAppEnabled,
-          cooldownMinutes: parseInt(cooldownMinutes) || 60,
+          cooldownMinutes: 60,
         };
         await createMutation.mutateAsync(createData);
       }
@@ -234,7 +237,7 @@ export function AlertRuleFormModal({ open, onOpenChange, rule }: AlertRuleFormMo
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[650px]">
+      <DialogContent className="sm:max-w-[650px] max-h-[90vh] overflow-y-auto overflow-x-hidden">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>{isEditing ? "Kuralı Düzenle" : "Yeni Uyarı Kuralı"}</DialogTitle>
@@ -245,7 +248,7 @@ export function AlertRuleFormModal({ open, onOpenChange, rule }: AlertRuleFormMo
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-4 py-4">
+          <div className="grid gap-4 py-4 overflow-hidden">
             {/* Rule Name */}
             <div className="grid gap-2">
               <Label htmlFor="name">Kural Adı *</Label>
@@ -292,156 +295,147 @@ export function AlertRuleFormModal({ open, onOpenChange, rule }: AlertRuleFormMo
               </div>
             </div>
 
-            {/* Threshold & Cooldown - Side by Side */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="threshold">Eşik Değeri {requiresThreshold && "*"}</Label>
-                <Input
-                  id="threshold"
-                  type="number"
-                  value={threshold}
-                  onChange={(e) => setThreshold(e.target.value)}
-                  placeholder={alertType === "PROFIT" ? "Örn: 5 (%)" : "Örn: 10"}
-                  min="0"
-                  disabled={!requiresThreshold}
-                />
-                <p className="text-xs text-muted-foreground">
-                  {alertType === "PROFIT" && "Yüzde (%)"}
-                  {alertType === "STOCK" && "Adet"}
-                  {alertType === "PRICE" && "TL"}
-                  {alertType === "ORDER" && "Adet"}
-                </p>
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="cooldown">Cooldown (dakika)</Label>
-                <Input
-                  id="cooldown"
-                  type="number"
-                  value={cooldownMinutes}
-                  onChange={(e) => setCooldownMinutes(e.target.value)}
-                  min="1"
-                  max="1440"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Tekrar bildirim bekleme süresi
-                </p>
-              </div>
+            {/* Threshold */}
+            <div className="grid gap-2">
+              <Label htmlFor="threshold">Eşik Değeri {requiresThreshold && "*"}</Label>
+              <Input
+                id="threshold"
+                type="number"
+                value={threshold}
+                onChange={(e) => setThreshold(e.target.value)}
+                placeholder={alertType === "PROFIT" ? "Örn: 5 (%)" : "Örn: 10"}
+                min="0"
+                disabled={!requiresThreshold}
+              />
+              <p className="text-xs text-muted-foreground">
+                {alertType === "PROFIT" && "Yüzde (%)"}
+                {alertType === "STOCK" && "Adet"}
+                {alertType === "PRICE" && "TL"}
+                {alertType === "ORDER" && "Adet"}
+                {alertType === "RETURN" && "Adet (Son 7 günde)"}
+              </p>
             </div>
 
-            {/* Store & Product - Side by Side */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="storeId">Mağaza</Label>
-                <Select value={storeId || "all"} onValueChange={(v) => setStoreId(v === "all" ? "" : v)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Tüm mağazalar" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Tüm mağazalar</SelectItem>
-                    {stores?.map((store) => (
-                      <SelectItem key={store.id} value={store.id}>
-                        {store.storeName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            {/* Store - Full Width */}
+            <div className="grid gap-2">
+              <Label htmlFor="storeId">Mağaza</Label>
+              <Select value={storeId || "all"} onValueChange={(v) => setStoreId(v === "all" ? "" : v)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Tüm mağazalar" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tüm mağazalar</SelectItem>
+                  {stores?.map((store) => (
+                    <SelectItem key={store.id} value={store.id}>
+                      {store.storeName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-              {/* Product Search Popover */}
-              <div className="grid gap-2">
-                <Label>Ürün</Label>
-                <Popover open={productSearchOpen} onOpenChange={setProductSearchOpen}>
-                  <PopoverTrigger asChild>
-                    <button
-                      type="button"
-                      className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                      disabled={!storeId}
-                    >
-                      {selectedProduct ? (
-                        <div className="flex items-center gap-2 flex-1 min-w-0">
-                          <span className="truncate text-foreground">{selectedProduct.title}</span>
+            {/* Product - Full Width Inline Multi-Select */}
+            <div className="grid gap-2">
+              <div className="flex items-center justify-between">
+                <Label>Ürün {selectedProducts.length > 0 && `(${selectedProducts.length} seçili)`}</Label>
+                {selectedProducts.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleClearAll}
+                    className="text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    Tümünü kaldır
+                  </button>
+                )}
+              </div>
+              {!storeId ? (
+                <p className="text-sm text-muted-foreground py-3 text-center border rounded-md bg-muted/30">
+                  Önce mağaza seçin
+                </p>
+              ) : (
+                <div className="border rounded-md overflow-hidden">
+                  {/* Search + Selected Chips */}
+                  <div className="p-2 border-b">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Search className="h-4 w-4 text-muted-foreground shrink-0" />
+                      {selectedProducts.map(sp => (
+                        <span
+                          key={sp.barcode}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary/10 text-primary text-xs max-w-[200px]"
+                        >
+                          <span className="truncate">{sp.title}</span>
                           <button
                             type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleClearProduct();
-                            }}
-                            className="ml-auto shrink-0 rounded-full p-0.5 hover:bg-muted"
+                            onClick={() => handleRemoveProduct(sp.barcode)}
+                            className="shrink-0 hover:text-primary/70"
                           >
-                            <X className="h-3.5 w-3.5 text-muted-foreground" />
+                            <X className="h-3 w-3" />
                           </button>
+                        </span>
+                      ))}
+                      <Input
+                        placeholder={selectedProducts.length === 0 ? "Ürün ara..." : ""}
+                        value={productSearchQuery}
+                        onChange={(e) => setProductSearchQuery(e.target.value)}
+                        className="flex-1 min-w-[100px] border-0 shadow-none focus-visible:ring-0 h-8 px-1"
+                      />
+                    </div>
+                  </div>
+                  <ScrollArea className="h-[200px]">
+                    <div className="p-1">
+                      {/* All products option */}
+                      <button
+                        type="button"
+                        onClick={handleClearAll}
+                        className={`w-full flex items-center gap-3 px-2 py-2 rounded-md text-sm transition-colors ${
+                          selectedProducts.length === 0
+                            ? "bg-primary/10 text-primary"
+                            : "hover:bg-muted"
+                        }`}
+                      >
+                        <Package className="h-4 w-4" />
+                        <span>Tüm ürünler</span>
+                      </button>
+
+                      {productsLoading ? (
+                        <div className="flex items-center justify-center py-6">
+                          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                        </div>
+                      ) : filteredProducts.length === 0 ? (
+                        <div className="py-4 text-center text-sm text-muted-foreground">
+                          {productSearchQuery ? "Ürün bulunamadı" : "Ürün yok"}
                         </div>
                       ) : (
-                        <span className="text-muted-foreground">
-                          {!storeId ? "Önce mağaza seçin" : "Tüm ürünler"}
-                        </span>
-                      )}
-                      <Search className="h-4 w-4 shrink-0 text-muted-foreground ml-2" />
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[300px] p-0" align="start">
-                    <div className="p-2 border-b">
-                      <div className="relative">
-                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          placeholder="Ürün ara..."
-                          value={productSearchQuery}
-                          onChange={(e) => setProductSearchQuery(e.target.value)}
-                          className="pl-8"
-                          autoFocus
-                        />
-                      </div>
-                    </div>
-                    <ScrollArea className="h-[250px]">
-                      <div className="p-2">
-                        {/* All products option */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedProduct(null);
-                            setProductSearchOpen(false);
-                            setProductSearchQuery("");
-                          }}
-                          className={`w-full flex items-center gap-3 px-2 py-2 rounded-md text-sm transition-colors ${
-                            !selectedProduct
-                              ? "bg-primary/10 text-primary"
-                              : "hover:bg-muted"
-                          }`}
-                        >
-                          <Package className="h-4 w-4" />
-                          <span>Tüm ürünler</span>
-                        </button>
-
-                        {productsLoading ? (
-                          <div className="flex items-center justify-center py-6">
-                            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                          </div>
-                        ) : filteredProducts.length === 0 ? (
-                          <div className="py-6 text-center text-sm text-muted-foreground">
-                            {productSearchQuery ? "Ürün bulunamadı" : "Ürün yok"}
-                          </div>
-                        ) : (
-                          <div className="mt-1 border-t pt-1">
-                            {filteredProducts.slice(0, 50).map((product: any) => (
+                        <div className="mt-1 border-t pt-1">
+                          {filteredProducts.slice(0, 50).map((product: any) => {
+                            const selected = isProductSelected(product.barcode);
+                            return (
                               <button
                                 type="button"
                                 key={product.barcode}
-                                onClick={() => handleProductSelect(product)}
+                                onClick={() => handleProductToggle(product)}
                                 className={`w-full flex items-center gap-3 px-2 py-2 rounded-md text-sm transition-colors ${
-                                  selectedProduct?.barcode === product.barcode
+                                  selected
                                     ? "bg-primary/10 text-primary"
                                     : "hover:bg-muted"
                                 }`}
                               >
+                                {/* Checkbox indicator */}
+                                <div className={`h-4 w-4 rounded border shrink-0 flex items-center justify-center ${
+                                  selected
+                                    ? "bg-primary border-primary text-primary-foreground"
+                                    : "border-input"
+                                }`}>
+                                  {selected && <Check className="h-3 w-3" />}
+                                </div>
                                 {product.image ? (
                                   <img
                                     src={product.image}
                                     alt=""
-                                    className="h-8 w-8 rounded object-cover"
+                                    className="h-8 w-8 rounded object-cover shrink-0"
                                   />
                                 ) : (
-                                  <div className="h-8 w-8 rounded bg-muted flex items-center justify-center">
+                                  <div className="h-8 w-8 rounded bg-muted flex items-center justify-center shrink-0">
                                     <Package className="h-4 w-4 text-muted-foreground" />
                                   </div>
                                 )}
@@ -452,19 +446,19 @@ export function AlertRuleFormModal({ open, onOpenChange, rule }: AlertRuleFormMo
                                   </p>
                                 </div>
                               </button>
-                            ))}
-                            {filteredProducts.length > 50 && (
-                              <p className="text-xs text-center text-muted-foreground py-2">
-                                +{filteredProducts.length - 50} daha fazla ürün
-                              </p>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </ScrollArea>
-                  </PopoverContent>
-                </Popover>
-              </div>
+                            );
+                          })}
+                          {filteredProducts.length > 50 && (
+                            <p className="text-xs text-center text-muted-foreground py-2">
+                              +{filteredProducts.length - 50} daha fazla ürün
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </ScrollArea>
+                </div>
+              )}
             </div>
 
             {/* Category */}

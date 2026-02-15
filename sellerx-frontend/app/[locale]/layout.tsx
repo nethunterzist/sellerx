@@ -7,6 +7,7 @@ import { routing } from "@/i18n/routing";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { ErrorBoundary } from "@/components/providers/error-boundary";
+import { ChunkErrorHandler } from "@/components/providers/chunk-error-handler";
 import { Open_Sans } from "next/font/google";
 
 const openSans = Open_Sans({
@@ -38,7 +39,10 @@ export default async function RootLayout({
         <QueryProvider>
           <ThemeProvider>
             <NextIntlClientProvider>
-              <ErrorBoundary>{children}</ErrorBoundary>
+              <ErrorBoundary>
+                <ChunkErrorHandler />
+                {children}
+              </ErrorBoundary>
             </NextIntlClientProvider>
           </ThemeProvider>
         </QueryProvider>

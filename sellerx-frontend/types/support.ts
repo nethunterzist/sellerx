@@ -14,6 +14,14 @@ export interface TicketMessage {
   createdAt: string;
 }
 
+export interface TicketAttachment {
+  id: number;
+  fileName: string;
+  fileType: string;
+  fileSize: number;
+  uploadedAt: string;
+}
+
 export interface Ticket {
   id: number;
   ticketNumber: string;

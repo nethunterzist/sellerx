@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { FadeIn } from "@/components/motion";
 import {
   Table,
   TableBody,
@@ -24,9 +25,8 @@ import { useMultiPeriodStats } from "@/hooks/useDashboardStats";
 import type {
   PeriodStats,
   PLPeriodPreset,
-  PLPeriodType,
 } from "@/types/dashboard";
-import { PL_PERIOD_PRESETS } from "@/types/dashboard";
+import { PL_PERIOD_PRESETS, calculateDynamicPeriodCount } from "@/types/dashboard";
 
 interface PLViewProps {
   storeId?: string;
@@ -394,6 +394,11 @@ export function PLView({ storeId, selectedProducts = [] }: PLViewProps) {
     return PL_PERIOD_PRESETS.find((p) => p.id === selectedPreset) || PL_PERIOD_PRESETS[0];
   }, [selectedPreset]);
 
+  // Calculate dynamic period count for quarterly/yearly presets
+  const effectivePeriodCount = useMemo(() => {
+    return calculateDynamicPeriodCount(presetConfig);
+  }, [presetConfig]);
+
   // Use first selected product barcode for filtering (API supports single product)
   const productBarcode = selectedProducts.length === 1 ? selectedProducts[0] : undefined;
 
@@ -401,7 +406,7 @@ export function PLView({ storeId, selectedProducts = [] }: PLViewProps) {
   const { data, isLoading, error } = useMultiPeriodStats(
     storeId,
     presetConfig.periodType,
-    presetConfig.periodCount,
+    effectivePeriodCount,
     productBarcode
   );
 
@@ -441,7 +446,7 @@ export function PLView({ storeId, selectedProducts = [] }: PLViewProps) {
   };
 
   if (isLoading) {
-    return <PLViewSkeleton columnCount={presetConfig.periodCount} />;
+    return <PLViewSkeleton columnCount={effectivePeriodCount} />;
   }
 
   if (error || !data) {
@@ -453,12 +458,13 @@ export function PLView({ storeId, selectedProducts = [] }: PLViewProps) {
   }
 
   return (
+    <FadeIn>
     <div className="bg-card rounded-lg border border-border overflow-hidden">
       {/* Header with preset selector */}
       <div className="p-4 border-b border-border flex items-center justify-between">
         <h3 className="font-semibold text-foreground">Kar/Zarar Tablosu</h3>
         <Select value={selectedPreset} onValueChange={(v) => setSelectedPreset(v as PLPeriodPreset)}>
-          <SelectTrigger className="w-[220px]">
+          <SelectTrigger className="w-[200px]">
             <SelectValue placeholder="Dönem seçin" />
           </SelectTrigger>
           <SelectContent>
@@ -482,14 +488,49 @@ export function PLView({ storeId, selectedProducts = [] }: PLViewProps) {
               </TableHead>
 
               {/* Period columns */}
-              {data.periods.map((period, index) => (
-                <TableHead
-                  key={index}
-                  className="text-right min-w-[100px] font-semibold whitespace-nowrap"
-                >
-                  {period.periodLabel}
-                </TableHead>
-              ))}
+              {data.periods.map((period, index) => {
+                // Format date range for weekly views (e.g., "02.02 - 07.02.2025")
+                const formatDateRange = () => {
+                  if (presetConfig.periodType !== "weekly") return null;
+
+                  const start = new Date(period.startDate);
+                  const end = new Date(period.endDate);
+
+                  const formatDay = (d: Date) =>
+                    `${d.getDate().toString().padStart(2, "0")}.${(d.getMonth() + 1).toString().padStart(2, "0")}`;
+
+                  const formatDayWithYear = (d: Date) =>
+                    `${formatDay(d)}.${d.getFullYear()}`;
+
+                  // Same year: "02.02 - 07.02.2025"
+                  // Different year: "28.12.2024 - 03.01.2025"
+                  if (start.getFullYear() === end.getFullYear()) {
+                    return `${formatDay(start)} - ${formatDayWithYear(end)}`;
+                  }
+                  return `${formatDayWithYear(start)} - ${formatDayWithYear(end)}`;
+                };
+
+                const dateRange = formatDateRange();
+
+                return (
+                  <TableHead
+                    key={index}
+                    className={cn(
+                      "text-right font-semibold whitespace-nowrap",
+                      dateRange ? "min-w-[120px]" : "min-w-[100px]"
+                    )}
+                  >
+                    <div className="flex flex-col items-end gap-0.5">
+                      <span>{period.periodLabel}</span>
+                      {dateRange && (
+                        <span className="text-[10px] font-normal text-muted-foreground">
+                          {dateRange}
+                        </span>
+                      )}
+                    </div>
+                  </TableHead>
+                );
+              })}
 
               {/* Sticky total column */}
               <TableHead className="text-right min-w-[120px] sticky right-0 z-20 bg-muted font-semibold border-l border-border">
@@ -513,5 +554,6 @@ export function PLView({ storeId, selectedProducts = [] }: PLViewProps) {
         </Table>
       </div>
     </div>
+    </FadeIn>
   );
 }

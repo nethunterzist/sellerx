@@ -3,7 +3,6 @@ import { productApi, productApiExtended } from "@/lib/api/client";
 import type {
   TrendyolProduct,
   ProductListResponse,
-  SyncProductsResponse,
   ProductFilters,
 } from "@/types/product";
 import { dashboardKeys } from "@/hooks/useDashboardStats";
@@ -106,21 +105,6 @@ export function useDeleteProduct() {
       queryClient.removeQueries({ queryKey: productKeys.detail(id) });
       // Invalidate lists
       queryClient.invalidateQueries({ queryKey: productKeys.lists() });
-    },
-  });
-}
-
-// Sync products from Trendyol
-export function useSyncProducts() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (storeId: string) => productApiExtended.sync(storeId),
-    onSuccess: (data, storeId) => {
-      // Invalidate products for this store
-      queryClient.invalidateQueries({ queryKey: productKeys.byStore(storeId) });
-      // Invalidate dashboard stats as product data may have changed
-      queryClient.invalidateQueries({ queryKey: dashboardKeys.stats(storeId) });
     },
   });
 }

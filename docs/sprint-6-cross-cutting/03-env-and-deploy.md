@@ -36,3 +36,47 @@ Ortam değişkenleri, Docker ve CI. Kaynak: [CLAUDE.md](CLAUDE.md), [.github/wor
 - Env: JAVA_VERSION 21, NODE_VERSION 20
 
 **Özet:** Env: Frontend API_BASE_URL; Backend DB + JWT_SECRET + WEBHOOK_BASE_URL. Deploy: db.sh, start-sellerx.sh veya docker-compose.dev.yml; CI: backend + frontend build ve test.
+
+## Production CI/CD Pipeline
+
+**GitHub Actions:**
+- `.github/workflows/ci.yml` — Build & test (PR'larda otomatik)
+- `.github/workflows/deploy-backend.yml` — Backend deploy (push to main, `sellerx-backend/**` değişikliklerinde)
+- `.github/workflows/deploy-frontend.yml` — Frontend deploy (push to main, `sellerx-frontend/**` değişikliklerinde)
+
+**Akış:**
+```
+git push origin main
+    → GitHub Actions: Build & Test
+    → Docker image build → GHCR (ghcr.io/nethunterzist/sellerx/*)
+    → SSH to server → Stop old container (rollback için sakla) → Pull & start new image
+    → Health check (başarısızlıkta otomatik rollback)
+    → Deploy tamamlandı
+```
+
+**Deploy süreleri:** Backend ~5-10 dk, Frontend ~3-5 dk.
+
+### GitHub Secrets
+
+| Secret | Açıklama |
+|--------|----------|
+| `SSH_PRIVATE_KEY` | Sunucu SSH erişimi |
+| `DB_PASSWORD` | PostgreSQL şifresi |
+| `JWT_SECRET` | JWT imzalama anahtarı (32+ karakter) |
+| `ENCRYPTION_KEY` | AES şifreleme anahtarı |
+| `GHCR_PAT` | GitHub Container Registry erişim token'ı |
+
+### Rollback
+
+```bash
+# Sunucuda önceki sürüme geri dön
+ssh root@<server> "docker stop sellerx-backend && docker rm sellerx-backend && \
+  docker run -d --name sellerx-backend ... ghcr.io/nethunterzist/sellerx/backend:rollback"
+```
+
+### Manuel Deploy (Acil)
+
+```bash
+gh workflow run deploy-backend.yml
+gh workflow run deploy-frontend.yml
+```

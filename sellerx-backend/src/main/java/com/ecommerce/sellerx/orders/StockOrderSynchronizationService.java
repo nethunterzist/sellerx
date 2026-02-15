@@ -1,12 +1,16 @@
 package com.ecommerce.sellerx.orders;
 
+import com.ecommerce.sellerx.orders.event.StockChangedEvent;
 import com.ecommerce.sellerx.products.CostAndStockInfo;
 import com.ecommerce.sellerx.products.TrendyolProduct;
 import com.ecommerce.sellerx.products.TrendyolProductRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -21,6 +25,18 @@ public class StockOrderSynchronizationService {
 
     private final TrendyolOrderRepository orderRepository;
     private final TrendyolProductRepository productRepository;
+
+    /**
+     * Handles stock change events after transaction commits.
+     * Runs asynchronously to not block the calling thread.
+     */
+    @Async("taskExecutor")
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void handleStockChangedEvent(StockChangedEvent event) {
+        log.info("Received stock change event for store {} product {} date {}",
+            event.getStoreId(), event.getProductId(), event.getStockDate());
+        synchronizeOrdersAfterStockChange(event.getStoreId(), event.getStockDate());
+    }
 
     /**
      * Synchronize orders after stock changes (add/update/delete)

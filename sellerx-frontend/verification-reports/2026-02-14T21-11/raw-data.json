@@ -1,0 +1,61 @@
+{
+  "storeName": "Test Magazasi",
+  "storeEmail": "test@test.com",
+  "timestamp": "15.02.2026 00:12:12",
+  "sections": [
+    {
+      "title": "Donem Detay Modali (Bu Ay)",
+      "summary": {
+        "total": 4,
+        "matching": 0,
+        "warnings": 0,
+        "errors": 4,
+        "results": [
+          {
+            "field": "Bu Ay Modal - Ciro",
+            "match": false,
+            "dbValue": 2848160.06,
+            "frontendValue": 1,
+            "trendyolValue": null,
+            "deviation": 100,
+            "severity": "critical",
+            "note": "DB vs FE: diff=2848159.06"
+          },
+          {
+            "field": "Bu Ay Modal - Siparis",
+            "match": false,
+            "dbValue": 2242,
+            "frontendValue": 1,
+            "trendyolValue": null,
+            "deviation": 99.96,
+            "severity": "critical",
+            "note": "DB vs FE: diff=2241.00"
+          },
+          {
+            "field": "Bu Ay Modal - Komisyon",
+            "match": false,
+            "dbValue": 444405.85,
+            "frontendValue": 1,
+            "trendyolValue": null,
+            "deviation": 100,
+            "severity": "critical",
+            "note": "DB vs FE: diff=444404.85"
+          },
+          {
+            "field": "Bu Ay Modal - Kargo",
+            "match": false,
+            "dbValue": 0,
+            "frontendValue": 1,
+            "trendyolValue": null,
+            "deviation": 100,
+            "severity": "critical",
+            "note": "DB vs FE: diff=1.00"
+          }
+        ]
+      },
+      "screenshots": [
+        "03c-period-detail-modal.png"
+      ]
+    }
+  ]
+}

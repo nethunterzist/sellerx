@@ -10,7 +10,7 @@ Feature bazlı sayfa grupları. Kaynak: [01-page-list.md](01-page-list.md).
 | products | /products | Ürün listesi, maliyet/stok | use-products |
 | orders | /orders | Sipariş listesi | use-orders |
 | financial | /financial, /financial/invoices, /financial/settlement, /financial/vat | Finansal özet, faturalar, mutabakat, KDV | use-financial, use-invoices |
-| purchasing | /purchasing, /purchasing/[poId], /purchasing/suppliers, /purchasing/reports/cost-history, /purchasing/reports/profitability, /purchasing/reports/stock-valuation | Satın alma siparişleri, tedarikçi, raporlar | use-purchasing, use-suppliers |
+| purchasing | /purchasing, /purchasing/[poId], /purchasing/orders, /purchasing/suppliers, /purchasing/reports/cost-history, /purchasing/reports/stock-valuation | Satın alma siparişleri, tedarikçi, raporlar | use-purchasing, use-suppliers |
 | billing | /billing, /billing/checkout | Abonelik, ödeme, checkout | use-billing |
 | profit | /profit | Kârlılık analizi | use-stats, use-purchasing |
 | expenses | /expenses | Gider yönetimi | use-expenses |
@@ -22,7 +22,9 @@ Feature bazlı sayfa grupları. Kaynak: [01-page-list.md](01-page-list.md).
 | notifications | /notifications | Kullanıcı bildirimleri | use-notifications |
 | support | /support, /support/[id] | Destek talepleri, detay | use-support |
 | settings | /settings | Mağaza ayarları, webhook | use-settings, use-webhooks |
-| profile | /profile | Profil, tercihler, mağaza seçimi | use-users, use-stores |
+| customer-analytics | /customer-analytics | Müşteri davranış analizi, satın alma kalıpları, segmentler | use-customer-analytics |
+| kar-hesaplama | /kar-hesaplama | Trendyol satıcıları için interaktif kâr/maliyet hesaplayıcı | — |
+| impersonate | /impersonate | Admin impersonation token handler | use-auth |
 | new-store | /new-store | Yeni mağaza ekleme (Trendyol) | use-stores |
 | analytics | /analytics | Analitik | use-stats |
 | dumen | /dumen | Dümen sayfası | — |
@@ -44,6 +46,8 @@ Feature bazlı sayfa grupları. Kaynak: [01-page-list.md](01-page-list.md).
 | admin-support | /admin/support, /admin/support/[id] | Destek talepleri yönetimi | use-admin |
 | admin-education | /admin/education | Eğitim içeriği yönetimi | use-admin |
 | admin-notifications | /admin/notifications | Bildirim yönetimi | use-admin-notification |
+| admin-email-templates | /admin/email-templates, /admin/email-templates/[type], /admin/email-templates/layout-settings | E-posta şablon yönetimi, önizleme, düzenleme | use-admin-email-templates |
+| admin-sandbox | /admin/sandbox/invoices, /admin/sandbox/orders, /admin/sandbox/products, /admin/sandbox/returns | Geliştirme için test veri üretimi | use-admin |
 | admin-security | /admin/security | Güvenlik ayarları | use-admin |
 
 ## Auth
@@ -52,12 +56,19 @@ Feature bazlı sayfa grupları. Kaynak: [01-page-list.md](01-page-list.md).
 |---------|----------|----------|-------------|
 | sign-in | /sign-in | Giriş | use-auth |
 | register | /register | Kayıt | use-auth |
+| forgot-password | /forgot-password | Şifre sıfırlama isteği | use-auth |
+| reset-password | /reset-password | Yeni şifre belirleme | use-auth |
+| verify-email | /verify-email | E-posta doğrulama handler | use-auth |
+| verification-pending | /verification-pending | E-posta doğrulama bekleme durumu | use-auth |
 
 ## Public
 
 | Feature | Sayfalar | Açıklama | İlgili hook |
 |---------|----------|----------|-------------|
 | pricing | /pricing | Fiyatlandırma (public) | — |
+| hesaplama | /hesaplama | Trendyol komisyon hesaplayıcı (public) | — |
+| privacy | /privacy | Gizlilik politikası | — |
+| terms | /terms | Kullanım koşulları | — |
 
 ## Root
 
@@ -67,4 +78,4 @@ Feature bazlı sayfa grupları. Kaynak: [01-page-list.md](01-page-list.md).
 
 ---
 
-**Not:** `not-found.tsx` sayfa değil; 01'de listelenmez. Dinamik segmentler: [id] (stock-tracking, support; admin: stores, users, support), [poId] (purchasing).
+**Not:** `not-found.tsx` sayfa değil; 01'de listelenmez. Dinamik segmentler: [id] (stock-tracking, support; admin: stores, users, support), [type] (admin: email-templates), [poId] (purchasing).

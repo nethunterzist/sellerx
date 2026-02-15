@@ -1,9 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback, useEffect } from "react";
+import { FadeIn } from "@/components/motion";
 import { cn } from "@/lib/utils";
 import { ChevronRight, ChevronDown, Info } from "lucide-react";
-import { DashboardChart } from "./dashboard-chart";
+import { LazyDashboardChart } from "@/components/charts/lazy-chart";
+import { ChartMetricSelector, CompactMetricSelector } from "./chart-metric-selector";
+import { FifoProfitabilitySection } from "./fifo-profitability-section";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Collapsible,
@@ -17,6 +20,11 @@ import {
 } from "@/components/ui/tooltip";
 import type { DashboardStatsResponse } from "@/types/dashboard";
 import { useCurrency } from "@/lib/contexts/currency-context";
+import {
+  DEFAULT_SELECTED_METRICS,
+  METRIC_SELECTION_STORAGE_KEY,
+  type ExtendedChartDataPoint,
+} from "@/types/chart-metrics";
 
 interface ChartViewProps {
   stats: DashboardStatsResponse | null | undefined;
@@ -180,25 +188,46 @@ function SubRow({
 export function ChartView({ stats, isLoading, selectedProducts = [] }: ChartViewProps) {
   const { formatCurrency } = useCurrency();
 
-  // Orders'dan günlük veri çıkar (ürün filtrelemeli)
-  const dailyData = useMemo(() => {
+  // State for selected metrics
+  const [selectedMetrics, setSelectedMetrics] = useState<string[]>(DEFAULT_SELECTED_METRICS);
+
+  // Load saved metrics from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(METRIC_SELECTION_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setSelectedMetrics(parsed);
+        }
+      }
+    } catch {
+      // Ignore localStorage errors
+    }
+  }, []);
+
+  // Handle metric selection change
+  const handleMetricSelectionChange = useCallback((metrics: string[]) => {
+    setSelectedMetrics(metrics);
+    try {
+      localStorage.setItem(METRIC_SELECTION_STORAGE_KEY, JSON.stringify(metrics));
+    } catch {
+      // Ignore localStorage errors
+    }
+  }, []);
+
+  // Orders'dan gunluk veri cikar (urun filtrelemeli) - genisletilmis metriklerle
+  const dailyData = useMemo((): ExtendedChartDataPoint[] => {
     if (!stats?.thisMonth?.orders) return [];
 
-    const ordersByDate = new Map<string, {
-      date: string;
-      displayDate: string;
-      units: number;
-      revenue: number;
-      netProfit: number;
-      refunds: number;
-    }>();
+    const ordersByDate = new Map<string, ExtendedChartDataPoint>();
 
     stats.thisMonth.orders.forEach((order) => {
-      // Ürün filtresi varsa sadece seçili ürünleri al
+      // Urun filtresi varsa sadece secili urunleri al
       let products = order.products || [];
       if (selectedProducts.length > 0) {
         products = products.filter((p) => selectedProducts.includes(p.barcode));
-        // Bu siparişte seçili ürün yoksa atla
+        // Bu sipariste secili urun yoksa atla
         if (products.length === 0) return;
       }
 
@@ -212,45 +241,82 @@ export function ChartView({ stats, isLoading, selectedProducts = [] }: ChartView
         ordersByDate.set(date, {
           date,
           displayDate,
+          // Sales
           units: 0,
           revenue: 0,
+          netRevenue: 0,
+          orders: 0,
+          // Costs
+          productCost: 0,
+          commission: 0,
+          shippingCost: 0,
+          advertisingCost: 0,
+          stoppage: 0,
+          // Profit
+          grossProfit: 0,
           netProfit: 0,
+          // Metrics (calculated later)
+          margin: 0,
+          roi: 0,
+          // Additional
           refunds: 0,
+          refundCost: 0,
         });
       }
 
       const dayData = ordersByDate.get(date)!;
+      dayData.orders += 1;
 
-      // Filtrelenmiş ürünlerden metrikleri hesapla
+      // Filtrelenmis urunlerden metrikleri hesapla
       if (selectedProducts.length > 0) {
-        // Filtrelenmiş ürünler üzerinden hesapla
         products.forEach((p) => {
           dayData.units += p.quantity || 0;
           dayData.revenue += p.totalPrice || 0;
-          dayData.netProfit += (p.totalPrice || 0) - (p.totalCost || 0) - (p.commission || 0);
+          dayData.productCost += p.totalCost || 0;
+          dayData.commission += p.commission || 0;
         });
       } else {
-        // Sipariş bazında hesapla (orijinal davranış)
+        // Siparis bazinda hesapla (orijinal davranis)
         const orderUnits = products.reduce((sum, p) => sum + (p.quantity || 0), 0);
+        const orderProductCost = products.reduce((sum, p) => sum + (p.totalCost || 0), 0);
         dayData.units += orderUnits;
         dayData.revenue += order.revenue || order.totalPrice || 0;
-        dayData.netProfit += order.grossProfit || 0;
+        dayData.productCost += orderProductCost;
+        dayData.commission += order.estimatedCommission || 0;
+        dayData.shippingCost += order.estimatedShippingCost || 0;
         dayData.refunds += order.returnPrice || 0;
+        dayData.grossProfit += order.grossProfit || 0;
+        // netProfit is calculated in the recalculation step below (line 300-302)
       }
     });
 
-    // Tarihe göre sırala
-    return Array.from(ordersByDate.values()).sort((a, b) =>
-      a.date.localeCompare(b.date)
-    );
+    // Tarihe gore sirala ve metrikleri hesapla
+    return Array.from(ordersByDate.values())
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .map((day) => {
+        // Calculate derived metrics if not already set
+        if (day.grossProfit === 0 && day.revenue > 0) {
+          day.grossProfit = day.revenue - day.productCost;
+        }
+        if (day.netProfit === 0 && day.grossProfit !== 0) {
+          day.netProfit = day.grossProfit - day.commission - day.shippingCost;
+        }
+        // Net revenue (after discounts) - for simplicity using revenue
+        day.netRevenue = day.revenue;
+        // Margin calculation
+        day.margin = day.revenue > 0 ? (day.grossProfit / day.revenue) * 100 : 0;
+        // ROI calculation
+        day.roi = day.productCost > 0 ? (day.netProfit / day.productCost) * 100 : 0;
+        return day;
+      });
   }, [stats, selectedProducts]);
 
-  // Özet metrikler (ürün filtrelemeli)
+  // Ozet metrikler (urun filtrelemeli)
   const summary = useMemo(() => {
     const data = stats?.thisMonth;
     if (!data) return null;
 
-    // Hesap bazlı giderler (ürün filtresinden bağımsız)
+    // Hesap bazli giderler (urun filtresinden bagimsiz)
     const accountLevelExpenses = {
       shippingCost: data.totalShippingCost ?? 0,
       advertisingFees: data.invoicedAdvertisingFees ?? 0,
@@ -258,11 +324,11 @@ export function ChartView({ stats, isLoading, selectedProducts = [] }: ChartView
       penaltyFees: data.invoicedPenaltyFees ?? 0,
       internationalFees: data.invoicedInternationalFees ?? 0,
       otherFees: data.invoicedOtherFees ?? 0,
-      refunds: data.invoicedRefunds ?? 0, // Pozitif değer (iade tazminatı)
-      userExpenses: data.totalExpenseAmount ?? 0, // Kullanıcı tanımlı giderler
+      refunds: data.invoicedRefunds ?? 0, // Pozitif deger (iade tazminati)
+      userExpenses: data.totalExpenseAmount ?? 0, // Kullanici tanimli giderler
     };
 
-    // Toplam gider kırılımı hesaplama (komisyon hariç)
+    // Toplam gider kirilimi hesaplama (komisyon haric)
     const totalExpenseBreakdown =
       accountLevelExpenses.shippingCost +
       accountLevelExpenses.advertisingFees +
@@ -270,10 +336,10 @@ export function ChartView({ stats, isLoading, selectedProducts = [] }: ChartView
       accountLevelExpenses.penaltyFees +
       accountLevelExpenses.internationalFees +
       accountLevelExpenses.otherFees -
-      accountLevelExpenses.refunds + // İadeler çıkarılır (pozitif etki)
+      accountLevelExpenses.refunds + // Iadeler cikarilir (pozitif etki)
       accountLevelExpenses.userExpenses;
 
-    // Ürün filtresi varsa products array'inden hesapla (shippingCost burada var)
+    // Urun filtresi varsa products array'inden hesapla (shippingCost burada var)
     if (selectedProducts.length > 0 && data.products) {
       const filteredProducts = data.products.filter((p) =>
         selectedProducts.includes(p.barcode)
@@ -297,7 +363,7 @@ export function ChartView({ stats, isLoading, selectedProducts = [] }: ChartView
         returnCost += p.refundCost || 0;
       });
 
-      // Sipariş sayısını orders'tan hesapla
+      // Siparis sayisini orders'tan hesapla
       let totalOrders = 0;
       if (data.orders) {
         data.orders.forEach((order) => {
@@ -325,12 +391,12 @@ export function ChartView({ stats, isLoading, selectedProducts = [] }: ChartView
         netProfit,
         margin,
         roi,
-        // Ürün bazlı gider kırılımı
+        // Urun bazli gider kirilimi
         isProductFiltered: true,
         productShippingCost,
-        // Hesap bazlı giderler (ürün filtresinde gösterilmez ama bilgi için saklanır)
+        // Hesap bazli giderler (urun filtresinde gosterilmez ama bilgi icin saklanir)
         accountLevelExpenses,
-        totalExpenseBreakdown: productShippingCost, // Ürün filtresinde sadece kargo
+        totalExpenseBreakdown: productShippingCost, // Urun filtresinde sadece kargo
       };
     }
 
@@ -343,7 +409,7 @@ export function ChartView({ stats, isLoading, selectedProducts = [] }: ChartView
       ? (netProfit / data.totalProductCosts) * 100
       : 0;
 
-    // İndirimler
+    // Indirimler
     const sellerDiscount = data.totalSellerDiscount ?? 0;
     const platformDiscount = data.totalPlatformDiscount ?? 0;
     const couponDiscount = data.totalCouponDiscount ?? 0;
@@ -372,7 +438,7 @@ export function ChartView({ stats, isLoading, selectedProducts = [] }: ChartView
       invoicedOtherFees -
       invoicedRefunds;
 
-    // Ekstra giderler (kullanıcı tanımlı)
+    // Ekstra giderler (kullanici tanimli)
     const userExpenses = data.totalExpenseAmount ?? 0;
     const expensesByCategory = data.expensesByCategory ?? {};
 
@@ -388,11 +454,11 @@ export function ChartView({ stats, isLoading, selectedProducts = [] }: ChartView
       netProfit,
       margin,
       roi,
-      // Gider kırılımı
+      // Gider kirilimi
       isProductFiltered: false,
       accountLevelExpenses,
       totalExpenseBreakdown,
-      // İndirimler
+      // Indirimler
       sellerDiscount,
       platformDiscount,
       couponDiscount,
@@ -419,282 +485,324 @@ export function ChartView({ stats, isLoading, selectedProducts = [] }: ChartView
 
   if (isLoading) {
     return (
-      <div className="bg-card rounded-lg border border-border">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 p-6 items-start">
-          {/* Sol: Grafik Alanı */}
-          <div className="lg:col-span-2">
-            <Skeleton className="h-[480px] w-full" />
-          </div>
-
-          {/* Sağ: Özet Panel */}
-          <div className="space-y-1 min-h-[480px]">
-            <h3 className="font-semibold text-foreground mb-3">Bu Ay Özet</h3>
-            {[...Array(12)].map((_, i) => (
-              <MetricRowSkeleton key={i} />
+      <div className="space-y-6">
+        {/* Metric Selector Skeleton */}
+        <div className="bg-card rounded-lg border border-border p-4">
+          <Skeleton className="h-6 w-48 mb-4" />
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="space-y-2">
+                <Skeleton className="h-4 w-16" />
+                {[...Array(3)].map((_, j) => (
+                  <Skeleton key={j} className="h-6 w-full" />
+                ))}
+              </div>
             ))}
           </div>
         </div>
+
+        {/* Chart Area Skeleton */}
+        <div className="bg-card rounded-lg border border-border">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 p-6 items-start">
+            <div className="lg:col-span-2">
+              <Skeleton className="h-[480px] w-full" />
+            </div>
+            <div className="space-y-1 min-h-[480px]">
+              <h3 className="font-semibold text-foreground mb-3">Bu Ay Ozet</h3>
+              {[...Array(12)].map((_, i) => (
+                <MetricRowSkeleton key={i} />
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* FIFO Section Skeleton */}
+        <Skeleton className="h-16 w-full rounded-lg" />
       </div>
     );
   }
 
   return (
-    <div className="bg-card rounded-lg border border-border">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 p-6 items-start">
-        {/* Sol: Grafik Alanı */}
-        <div className="lg:col-span-2">
-          <h3 className="font-semibold text-foreground mb-4">Günlük Performans</h3>
-          <DashboardChart data={dailyData} />
-        </div>
+    <FadeIn>
+    <div className="space-y-6">
+      {/* Metric Selector - Full width at top */}
+      <div className="hidden md:block">
+        <ChartMetricSelector
+          selectedMetrics={selectedMetrics}
+          onSelectionChange={handleMetricSelectionChange}
+        />
+      </div>
 
-        {/* Sağ: Özet Panel */}
-        <div className="space-y-1 min-h-[480px]">
-          <h3 className="font-semibold text-foreground mb-3">Bu Ay Özet</h3>
+      {/* Compact selector for mobile */}
+      <div className="md:hidden">
+        <CompactMetricSelector
+          selectedMetrics={selectedMetrics}
+          onSelectionChange={handleMetricSelectionChange}
+        />
+      </div>
 
-          {summary ? (
-            <>
-              {/* ==================== SATIŞLAR ==================== */}
-              <MetricRow
-                label="Satışlar (Brüt Ciro)"
-                value={formatCurrency(summary.totalRevenue)}
-                isBold
-              />
-              <MetricRow
-                label="Satış Adedi"
-                value={summary.totalProductsSold.toLocaleString("tr-TR")}
-              />
-              <MetricRow
-                label="Sipariş Sayısı"
-                value={summary.totalOrders.toLocaleString("tr-TR")}
-              />
+      {/* Chart and Summary */}
+      <div className="bg-card rounded-lg border border-border">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 p-6 items-start">
+          {/* Sol: Grafik Alani */}
+          <div className="lg:col-span-2">
+            <h3 className="font-semibold text-foreground mb-4">Gunluk Performans</h3>
+            <LazyDashboardChart data={dailyData} selectedMetrics={selectedMetrics} />
+          </div>
 
-              {/* ==================== İNDİRİMLER ==================== */}
-              {!summary.isProductFiltered && (
-                <ExpandableMetricRow
-                  label="İndirimler & Kuponlar"
-                  value={formatCurrency(-((summary.sellerDiscount ?? 0) + (summary.platformDiscount ?? 0) + (summary.couponDiscount ?? 0)))}
-                  isNegative={(summary.sellerDiscount ?? 0) + (summary.platformDiscount ?? 0) + (summary.couponDiscount ?? 0) > 0}
-                >
-                  <SubRow
-                    label="Satıcı İndirimi"
-                    value={formatCurrency(-(summary.sellerDiscount ?? 0))}
-                    isNegative={(summary.sellerDiscount ?? 0) > 0}
-                  />
-                  <SubRow
-                    label="Platform İndirimi"
-                    value={formatCurrency(-(summary.platformDiscount ?? 0))}
-                    isNegative={(summary.platformDiscount ?? 0) > 0}
-                  />
-                  <SubRow
-                    label="Kupon İndirimi"
-                    value={formatCurrency(-(summary.couponDiscount ?? 0))}
-                    isNegative={(summary.couponDiscount ?? 0) > 0}
-                  />
-                </ExpandableMetricRow>
-              )}
+          {/* Sag: Ozet Panel */}
+          <div className="space-y-1 min-h-[480px]">
+            <h3 className="font-semibold text-foreground mb-3">Bu Ay Ozet</h3>
 
-              {/* Net Ciro */}
-              {!summary.isProductFiltered && (
+            {summary ? (
+              <>
+                {/* ==================== SATISLAR ==================== */}
                 <MetricRow
-                  label="Net Ciro"
-                  value={formatCurrency(summary.netRevenue ?? (summary.totalRevenue - (summary.sellerDiscount ?? 0) - (summary.platformDiscount ?? 0) - (summary.couponDiscount ?? 0)))}
+                  label="Satislar (Brut Ciro)"
+                  value={formatCurrency(summary.totalRevenue)}
                   isBold
                 />
-              )}
-
-              {/* Divider */}
-              <div className="h-1 bg-muted my-1" />
-
-              {/* ==================== MALİYETLER ==================== */}
-              {/* Komisyon */}
-              <MetricRow
-                label="Komisyon"
-                value={formatCurrency(-summary.totalEstimatedCommission)}
-                isNegative={summary.totalEstimatedCommission > 0}
-              />
-
-              {/* Kargo Maliyeti */}
-              <MetricRow
-                label="Kargo Maliyeti"
-                value={formatCurrency(-(summary.isProductFiltered ? (summary.productShippingCost ?? 0) : (summary.shippingCost ?? 0)))}
-                isNegative={(summary.isProductFiltered ? (summary.productShippingCost ?? 0) : (summary.shippingCost ?? 0)) > 0}
-              />
-
-              {/* Ürün Maliyeti */}
-              <MetricRow
-                label="Ürün Maliyeti"
-                value={formatCurrency(-summary.totalProductCosts)}
-                isNegative={summary.totalProductCosts > 0}
-              />
-
-
-              {/* Stopaj */}
-              {!summary.isProductFiltered && (
                 <MetricRow
-                  label="Stopaj"
-                  value={formatCurrency(-(summary.stoppage ?? 0))}
-                  isNegative={(summary.stoppage ?? 0) > 0}
+                  label="Satis Adedi"
+                  value={summary.totalProductsSold.toLocaleString("tr-TR")}
                 />
-              )}
-
-              {/* Divider */}
-              <div className="h-1 bg-muted my-1" />
-
-              {/* ==================== KESİLEN FATURALAR ==================== */}
-              {summary.isProductFiltered ? (
-                // Ürün filtresinde: Bilgi notu ile göster
-                <ExpandableMetricRow
-                  label="Kesilen Faturalar"
-                  value="—"
-                  infoText="Reklam, platform hizmet bedeli vb. kesintiler ürün bazlı değildir"
-                >
-                  <div className="flex items-center gap-1.5 py-2 px-4 text-xs text-muted-foreground">
-                    <Info className="h-3.5 w-3.5 flex-shrink-0" />
-                    <span>
-                      Bu kesintiler hesap bazlıdır, tek bir ürüne atfedilemez.
-                      Dönem toplamı: {formatCurrency(
-                        (summary.accountLevelExpenses?.advertisingFees ?? 0) +
-                        (summary.accountLevelExpenses?.platformServiceFee ?? 0) +
-                        (summary.accountLevelExpenses?.penaltyFees ?? 0) +
-                        (summary.accountLevelExpenses?.internationalFees ?? 0) +
-                        (summary.accountLevelExpenses?.otherFees ?? 0)
-                      )}
-                    </span>
-                  </div>
-                </ExpandableMetricRow>
-              ) : (
-                <ExpandableMetricRow
-                  label="Kesilen Faturalar"
-                  value={formatCurrency(-(summary.totalInvoicedDeductions ?? 0))}
-                  isNegative
-                >
-                  {(summary.platformServiceFee ?? 0) > 0 && (
-                    <SubRow
-                      label="Platform Hizmet Bedeli"
-                      value={formatCurrency(-(summary.platformServiceFee ?? 0))}
-                      isNegative
-                    />
-                  )}
-                  {(summary.azPlatformServiceFee ?? 0) > 0 && (
-                    <SubRow
-                      label="AZ-Platform Hizmet Bedeli"
-                      value={formatCurrency(-(summary.azPlatformServiceFee ?? 0))}
-                      isNegative
-                    />
-                  )}
-                  {(summary.invoicedAdvertisingFees ?? 0) > 0 && (
-                    <SubRow
-                      label="Reklam Bedeli"
-                      value={formatCurrency(-(summary.invoicedAdvertisingFees ?? 0))}
-                      isNegative
-                    />
-                  )}
-                  {(summary.invoicedPenaltyFees ?? 0) > 0 && (
-                    <SubRow
-                      label="Ceza / Kesintiler"
-                      value={formatCurrency(-(summary.invoicedPenaltyFees ?? 0))}
-                      isNegative
-                    />
-                  )}
-                  {(summary.invoicedInternationalFees ?? 0) > 0 && (
-                    <SubRow
-                      label="Uluslararası Kesintiler"
-                      value={formatCurrency(-(summary.invoicedInternationalFees ?? 0))}
-                      isNegative
-                    />
-                  )}
-                  {(summary.invoicedOtherFees ?? 0) > 0 && (
-                    <SubRow
-                      label="Diğer Kesintiler"
-                      value={formatCurrency(-(summary.invoicedOtherFees ?? 0))}
-                      isNegative
-                    />
-                  )}
-                  {(summary.invoicedRefunds ?? 0) > 0 && (
-                    <SubRow
-                      label="İadeler (Tazmin)"
-                      value={formatCurrency(summary.invoicedRefunds ?? 0)}
-                    />
-                  )}
-                </ExpandableMetricRow>
-              )}
-
-              {/* Divider */}
-              <div className="h-1 bg-muted my-1" />
-
-              {/* ==================== KÂR ==================== */}
-              {/* Brüt Kâr */}
-              <MetricRow
-                label="Brüt Kâr"
-                value={formatCurrency(summary.grossProfit)}
-                isNegative={summary.grossProfit < 0}
-                isBold
-              />
-
-              {/* Ekstra Giderler */}
-              {!summary.isProductFiltered && (summary.userExpenses ?? 0) > 0 && (
-                <ExpandableMetricRow
-                  label="Ekstra Giderler"
-                  value={formatCurrency(-(summary.userExpenses ?? 0))}
-                  isNegative
-                >
-                  {summary.expensesByCategory && Object.keys(summary.expensesByCategory).length > 0 ? (
-                    Object.entries(summary.expensesByCategory)
-                      .filter(([, amount]) => (amount ?? 0) > 0)
-                      .map(([categoryName, amount]) => (
-                        <SubRow
-                          key={categoryName}
-                          label={categoryName}
-                          value={formatCurrency(-(amount ?? 0))}
-                          isNegative
-                        />
-                      ))
-                  ) : (
-                    <SubRow
-                      label="Toplam"
-                      value={formatCurrency(-(summary.userExpenses ?? 0))}
-                      isNegative
-                    />
-                  )}
-                </ExpandableMetricRow>
-              )}
-
-              {/* Divider - Strong border before Net Profit */}
-              <div className="h-2 bg-primary/10 my-1" />
-
-              {/* Net Kâr - Highlighted */}
-              <div className="bg-primary/5 -mx-1 px-1">
                 <MetricRow
-                  label="Net Kâr"
-                  value={formatCurrency(summary.netProfit)}
-                  isNegative={summary.netProfit < 0}
+                  label="Siparis Sayisi"
+                  value={summary.totalOrders.toLocaleString("tr-TR")}
+                />
+
+                {/* ==================== INDIRIMLER ==================== */}
+                {!summary.isProductFiltered && (
+                  <ExpandableMetricRow
+                    label="Indirimler & Kuponlar"
+                    value={formatCurrency(-((summary.sellerDiscount ?? 0) + (summary.platformDiscount ?? 0) + (summary.couponDiscount ?? 0)))}
+                    isNegative={(summary.sellerDiscount ?? 0) + (summary.platformDiscount ?? 0) + (summary.couponDiscount ?? 0) > 0}
+                  >
+                    <SubRow
+                      label="Satici Indirimi"
+                      value={formatCurrency(-(summary.sellerDiscount ?? 0))}
+                      isNegative={(summary.sellerDiscount ?? 0) > 0}
+                    />
+                    <SubRow
+                      label="Platform Indirimi"
+                      value={formatCurrency(-(summary.platformDiscount ?? 0))}
+                      isNegative={(summary.platformDiscount ?? 0) > 0}
+                    />
+                    <SubRow
+                      label="Kupon Indirimi"
+                      value={formatCurrency(-(summary.couponDiscount ?? 0))}
+                      isNegative={(summary.couponDiscount ?? 0) > 0}
+                    />
+                  </ExpandableMetricRow>
+                )}
+
+                {/* Net Ciro */}
+                {!summary.isProductFiltered && (
+                  <MetricRow
+                    label="Net Ciro"
+                    value={formatCurrency(summary.netRevenue ?? (summary.totalRevenue - (summary.sellerDiscount ?? 0) - (summary.platformDiscount ?? 0) - (summary.couponDiscount ?? 0)))}
+                    isBold
+                  />
+                )}
+
+                {/* Divider */}
+                <div className="h-1 bg-muted my-1" />
+
+                {/* ==================== MALIYETLER ==================== */}
+                {/* Komisyon */}
+                <MetricRow
+                  label="Komisyon"
+                  value={formatCurrency(-summary.totalEstimatedCommission)}
+                  isNegative={summary.totalEstimatedCommission > 0}
+                />
+
+                {/* Kargo Maliyeti */}
+                <MetricRow
+                  label="Kargo Maliyeti"
+                  value={formatCurrency(-(summary.isProductFiltered ? (summary.productShippingCost ?? 0) : (summary.shippingCost ?? 0)))}
+                  isNegative={(summary.isProductFiltered ? (summary.productShippingCost ?? 0) : (summary.shippingCost ?? 0)) > 0}
+                />
+
+                {/* Urun Maliyeti */}
+                <MetricRow
+                  label="Urun Maliyeti"
+                  value={formatCurrency(-summary.totalProductCosts)}
+                  isNegative={summary.totalProductCosts > 0}
+                />
+
+
+                {/* Stopaj */}
+                {!summary.isProductFiltered && (
+                  <MetricRow
+                    label="Stopaj"
+                    value={formatCurrency(-(summary.stoppage ?? 0))}
+                    isNegative={(summary.stoppage ?? 0) > 0}
+                  />
+                )}
+
+                {/* Divider */}
+                <div className="h-1 bg-muted my-1" />
+
+                {/* ==================== KESILEN FATURALAR ==================== */}
+                {summary.isProductFiltered ? (
+                  // Urun filtresinde: Bilgi notu ile goster
+                  <ExpandableMetricRow
+                    label="Kesilen Faturalar"
+                    value="—"
+                    infoText="Reklam, platform hizmet bedeli vb. kesintiler urun bazli degildir"
+                  >
+                    <div className="flex items-center gap-1.5 py-2 px-4 text-xs text-muted-foreground">
+                      <Info className="h-3.5 w-3.5 flex-shrink-0" />
+                      <span>
+                        Bu kesintiler hesap bazlidir, tek bir urune atfedilemez.
+                        Donem toplami: {formatCurrency(
+                          (summary.accountLevelExpenses?.advertisingFees ?? 0) +
+                          (summary.accountLevelExpenses?.platformServiceFee ?? 0) +
+                          (summary.accountLevelExpenses?.penaltyFees ?? 0) +
+                          (summary.accountLevelExpenses?.internationalFees ?? 0) +
+                          (summary.accountLevelExpenses?.otherFees ?? 0)
+                        )}
+                      </span>
+                    </div>
+                  </ExpandableMetricRow>
+                ) : (
+                  <ExpandableMetricRow
+                    label="Kesilen Faturalar"
+                    value={formatCurrency(-(summary.totalInvoicedDeductions ?? 0))}
+                    isNegative
+                  >
+                    {(summary.platformServiceFee ?? 0) > 0 && (
+                      <SubRow
+                        label="Platform Hizmet Bedeli"
+                        value={formatCurrency(-(summary.platformServiceFee ?? 0))}
+                        isNegative
+                      />
+                    )}
+                    {(summary.azPlatformServiceFee ?? 0) > 0 && (
+                      <SubRow
+                        label="AZ-Platform Hizmet Bedeli"
+                        value={formatCurrency(-(summary.azPlatformServiceFee ?? 0))}
+                        isNegative
+                      />
+                    )}
+                    {(summary.invoicedAdvertisingFees ?? 0) > 0 && (
+                      <SubRow
+                        label="Reklam Bedeli"
+                        value={formatCurrency(-(summary.invoicedAdvertisingFees ?? 0))}
+                        isNegative
+                      />
+                    )}
+                    {(summary.invoicedPenaltyFees ?? 0) > 0 && (
+                      <SubRow
+                        label="Ceza / Kesintiler"
+                        value={formatCurrency(-(summary.invoicedPenaltyFees ?? 0))}
+                        isNegative
+                      />
+                    )}
+                    {(summary.invoicedInternationalFees ?? 0) > 0 && (
+                      <SubRow
+                        label="Uluslararasi Kesintiler"
+                        value={formatCurrency(-(summary.invoicedInternationalFees ?? 0))}
+                        isNegative
+                      />
+                    )}
+                    {(summary.invoicedOtherFees ?? 0) > 0 && (
+                      <SubRow
+                        label="Diger Kesintiler"
+                        value={formatCurrency(-(summary.invoicedOtherFees ?? 0))}
+                        isNegative
+                      />
+                    )}
+                    {(summary.invoicedRefunds ?? 0) > 0 && (
+                      <SubRow
+                        label="Iadeler (Tazmin)"
+                        value={formatCurrency(summary.invoicedRefunds ?? 0)}
+                      />
+                    )}
+                  </ExpandableMetricRow>
+                )}
+
+                {/* Divider */}
+                <div className="h-1 bg-muted my-1" />
+
+                {/* ==================== KAR ==================== */}
+                {/* Brut Kar */}
+                <MetricRow
+                  label="Brut Kar"
+                  value={formatCurrency(summary.grossProfit)}
+                  isNegative={summary.grossProfit < 0}
                   isBold
                 />
-              </div>
 
-              {/* Divider */}
-              <div className="h-1 bg-muted my-1" />
+                {/* Ekstra Giderler */}
+                {!summary.isProductFiltered && (summary.userExpenses ?? 0) > 0 && (
+                  <ExpandableMetricRow
+                    label="Ekstra Giderler"
+                    value={formatCurrency(-(summary.userExpenses ?? 0))}
+                    isNegative
+                  >
+                    {summary.expensesByCategory && Object.keys(summary.expensesByCategory).length > 0 ? (
+                      Object.entries(summary.expensesByCategory)
+                        .filter(([, amount]) => (amount ?? 0) > 0)
+                        .map(([categoryName, amount]) => (
+                          <SubRow
+                            key={categoryName}
+                            label={categoryName}
+                            value={formatCurrency(-(amount ?? 0))}
+                            isNegative
+                          />
+                        ))
+                    ) : (
+                      <SubRow
+                        label="Toplam"
+                        value={formatCurrency(-(summary.userExpenses ?? 0))}
+                        isNegative
+                      />
+                    )}
+                  </ExpandableMetricRow>
+                )}
 
-              {/* ==================== METRİKLER ==================== */}
-              <MetricRow
-                label="Kâr Marjı"
-                value={formatPercentage(summary.margin)}
-                isNegative={summary.margin < 0}
-                isBold
-              />
-              <MetricRow
-                label="ROI"
-                value={formatPercentage(summary.roi)}
-                isNegative={summary.roi < 0}
-                isBold
-              />
+                {/* Divider - Strong border before Net Profit */}
+                <div className="h-2 bg-primary/10 my-1" />
 
-            </>
-          ) : (
-            <p className="text-muted-foreground text-sm">Veri bulunamadı</p>
-          )}
+                {/* Net Kar - Highlighted */}
+                <div className="bg-primary/5 -mx-1 px-1">
+                  <MetricRow
+                    label="Net Kar"
+                    value={formatCurrency(summary.netProfit)}
+                    isNegative={summary.netProfit < 0}
+                    isBold
+                  />
+                </div>
+
+                {/* Divider */}
+                <div className="h-1 bg-muted my-1" />
+
+                {/* ==================== METRIKLER ==================== */}
+                <MetricRow
+                  label="Kar Marji"
+                  value={formatPercentage(summary.margin)}
+                  isNegative={summary.margin < 0}
+                  isBold
+                />
+                <MetricRow
+                  label="ROI"
+                  value={formatPercentage(summary.roi)}
+                  isNegative={summary.roi < 0}
+                  isBold
+                />
+
+              </>
+            ) : (
+              <p className="text-muted-foreground text-sm">Veri bulunamadi</p>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* FIFO Profitability Section - Collapsible */}
+      <FifoProfitabilitySection />
     </div>
+    </FadeIn>
   );
 }

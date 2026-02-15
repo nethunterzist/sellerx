@@ -22,6 +22,11 @@ import {
   ShieldAlert,
   Share2,
   Bell,
+  Mail,
+  FlaskConical,
+  Receipt,
+  FileText,
+  RotateCcw,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -75,6 +80,17 @@ const menuEntries: SidebarEntry[] = [
   { icon: Headphones, label: "Destek", href: "/admin/support" },
   { icon: Share2, label: "Referanslar", href: "/admin/referrals" },
   { icon: Bell, label: "Bildirimler", href: "/admin/notifications" },
+  { icon: Mail, label: "Email Şablonları", href: "/admin/email-templates" },
+  {
+    label: "Sandbox",
+    icon: FlaskConical,
+    children: [
+      { icon: Package, label: "Ürün Yönetimi", href: "/admin/sandbox/products" },
+      { icon: Receipt, label: "Sipariş Yönetimi", href: "/admin/sandbox/orders" },
+      { icon: RotateCcw, label: "İade Yönetimi", href: "/admin/sandbox/returns" },
+      { icon: FileText, label: "Fatura Yönetimi", href: "/admin/sandbox/invoices" },
+    ],
+  },
 ];
 
 export function AdminSidebar() {

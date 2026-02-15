@@ -142,11 +142,37 @@ JPA Entity sınıfları ve karşılık gelen tablolar. `@Table(name = "...")` ve
 |--------|-------|---------------------|
 | ActivityLog | activity_logs | id, user_id (FK), action, entity_type, entity_id, details (JSONB), ip_address, created_at |
 
+## Admin Audit
+
+| Entity | Tablo | Ana kolonlar / not |
+|--------|-------|---------------------|
+| ImpersonationLog | impersonation_logs | id (BIGSERIAL), admin_user_id, target_user_id, action, ip_address, user_agent, created_at |
+
 ## Currency
 
 | Entity | Tablo | Ana kolonlar / not |
 |--------|-------|---------------------|
 | ExchangeRate | exchange_rates | id, base_currency, target_currency, rate, date |
+
+## Email System
+
+| Entity | Tablo | Ana kolonlar / not |
+|--------|-------|---------------------|
+| EmailQueue | email_queue | id (UUID), email_type, recipient_email, recipient_name, subject, body (TEXT), variables (JSONB), status, retry_count, max_retries, scheduled_at, sent_at, error_message, user_id, created_at, updated_at |
+| EmailTemplateEntity | email_templates | id (UUID), email_type (unique), name, subject_template, body_template (TEXT), description, is_active, created_at, updated_at |
+| EmailBaseLayout | email_base_layout | id (UUID), header_html (TEXT), footer_html (TEXT), styles (TEXT), logo_url, primary_color, updated_at |
+
+## Password Reset
+
+| Entity | Tablo | Ana kolonlar / not |
+|--------|-------|---------------------|
+| PasswordResetToken | password_reset_tokens | id (UUID), user_id (FK → users), token (unique), expires_at, used_at, created_at |
+
+## Sync Infrastructure
+
+| Entity | Tablo | Ana kolonlar / not |
+|--------|-------|---------------------|
+| SyncTask | sync_tasks | id (UUID), store_id, task_type, status, progress_percentage, current_page, total_pages, items_processed, items_new, items_updated, items_skipped, items_failed, error_message, created_at, started_at, completed_at |
 
 ## AI & Knowledge Base
 
@@ -159,4 +185,4 @@ JPA Entity sınıfları ve karşılık gelen tablolar. `@Table(name = "...")` ve
 
 ---
 
-**Toplam:** 55 entity. Tablo adları `@Table(name = "...")` ile entity'de tanımlı; tümü mevcut koda göre.
+**Toplam:** 61 entity. Tablo adları `@Table(name = "...")` ile entity'de tanımlı; tümü mevcut koda göre.

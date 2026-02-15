@@ -99,8 +99,8 @@ class CurrencyServiceTest extends BaseUnitTest {
         }
 
         @Test
-        @DisplayName("should fallback when rate is expired")
-        void shouldFallbackWhenExpired() {
+        @DisplayName("should return stale rate when rate is expired")
+        void shouldReturnStaleRateWhenExpired() {
             ExchangeRate expiredRate = ExchangeRate.builder()
                     .baseCurrency("USD")
                     .targetCurrency("TRY")
@@ -110,13 +110,39 @@ class CurrencyServiceTest extends BaseUnitTest {
 
             when(exchangeRateRepository.findByBaseCurrencyAndTargetCurrency("USD", "TRY"))
                     .thenReturn(Optional.of(expiredRate));
-            // inverse also expired
+            // inverse not found
             when(exchangeRateRepository.findByBaseCurrencyAndTargetCurrency("TRY", "USD"))
                     .thenReturn(Optional.empty());
 
             BigDecimal result = currencyService.getRate("USD", "TRY");
 
-            assertThat(result).isEqualByComparingTo(BigDecimal.ONE);
+            // Should return stale rate (33.00), NOT BigDecimal.ONE
+            assertThat(result).isEqualByComparingTo(new BigDecimal("33.00"));
+        }
+
+        @Test
+        @DisplayName("should return stale inverse rate when both direct and inverse are expired")
+        void shouldReturnStaleInverseRateWhenExpired() {
+            // Direct rate not found
+            when(exchangeRateRepository.findByBaseCurrencyAndTargetCurrency("TRY", "USD"))
+                    .thenReturn(Optional.empty());
+
+            // Inverse rate expired
+            ExchangeRate expiredInverse = ExchangeRate.builder()
+                    .baseCurrency("USD")
+                    .targetCurrency("TRY")
+                    .rate(new BigDecimal("42.00"))
+                    .validUntil(LocalDateTime.now().minusDays(1))
+                    .build();
+
+            when(exchangeRateRepository.findByBaseCurrencyAndTargetCurrency("USD", "TRY"))
+                    .thenReturn(Optional.of(expiredInverse));
+
+            BigDecimal result = currencyService.getRate("TRY", "USD");
+
+            // Should return 1/42.00, NOT BigDecimal.ONE
+            BigDecimal expected = BigDecimal.ONE.divide(new BigDecimal("42.00"), 8, RoundingMode.HALF_UP);
+            assertThat(result).isEqualByComparingTo(expected);
         }
     }
 
@@ -223,6 +249,118 @@ class CurrencyServiceTest extends BaseUnitTest {
                             "TRY".equals(r.getTargetCurrency()) &&
                             r.getRate().compareTo(new BigDecimal("35.00")) == 0);
             assertThat(foundUpdated).isTrue();
+        }
+
+        @Test
+        @DisplayName("should set validUntil to 3 days ahead")
+        void shouldSetValidUntilToThreeDays() {
+            TcmbRates rates = TcmbRates.builder()
+                    .usdTry(new BigDecimal("43.65"))
+                    .eurTry(new BigDecimal("47.00"))
+                    .build();
+
+            when(tcmbApiClient.fetchRates()).thenReturn(rates);
+            when(exchangeRateRepository.findByBaseCurrencyAndTargetCurrency(any(), any()))
+                    .thenReturn(Optional.empty());
+            when(exchangeRateRepository.save(any(ExchangeRate.class))).thenAnswer(i -> i.getArgument(0));
+
+            LocalDateTime before = LocalDateTime.now().plusDays(2).plusHours(23);
+            currencyService.updateExchangeRates();
+            LocalDateTime after = LocalDateTime.now().plusDays(3).plusMinutes(1);
+
+            ArgumentCaptor<ExchangeRate> captor = ArgumentCaptor.forClass(ExchangeRate.class);
+            verify(exchangeRateRepository, atLeast(1)).save(captor.capture());
+
+            captor.getAllValues().forEach(saved -> {
+                assertThat(saved.getValidUntil()).isAfter(before);
+                assertThat(saved.getValidUntil()).isBefore(after);
+            });
+        }
+    }
+
+    @Nested
+    @DisplayName("initRates")
+    class InitRates {
+
+        @Test
+        @DisplayName("should fetch rates when no rates exist in DB")
+        void shouldFetchRatesWhenMissing() {
+            when(exchangeRateRepository.findByBaseCurrencyAndTargetCurrency("USD", "TRY"))
+                    .thenReturn(Optional.empty());
+
+            TcmbRates rates = TcmbRates.builder()
+                    .usdTry(new BigDecimal("43.65"))
+                    .eurTry(new BigDecimal("47.00"))
+                    .build();
+            when(tcmbApiClient.fetchRates()).thenReturn(rates);
+            when(exchangeRateRepository.save(any(ExchangeRate.class))).thenAnswer(i -> i.getArgument(0));
+
+            currencyService.initRates();
+
+            verify(tcmbApiClient).fetchRates();
+            verify(exchangeRateRepository, times(4)).save(any(ExchangeRate.class));
+        }
+
+        @Test
+        @DisplayName("should fetch rates when existing rates are expired")
+        void shouldFetchRatesWhenExpired() {
+            ExchangeRate expiredRate = ExchangeRate.builder()
+                    .baseCurrency("USD")
+                    .targetCurrency("TRY")
+                    .rate(new BigDecimal("34.50"))
+                    .validUntil(LocalDateTime.now().minusDays(1))
+                    .build();
+
+            // initRates checks USD/TRY, saveRate also looks up existing rates
+            lenient().when(exchangeRateRepository.findByBaseCurrencyAndTargetCurrency(any(), any()))
+                    .thenReturn(Optional.empty());
+            when(exchangeRateRepository.findByBaseCurrencyAndTargetCurrency("USD", "TRY"))
+                    .thenReturn(Optional.of(expiredRate));
+
+            TcmbRates rates = TcmbRates.builder()
+                    .usdTry(new BigDecimal("43.65"))
+                    .eurTry(new BigDecimal("47.00"))
+                    .build();
+            when(tcmbApiClient.fetchRates()).thenReturn(rates);
+            when(exchangeRateRepository.save(any(ExchangeRate.class))).thenAnswer(i -> i.getArgument(0));
+
+            currencyService.initRates();
+
+            verify(tcmbApiClient).fetchRates();
+            verify(exchangeRateRepository, times(4)).save(any(ExchangeRate.class));
+        }
+
+        @Test
+        @DisplayName("should skip fetch when rates are still valid")
+        void shouldSkipFetchWhenValid() {
+            ExchangeRate validRate = ExchangeRate.builder()
+                    .baseCurrency("USD")
+                    .targetCurrency("TRY")
+                    .rate(new BigDecimal("43.65"))
+                    .validUntil(LocalDateTime.now().plusDays(2))
+                    .build();
+
+            when(exchangeRateRepository.findByBaseCurrencyAndTargetCurrency("USD", "TRY"))
+                    .thenReturn(Optional.of(validRate));
+
+            currencyService.initRates();
+
+            verify(tcmbApiClient, never()).fetchRates();
+            verify(exchangeRateRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("should not block startup when TCMB fails")
+        void shouldNotBlockStartupOnTcmbFailure() {
+            when(exchangeRateRepository.findByBaseCurrencyAndTargetCurrency("USD", "TRY"))
+                    .thenReturn(Optional.empty());
+            when(tcmbApiClient.fetchRates()).thenThrow(new RuntimeException("TCMB unavailable"));
+
+            // Should not throw — startup continues with stale/no rates
+            currencyService.initRates();
+
+            verify(tcmbApiClient).fetchRates();
+            verify(exchangeRateRepository, never()).save(any());
         }
     }
 

@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/admin/users")
@@ -42,7 +43,9 @@ public class AdminUserController {
         String[] sortParams = sort.split(",");
         Sort.Direction direction = sortParams.length > 1 && sortParams[1].equalsIgnoreCase("asc")
                 ? Sort.Direction.ASC : Sort.Direction.DESC;
-        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortParams[0]));
+        Set<String> allowedSortFields = Set.of("id", "name", "email", "createdAt", "lastLoginAt", "role");
+        String sortField = allowedSortFields.contains(sortParams[0]) ? sortParams[0] : "id";
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortField));
 
         log.info("Admin fetching users - page: {}, size: {}, sort: {}", page, size, sort);
         Page<AdminUserListDto> users = adminUserService.getAllUsers(pageable);
@@ -75,13 +78,20 @@ public class AdminUserController {
     }
 
     /**
-     * Search users by email or name
-     * GET /api/admin/users/search?q=query
+     * Search users by email or name with pagination
+     * GET /api/admin/users/search?q=query&page=0&size=20
      */
     @GetMapping("/search")
-    public ResponseEntity<List<AdminUserListDto>> searchUsers(@RequestParam String q) {
-        log.info("Admin searching users with query: {}", q);
-        List<AdminUserListDto> users = adminUserService.searchUsers(q);
+    public ResponseEntity<Page<AdminUserListDto>> searchUsers(
+            @RequestParam String q,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+
+        size = Math.min(size, 100);
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"));
+
+        log.info("Admin searching users with query: {}, page: {}, size: {}", q, page, size);
+        Page<AdminUserListDto> users = adminUserService.searchUsers(q, pageable);
         return ResponseEntity.ok(users);
     }
 

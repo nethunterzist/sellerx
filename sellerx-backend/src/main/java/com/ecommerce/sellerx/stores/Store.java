@@ -5,9 +5,12 @@ import com.vladmihalcea.hibernate.type.json.JsonBinaryType;
 import org.hibernate.annotations.Type;
 import lombok.*;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import com.ecommerce.sellerx.users.User;
+import com.ecommerce.sellerx.expenses.ExpenseCategory;
 import com.ecommerce.sellerx.common.encryption.CredentialsEntityListener;
 
 @Setter
@@ -142,4 +145,9 @@ public class Store {
 
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
+    // Expense categories owned by this store - cascade delete when store is deleted
+    @OneToMany(mappedBy = "store", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<ExpenseCategory> expenseCategories = new ArrayList<>();
 }

@@ -4,6 +4,7 @@ import com.ecommerce.sellerx.alerts.AlertEngine;
 import com.ecommerce.sellerx.common.TrendyolRateLimiter;
 import com.ecommerce.sellerx.common.exception.ResourceNotFoundException;
 import com.ecommerce.sellerx.orders.StockOrderSynchronizationService;
+import com.ecommerce.sellerx.orders.event.StockChangedEvent;
 import com.ecommerce.sellerx.stores.Store;
 import com.ecommerce.sellerx.stores.StoreRepository;
 import com.ecommerce.sellerx.stores.StoreNotFoundException;
@@ -18,6 +19,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.*;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
@@ -29,6 +31,7 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
 
@@ -50,6 +53,7 @@ public class TrendyolProductService {
     private final TrendyolRateLimiter rateLimiter;
     private final AlertEngine alertEngine;
     private final AutoStockDetectionService autoStockDetectionService;
+    private final ApplicationEventPublisher eventPublisher;
     
     /**
      * Helper method to compare BigDecimal values properly
@@ -445,7 +449,11 @@ public class TrendyolProductService {
         // Default values
         int pageNumber = page != null ? page : 0;
         int pageSize = size != null ? size : 50;
-        String sortField = sortBy != null ? sortBy : "onSale";
+        Set<String> allowedSortFields = Set.of(
+            "onSale", "title", "salePrice", "listPrice", "quantity",
+            "stockCode", "barcode", "lastCommissionRate", "createdAt"
+        );
+        String sortField = sortBy != null && allowedSortFields.contains(sortBy) ? sortBy : "onSale";
         Sort.Direction direction = "asc".equalsIgnoreCase(sortDirection) ?
             Sort.Direction.ASC : Sort.Direction.DESC;
 
@@ -567,18 +575,14 @@ public class TrendyolProductService {
 
         TrendyolProduct savedProduct = trendyolProductRepository.save(product);
 
-        // Trigger stock-order synchronization after adding stock
-        try {
-            UUID storeId = savedProduct.getStore().getId();
-            log.info("Triggering stock-order synchronization after adding stock for product {} in store {}", productId, storeId);
-            stockOrderSyncService.synchronizeOrdersAfterStockChange(storeId, newInfo.getStockDate());
-        } catch (Exception e) {
-            log.warn("Failed to trigger stock-order synchronization after adding stock: {}", e.getMessage());
-        }
-        
+        // Publish event for async stock-order synchronization (runs after transaction commits)
+        UUID storeId = savedProduct.getStore().getId();
+        log.info("Publishing stock change event for product {} in store {} on date {}", productId, storeId, newInfo.getStockDate());
+        eventPublisher.publishEvent(new StockChangedEvent(this, storeId, productId, newInfo.getStockDate()));
+
         return productMapper.toDto(savedProduct);
     }
-    
+
     @Transactional
     public TrendyolProductDto updateStockInfoByDate(UUID productId, LocalDate stockDate, UpdateStockInfoRequest request) {
         TrendyolProduct product = trendyolProductRepository.findById(productId)
@@ -618,19 +622,15 @@ public class TrendyolProductService {
         product.setCostAndStockInfo(costAndStockList);
         
         TrendyolProduct savedProduct = trendyolProductRepository.save(product);
-        
-        // Trigger stock-order synchronization after updating stock
-        try {
-            UUID storeId = savedProduct.getStore().getId();
-            log.info("Triggering stock-order synchronization after updating stock for product {} in store {} on date {}", productId, storeId, stockDate);
-            stockOrderSyncService.synchronizeOrdersAfterStockChange(storeId, stockDate);
-        } catch (Exception e) {
-            log.warn("Failed to trigger stock-order synchronization after updating stock: {}", e.getMessage());
-        }
-        
+
+        // Publish event for async stock-order synchronization (runs after transaction commits)
+        UUID storeId = savedProduct.getStore().getId();
+        log.info("Publishing stock change event for product {} in store {} on date {}", productId, storeId, stockDate);
+        eventPublisher.publishEvent(new StockChangedEvent(this, storeId, productId, stockDate));
+
         return productMapper.toDto(savedProduct);
     }
-    
+
     @Transactional
     public TrendyolProductDto deleteStockInfoByDate(UUID productId, LocalDate stockDate) {
         TrendyolProduct product = trendyolProductRepository.findById(productId)
@@ -652,14 +652,10 @@ public class TrendyolProductService {
 
         TrendyolProduct savedProduct = trendyolProductRepository.save(product);
 
-        // Trigger stock-order synchronization after deleting stock
-        try {
-            UUID storeId = savedProduct.getStore().getId();
-            log.info("Triggering stock-order synchronization after deleting stock for product {} in store {} on date {}", productId, storeId, stockDate);
-            stockOrderSyncService.synchronizeOrdersAfterStockChange(storeId, stockDate);
-        } catch (Exception e) {
-            log.warn("Failed to trigger stock-order synchronization after deleting stock: {}", e.getMessage());
-        }
+        // Publish event for async stock-order synchronization (runs after transaction commits)
+        UUID storeId = savedProduct.getStore().getId();
+        log.info("Publishing stock change event for product {} in store {} on date {}", productId, storeId, stockDate);
+        eventPublisher.publishEvent(new StockChangedEvent(this, storeId, productId, stockDate));
 
         return productMapper.toDto(savedProduct);
     }

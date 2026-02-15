@@ -43,6 +43,33 @@ export interface ReturnAnalyticsResponse {
 }
 
 // =====================================================
+// Returned Order Decision Types
+// =====================================================
+
+export interface ReturnedOrderItem {
+  barcode: string;
+  productName: string;
+  quantity: number;
+  unitCost: number;
+  totalCost: number;
+}
+
+export interface ReturnedOrderDecision {
+  orderNumber: string;
+  customerName: string;
+  orderDate: string;
+  items: ReturnedOrderItem[];
+  shippingCostOut: number;
+  shippingCostReturn: number;
+  productCost: number;
+  totalLoss: number;
+  isResalable: boolean | null;
+  returnReason?: string;
+  claimStatus?: string;
+  returnSource?: 'order_status' | 'claim' | 'cargo_invoice';
+}
+
+// =====================================================
 // Trendyol Claims Types (Returns Management)
 // =====================================================
 
@@ -139,4 +166,15 @@ export interface BulkActionResponse {
   successCount: number;
   failCount: number;
   message: string;
+}
+
+export interface ClaimItemAudit {
+  claimId: string;
+  claimItemId: string;
+  previousStatus: string;
+  newStatus: string;
+  executorId: string | null;
+  executorApp: string | null;
+  executorUser: string | null;
+  date: string;
 }

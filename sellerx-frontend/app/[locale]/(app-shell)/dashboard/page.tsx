@@ -40,8 +40,6 @@ export default function DashboardPage() {
     customDateRange,
     selectedPeriod,
     setSelectedPeriod,
-    selectedComparison,
-    setSelectedComparison,
     selectedCurrency,
     setSelectedCurrency,
     filterConfig,
@@ -398,10 +396,13 @@ export default function DashboardPage() {
                     shortLabel: p.shortLabel,
                     dateRange: p.dateRange,
                     color: p.color,
+                    startDate: p.startDate,
+                    endDate: p.endDate,
                   }))}
                   isLoading={presetStatsLoading}
                   selectedIndex={selectedDynamicIndex}
                   onPeriodSelect={(index) => setSelectedDynamicIndex(index)}
+                  storeId={storeId}
                 />
               ) : isCustomRange ? (
                 <PeriodCards
@@ -410,6 +411,9 @@ export default function DashboardPage() {
                   customTitle={customDateRange?.label}
                   customDateRange={getCustomDateRangeDisplay()}
                   isLoading={customStatsLoading}
+                  storeId={storeId}
+                  startDate={customDateRange?.startDate}
+                  endDate={customDateRange?.endDate}
                 />
               ) : (
                 <PeriodCards
@@ -418,6 +422,7 @@ export default function DashboardPage() {
                   isLoading={statsLoading}
                   selectedPeriod={selectedPeriod}
                   onPeriodSelect={setSelectedPeriod}
+                  storeId={storeId}
                 />
               )}
             </section>
@@ -504,8 +509,6 @@ export default function DashboardPage() {
             onPeriodGroupChange={setSelectedPeriodGroup}
             onDateRangeChange={handleDateRangeChange}
             onDefaultViewChange={handleDefaultViewChange}
-            selectedComparison={selectedComparison}
-            onComparisonChange={setSelectedComparison}
             selectedCurrency={selectedCurrency}
             onCurrencyChange={setSelectedCurrency}
             filterConfig={filterConfig}

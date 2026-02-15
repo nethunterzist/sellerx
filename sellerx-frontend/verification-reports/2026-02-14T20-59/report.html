@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SellerX Dogrulama Raporu - 15.02.2026 00:00:03</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 24px; background: #f8f9fa; color: #1a1a2e; }
+  .container { max-width: 1200px; margin: 0 auto; }
+  h1 { font-size: 24px; margin-bottom: 8px; }
+  h2 { font-size: 18px; margin: 24px 0 12px; padding-bottom: 8px; border-bottom: 2px solid #e0e0e0; }
+  .meta { color: #666; font-size: 14px; margin-bottom: 24px; }
+  .summary-cards { display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
+  .summary-card { flex: 1; min-width: 150px; padding: 16px; border-radius: 8px; background: white; border: 1px solid #e0e0e0; text-align: center; }
+  .summary-card .num { font-size: 28px; font-weight: 700; }
+  .summary-card .label { font-size: 12px; color: #666; margin-top: 4px; }
+  .match { color: #16a34a; }
+  .warn { color: #f59e0b; }
+  .err { color: #dc2626; }
+  table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; margin-bottom: 24px; border: 1px solid #e0e0e0; }
+  th { background: #f1f5f9; text-align: left; padding: 10px 12px; font-size: 12px; font-weight: 600; color: #475569; text-transform: uppercase; }
+  td { padding: 10px 12px; font-size: 13px; border-top: 1px solid #f1f5f9; }
+  tr:hover { background: #f8fafc; }
+  .status-match { background: #dcfce7; color: #16a34a; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+  .status-warn { background: #fef3c7; color: #d97706; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+  .status-err { background: #fecaca; color: #dc2626; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+  .section-summary { font-size: 13px; color: #666; margin-bottom: 16px; }
+  .text-right { text-align: right; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>SellerX Dogrulama Raporu</h1>
+  <div class="meta">15.02.2026 00:00:03 | Test Magazasi (test@test.com)</div>
+
+  <div class="summary-cards">
+    <div class="summary-card">
+      <div class="num">11</div>
+      <div class="label">Toplam Kontrol</div>
+    </div>
+    <div class="summary-card">
+      <div class="num match">10 (90.9%)</div>
+      <div class="label">Eslesen</div>
+    </div>
+    <div class="summary-card">
+      <div class="num warn">0</div>
+      <div class="label">Uyari</div>
+    </div>
+    <div class="summary-card">
+      <div class="num err">1</div>
+      <div class="label">Hata</div>
+    </div>
+  </div>
+  <h2>Dashboard Kartları</h2>
+  <div class="section-summary">10/11 eslesen, 1 hata</div>
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Alan</th>
+        <th class="text-right">DB</th>
+        <th class="text-right">SellerX</th>
+        <th class="text-right">Trendyol</th>
+        <th class="text-right">Sapma</th>
+        <th>Sonuc</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td>Bugun - Ciro<br><small style="color:#999">DB vs TY: diff=187812.84; FE vs TY: diff=187812.84</small></td>
+        <td class="text-right">187.812,84</td>
+        <td class="text-right">187.812,84</td>
+        <td class="text-right">0,00</td>
+        <td class="text-right">%100</td>
+        <td><span class="status-err">HATA</span></td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>Bugun - Siparis Sayisi</td>
+        <td class="text-right">138,00</td>
+        <td class="text-right">138,00</td>
+        <td class="text-right">-</td>
+        <td class="text-right">-</td>
+        <td><span class="status-match">OK</span></td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td>Bugun - Iade</td>
+        <td class="text-right">0,00</td>
+        <td class="text-right">0,00</td>
+        <td class="text-right">-</td>
+        <td class="text-right">-</td>
+        <td><span class="status-match">OK</span></td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td>Dun - Ciro</td>
+        <td class="text-right">269.612,43</td>
+        <td class="text-right">269.612,43</td>
+        <td class="text-right">-</td>
+        <td class="text-right">-</td>
+        <td><span class="status-match">OK</span></td>
+      </tr>
+      <tr>
+        <td>5</td>
+        <td>Dun - Siparis Sayisi</td>
+        <td class="text-right">195,00</td>
+        <td class="text-right">195,00</td>
+        <td class="text-right">-</td>
+        <td class="text-right">-</td>
+        <td><span class="status-match">OK</span></td>
+      </tr>
+      <tr>
+        <td>6</td>
+        <td>Bu Ay - Ciro</td>
+        <td class="text-right">2.848.160,06</td>
+        <td class="text-right">2.848.160,06</td>
+        <td class="text-right">-</td>
+        <td class="text-right">-</td>
+        <td><span class="status-match">OK</span></td>
+      </tr>
+      <tr>
+        <td>7</td>
+        <td>Bu Ay - Siparis Sayisi</td>
+        <td class="text-right">2.242,00</td>
+        <td class="text-right">2.242,00</td>
+        <td class="text-right">-</td>
+        <td class="text-right">-</td>
+        <td><span class="status-match">OK</span></td>
+      </tr>
+      <tr>
+        <td>8</td>
+        <td>Bu Ay - Iade</td>
+        <td class="text-right">0,00</td>
+        <td class="text-right">0,00</td>
+        <td class="text-right">-</td>
+        <td class="text-right">-</td>
+        <td><span class="status-match">OK</span></td>
+      </tr>
+      <tr>
+        <td>9</td>
+        <td>Bu Ay - Brut Kar</td>
+        <td class="text-right">1.985.200,06</td>
+        <td class="text-right">1.985.200,06</td>
+        <td class="text-right">-</td>
+        <td class="text-right">-</td>
+        <td><span class="status-match">OK</span></td>
+      </tr>
+      <tr>
+        <td>10</td>
+        <td>Gecen Ay - Ciro</td>
+        <td class="text-right">8.514.762,19</td>
+        <td class="text-right">8.514.762,19</td>
+        <td class="text-right">-</td>
+        <td class="text-right">-</td>
+        <td><span class="status-match">OK</span></td>
+      </tr>
+      <tr>
+        <td>11</td>
+        <td>Gecen Ay - Siparis Sayisi</td>
+        <td class="text-right">6.999,00</td>
+        <td class="text-right">6.999,00</td>
+        <td class="text-right">-</td>
+        <td class="text-right">-</td>
+        <td><span class="status-match">OK</span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+</body>
+</html>

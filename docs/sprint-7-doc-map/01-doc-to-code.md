@@ -33,3 +33,9 @@ Her sprint ve ana doc dosyası hangi kod alanını dokümante ediyor.
 | 01-doc-to-code.md | Bu tablo (doc → kod) |
 | 02-code-to-doc.md | Kod alanı → doc (ters indeks) |
 | 03-doc-architecture.md | docs yapısı, navigasyon, güncelleme kuralları |
+| **Architecture** | |
+| STOPPAGE_SYSTEM.md | financial/TrendyolStoppage.java, TrendyolStoppageRepository.java |
+| **Scaling** | |
+| FAZ_2_RESILIENCE4J.md | config/Resilience4jConfig.java, resilience/* |
+| FAZ_3_WEBSOCKET.md | websocket/* |
+| FAZ_4_DATABASE.md | maintenance/*, db/migration/V112-V114 |

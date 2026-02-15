@@ -86,6 +86,22 @@ public class TrendyolDeductionInvoice {
     @Column(name = "affiliate", length = 50)
     private String affiliate;
 
+    /**
+     * Product barcode associated with this invoice (for sandbox simulation).
+     * When this invoice is deleted, the product's lastCommissionRate/lastShippingCostPerUnit
+     * should be reset to null.
+     */
+    @Column(name = "product_barcode", length = 100)
+    private String productBarcode;
+
+    /**
+     * Official invoice serial number from Trendyol (DDA/DDF/AZD/TYE/TEX prefix).
+     * Stored separately because invoiceSerialNumber is used as JOIN key
+     * and may be modified for deduplication.
+     */
+    @Column(name = "official_serial_number", length = 100)
+    private String officialSerialNumber;
+
     @Column(name = "created_at")
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();

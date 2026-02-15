@@ -170,7 +170,11 @@ public class TrendyolFinancialSettlementService {
 
         // Trendyol API changelog (30.12.2025): transactionTypes parameter allows fetching
         // multiple types in a single request, reducing API calls from 5 to 1
-        String combinedTypes = "Sale,Return,Discount,Coupon,EarlyPayment";
+        // All 17 settlement transaction types supported by Trendyol API
+        String combinedTypes = "Sale,Return,Discount,DiscountCancel,Coupon,CouponCancel," +
+                "ProvisionPositive,ProvisionNegative,ManualRefund,ManualRefundCancel," +
+                "TYDiscount,TYDiscountCancel,TYCoupon,TYCouponCancel," +
+                "CommissionPositive,CommissionNegative,EarlyPayment";
         log.info("Fetching all settlement types [{}] for store: {} from {} to {}",
                 combinedTypes, store.getId(), startDate, endDate);
         fetchSettlementsByType(store, credentials, entity, startTimestamp, endTimestamp, combinedTypes);
@@ -256,36 +260,70 @@ public class TrendyolFinancialSettlementService {
             response.getContent().size(), store.getId());
 
         // Separate different types of settlements for different processing logic
+        // Package-based: grouped by orderNumber_packageId
         Map<String, List<TrendyolFinancialSettlementItem>> saleSettlements = new HashMap<>();
-        Map<String, List<TrendyolFinancialSettlementItem>> returnSettlements = new HashMap<>();
         Map<String, List<TrendyolFinancialSettlementItem>> discountSettlements = new HashMap<>();
         Map<String, List<TrendyolFinancialSettlementItem>> couponSettlements = new HashMap<>();
         Map<String, List<TrendyolFinancialSettlementItem>> earlyPaymentSettlements = new HashMap<>();
+        // New settlement types - all package-based
+        Map<String, List<TrendyolFinancialSettlementItem>> otherPackageSettlements = new HashMap<>();
+        // Order-based: grouped by orderNumber only
+        Map<String, List<TrendyolFinancialSettlementItem>> returnSettlements = new HashMap<>();
+
+        int discountCancelCount = 0, couponCancelCount = 0, manualRefundCount = 0;
+        int tyDiscountCount = 0, tyCouponCount = 0, provisionCount = 0, commissionAdjCount = 0;
 
         for (TrendyolFinancialSettlementItem item : response.getContent()) {
             String key = item.getOrderNumber() + "_" + item.getShipmentPackageId();
+            String type = item.getTransactionType();
 
-            if ("Satış".equals(item.getTransactionType()) || "Sale".equals(item.getTransactionType())) {
+            if ("Satış".equals(type) || "Sale".equals(type)) {
                 saleSettlements.computeIfAbsent(key, k -> new ArrayList<>()).add(item);
-            } else if ("İade".equals(item.getTransactionType()) || "Return".equals(item.getTransactionType())) {
-                // For returns, we might need to search by order number only since package might be different
+            } else if ("İade".equals(type) || "Return".equals(type)) {
                 String returnKey = item.getOrderNumber();
                 returnSettlements.computeIfAbsent(returnKey, k -> new ArrayList<>()).add(item);
-            } else if ("İndirim".equals(item.getTransactionType()) || "Discount".equals(item.getTransactionType())) {
-                // For discounts, use package ID like sales
+            } else if ("İndirim".equals(type) || "Discount".equals(type)) {
                 discountSettlements.computeIfAbsent(key, k -> new ArrayList<>()).add(item);
-            } else if ("Kupon".equals(item.getTransactionType()) || "Coupon".equals(item.getTransactionType())) {
-                // For coupons, use package ID like sales
+            } else if ("Kupon".equals(type) || "Coupon".equals(type)) {
                 couponSettlements.computeIfAbsent(key, k -> new ArrayList<>()).add(item);
-            } else if ("ErkenÖdeme".equals(item.getTransactionType()) || "EarlyPayment".equals(item.getTransactionType())) {
-                // For early payment fees, use package ID like sales
+            } else if ("ErkenÖdeme".equals(type) || "EarlyPayment".equals(type)) {
                 earlyPaymentSettlements.computeIfAbsent(key, k -> new ArrayList<>()).add(item);
+            } else if ("DiscountCancel".equals(type)) {
+                otherPackageSettlements.computeIfAbsent(key, k -> new ArrayList<>()).add(item);
+                discountCancelCount++;
+            } else if ("CouponCancel".equals(type)) {
+                otherPackageSettlements.computeIfAbsent(key, k -> new ArrayList<>()).add(item);
+                couponCancelCount++;
+            } else if ("ManualRefund".equals(type)) {
+                otherPackageSettlements.computeIfAbsent(key, k -> new ArrayList<>()).add(item);
+                manualRefundCount++;
+            } else if ("ManualRefundCancel".equals(type)) {
+                otherPackageSettlements.computeIfAbsent(key, k -> new ArrayList<>()).add(item);
+            } else if ("TYDiscount".equals(type) || "TYDiscountCancel".equals(type)) {
+                otherPackageSettlements.computeIfAbsent(key, k -> new ArrayList<>()).add(item);
+                tyDiscountCount++;
+            } else if ("TYCoupon".equals(type) || "TYCouponCancel".equals(type)) {
+                otherPackageSettlements.computeIfAbsent(key, k -> new ArrayList<>()).add(item);
+                tyCouponCount++;
+            } else if ("ProvisionPositive".equals(type) || "ProvisionNegative".equals(type)) {
+                otherPackageSettlements.computeIfAbsent(key, k -> new ArrayList<>()).add(item);
+                provisionCount++;
+            } else if ("CommissionPositive".equals(type) || "CommissionNegative".equals(type)) {
+                otherPackageSettlements.computeIfAbsent(key, k -> new ArrayList<>()).add(item);
+                commissionAdjCount++;
+            } else {
+                // Unknown type - still process it
+                otherPackageSettlements.computeIfAbsent(key, k -> new ArrayList<>()).add(item);
+                log.warn("Unknown settlement transaction type: {} for order {}", type, item.getOrderNumber());
             }
         }
 
-        log.info("Grouped settlements for store: {} - Sales: {}, Returns: {}, Discounts: {}, Coupons: {}, EarlyPayments: {}",
+        log.info("Grouped settlements for store: {} - Sales: {}, Returns: {}, Discounts: {}, Coupons: {}, EarlyPayments: {}, " +
+                "DiscountCancel: {}, CouponCancel: {}, ManualRefund: {}, TYDiscount: {}, TYCoupon: {}, Provision: {}, CommissionAdj: {}, OtherPackages: {}",
             store.getId(), saleSettlements.size(), returnSettlements.size(),
-            discountSettlements.size(), couponSettlements.size(), earlyPaymentSettlements.size());
+            discountSettlements.size(), couponSettlements.size(), earlyPaymentSettlements.size(),
+            discountCancelCount, couponCancelCount, manualRefundCount, tyDiscountCount, tyCouponCount,
+            provisionCount, commissionAdjCount, otherPackageSettlements.size());
 
         int processedOrders = 0;
         int foundOrders = 0;
@@ -373,6 +411,25 @@ public class TrendyolFinancialSettlementService {
                 }
             } catch (Exception e) {
                 log.error("Failed to update order {} package {} with early payment settlements",
+                    orderNumber, packageId, e);
+            }
+        }
+
+        // Process other package-based settlements (DiscountCancel, CouponCancel, ManualRefund,
+        // TYDiscount, TYCoupon, Provision, Commission adjustments, etc.)
+        for (Map.Entry<String, List<TrendyolFinancialSettlementItem>> entry : otherPackageSettlements.entrySet()) {
+            String[] parts = entry.getKey().split("_");
+            String orderNumber = parts[0];
+            Long packageId = Long.valueOf(parts[1]);
+
+            try {
+                boolean orderFound = updateOrderWithSettlements(store, orderNumber, packageId, entry.getValue());
+                processedOrders++;
+                if (orderFound) {
+                    foundOrders++;
+                }
+            } catch (Exception e) {
+                log.error("Failed to update order {} package {} with other settlements",
                     orderNumber, packageId, e);
             }
         }
@@ -519,6 +576,14 @@ public class TrendyolFinancialSettlementService {
         List<TrendyolFinancialSettlementItem> discounts = new ArrayList<>();
         List<TrendyolFinancialSettlementItem> coupons = new ArrayList<>();
         List<TrendyolFinancialSettlementItem> earlyPayments = new ArrayList<>();
+        List<TrendyolFinancialSettlementItem> discountCancels = new ArrayList<>();
+        List<TrendyolFinancialSettlementItem> couponCancels = new ArrayList<>();
+        List<TrendyolFinancialSettlementItem> manualRefunds = new ArrayList<>();
+        List<TrendyolFinancialSettlementItem> manualRefundCancels = new ArrayList<>();
+        List<TrendyolFinancialSettlementItem> tyDiscounts = new ArrayList<>();
+        List<TrendyolFinancialSettlementItem> tyCoupons = new ArrayList<>();
+        List<TrendyolFinancialSettlementItem> provisions = new ArrayList<>();
+        List<TrendyolFinancialSettlementItem> commissionAdjustments = new ArrayList<>();
         List<TrendyolFinancialSettlementItem> others = new ArrayList<>();
 
         for (TrendyolFinancialSettlementItem settlement : itemSettlements) {
@@ -533,6 +598,22 @@ public class TrendyolFinancialSettlementService {
                 coupons.add(settlement);
             } else if ("ErkenÖdeme".equals(transactionType) || "EarlyPayment".equals(transactionType)) {
                 earlyPayments.add(settlement);
+            } else if ("DiscountCancel".equals(transactionType)) {
+                discountCancels.add(settlement);
+            } else if ("CouponCancel".equals(transactionType)) {
+                couponCancels.add(settlement);
+            } else if ("ManualRefund".equals(transactionType)) {
+                manualRefunds.add(settlement);
+            } else if ("ManualRefundCancel".equals(transactionType)) {
+                manualRefundCancels.add(settlement);
+            } else if ("TYDiscount".equals(transactionType) || "TYDiscountCancel".equals(transactionType)) {
+                tyDiscounts.add(settlement);
+            } else if ("TYCoupon".equals(transactionType) || "TYCouponCancel".equals(transactionType)) {
+                tyCoupons.add(settlement);
+            } else if ("ProvisionPositive".equals(transactionType) || "ProvisionNegative".equals(transactionType)) {
+                provisions.add(settlement);
+            } else if ("CommissionPositive".equals(transactionType) || "CommissionNegative".equals(transactionType)) {
+                commissionAdjustments.add(settlement);
             } else {
                 others.add(settlement);
             }
@@ -633,6 +714,126 @@ public class TrendyolFinancialSettlementService {
                 itemUpdated = true;
                 log.debug("Added EARLY_PAYMENT settlement {} for product {} in order {} package {}",
                     settlement.getId(), barcode, orderNumber, packageId);
+            }
+        }
+
+        // Handle discount cancel settlements (reverses discounts)
+        for (TrendyolFinancialSettlementItem discountCancelSettlement : discountCancels) {
+            FinancialSettlement settlement = settlementMapper.mapToOrderItemSettlement(discountCancelSettlement);
+            boolean exists = financialItemData.getTransactions().stream()
+                .anyMatch(existing -> existing.getId().equals(settlement.getId()));
+            if (!exists) {
+                settlement.setStatus("DISCOUNT_CANCEL");
+                financialItemData.getTransactions().add(settlement);
+                itemUpdated = true;
+                log.debug("Added DISCOUNT_CANCEL settlement {} for product {} in order {} package {}",
+                    settlement.getId(), barcode, orderNumber, packageId);
+            }
+        }
+
+        // Handle coupon cancel settlements (reverses coupons)
+        for (TrendyolFinancialSettlementItem couponCancelSettlement : couponCancels) {
+            FinancialSettlement settlement = settlementMapper.mapToOrderItemSettlement(couponCancelSettlement);
+            boolean exists = financialItemData.getTransactions().stream()
+                .anyMatch(existing -> existing.getId().equals(settlement.getId()));
+            if (!exists) {
+                settlement.setStatus("COUPON_CANCEL");
+                financialItemData.getTransactions().add(settlement);
+                itemUpdated = true;
+                log.debug("Added COUPON_CANCEL settlement {} for product {} in order {} package {}",
+                    settlement.getId(), barcode, orderNumber, packageId);
+            }
+        }
+
+        // Handle manual refund settlements (partial refunds)
+        for (TrendyolFinancialSettlementItem manualRefundSettlement : manualRefunds) {
+            FinancialSettlement settlement = settlementMapper.mapToOrderItemSettlement(manualRefundSettlement);
+            boolean exists = financialItemData.getTransactions().stream()
+                .anyMatch(existing -> existing.getId().equals(settlement.getId()));
+            if (!exists) {
+                settlement.setStatus("MANUAL_REFUND");
+                financialItemData.getTransactions().add(settlement);
+                itemUpdated = true;
+                log.debug("Added MANUAL_REFUND settlement {} for product {} in order {} package {}",
+                    settlement.getId(), barcode, orderNumber, packageId);
+            }
+        }
+
+        // Handle manual refund cancel settlements
+        for (TrendyolFinancialSettlementItem manualRefundCancelSettlement : manualRefundCancels) {
+            FinancialSettlement settlement = settlementMapper.mapToOrderItemSettlement(manualRefundCancelSettlement);
+            boolean exists = financialItemData.getTransactions().stream()
+                .anyMatch(existing -> existing.getId().equals(settlement.getId()));
+            if (!exists) {
+                settlement.setStatus("MANUAL_REFUND_CANCEL");
+                financialItemData.getTransactions().add(settlement);
+                itemUpdated = true;
+                log.debug("Added MANUAL_REFUND_CANCEL settlement {} for product {} in order {} package {}",
+                    settlement.getId(), barcode, orderNumber, packageId);
+            }
+        }
+
+        // Handle TY discount settlements (Trendyol-funded discounts)
+        for (TrendyolFinancialSettlementItem tyDiscountSettlement : tyDiscounts) {
+            FinancialSettlement settlement = settlementMapper.mapToOrderItemSettlement(tyDiscountSettlement);
+            boolean exists = financialItemData.getTransactions().stream()
+                .anyMatch(existing -> existing.getId().equals(settlement.getId()));
+            if (!exists) {
+                String status = "TYDiscountCancel".equals(tyDiscountSettlement.getTransactionType())
+                    ? "TY_DISCOUNT_CANCEL" : "TY_DISCOUNT";
+                settlement.setStatus(status);
+                financialItemData.getTransactions().add(settlement);
+                itemUpdated = true;
+                log.debug("Added {} settlement {} for product {} in order {} package {}",
+                    status, settlement.getId(), barcode, orderNumber, packageId);
+            }
+        }
+
+        // Handle TY coupon settlements (Trendyol-funded coupons)
+        for (TrendyolFinancialSettlementItem tyCouponSettlement : tyCoupons) {
+            FinancialSettlement settlement = settlementMapper.mapToOrderItemSettlement(tyCouponSettlement);
+            boolean exists = financialItemData.getTransactions().stream()
+                .anyMatch(existing -> existing.getId().equals(settlement.getId()));
+            if (!exists) {
+                String status = "TYCouponCancel".equals(tyCouponSettlement.getTransactionType())
+                    ? "TY_COUPON_CANCEL" : "TY_COUPON";
+                settlement.setStatus(status);
+                financialItemData.getTransactions().add(settlement);
+                itemUpdated = true;
+                log.debug("Added {} settlement {} for product {} in order {} package {}",
+                    status, settlement.getId(), barcode, orderNumber, packageId);
+            }
+        }
+
+        // Handle provision settlements (weight difference corrections)
+        for (TrendyolFinancialSettlementItem provisionSettlement : provisions) {
+            FinancialSettlement settlement = settlementMapper.mapToOrderItemSettlement(provisionSettlement);
+            boolean exists = financialItemData.getTransactions().stream()
+                .anyMatch(existing -> existing.getId().equals(settlement.getId()));
+            if (!exists) {
+                String status = "ProvisionPositive".equals(provisionSettlement.getTransactionType())
+                    ? "PROVISION_POSITIVE" : "PROVISION_NEGATIVE";
+                settlement.setStatus(status);
+                financialItemData.getTransactions().add(settlement);
+                itemUpdated = true;
+                log.debug("Added {} settlement {} for product {} in order {} package {}",
+                    status, settlement.getId(), barcode, orderNumber, packageId);
+            }
+        }
+
+        // Handle commission adjustment settlements
+        for (TrendyolFinancialSettlementItem commAdjSettlement : commissionAdjustments) {
+            FinancialSettlement settlement = settlementMapper.mapToOrderItemSettlement(commAdjSettlement);
+            boolean exists = financialItemData.getTransactions().stream()
+                .anyMatch(existing -> existing.getId().equals(settlement.getId()));
+            if (!exists) {
+                String status = "CommissionPositive".equals(commAdjSettlement.getTransactionType())
+                    ? "COMMISSION_POSITIVE" : "COMMISSION_NEGATIVE";
+                settlement.setStatus(status);
+                financialItemData.getTransactions().add(settlement);
+                itemUpdated = true;
+                log.debug("Added {} settlement {} for product {} in order {} package {}",
+                    status, settlement.getId(), barcode, orderNumber, packageId);
             }
         }
 
@@ -997,9 +1198,55 @@ public class TrendyolFinancialSettlementService {
                         couponCount++;
                     }
                     break;
+                case "DISCOUNT_CANCEL":
+                    // Reverses a discount - reduces net discount amount
+                    totalDiscount = totalDiscount.subtract(credit);
+                    totalDiscountCommission = totalDiscountCommission.subtract(commissionAmount);
+                    break;
+                case "COUPON_CANCEL":
+                    // Reverses a coupon - reduces net coupon amount
+                    totalCoupon = totalCoupon.subtract(credit);
+                    totalCouponCommission = totalCouponCommission.subtract(commissionAmount);
+                    break;
+                case "MANUAL_REFUND":
+                    // Partial refund - deducted from seller revenue
+                    totalPrice = totalPrice.subtract(debt);
+                    break;
+                case "MANUAL_REFUND_CANCEL":
+                    // Reversal of partial refund - added back to seller revenue
+                    totalPrice = totalPrice.add(credit);
+                    break;
+                case "TY_DISCOUNT":
+                case "TY_DISCOUNT_CANCEL":
+                case "TY_COUPON":
+                case "TY_COUPON_CANCEL":
+                    // Trendyol-funded discounts/coupons - don't affect seller's net revenue
+                    // Stored for tracking purposes but excluded from seller calculations
+                    break;
+                case "PROVISION_POSITIVE":
+                    // Weight difference positive correction - seller receives credit
+                    totalPrice = totalPrice.add(credit);
+                    break;
+                case "PROVISION_NEGATIVE":
+                    // Weight difference negative correction - seller charged
+                    totalPrice = totalPrice.subtract(debt);
+                    break;
+                case "COMMISSION_POSITIVE":
+                    // Additional commission charged to seller
+                    totalSoldCommission = totalSoldCommission.add(commissionAmount.compareTo(BigDecimal.ZERO) > 0
+                        ? commissionAmount : debt);
+                    break;
+                case "COMMISSION_NEGATIVE":
+                    // Commission refunded to seller
+                    totalSoldCommission = totalSoldCommission.subtract(commissionAmount.compareTo(BigDecimal.ZERO) > 0
+                        ? commissionAmount : credit);
+                    break;
+                case "EARLY_PAYMENT":
+                    // Early payment fees - handled at order level
+                    break;
             }
         }
-        
+
         // Calculate net values
         BigDecimal finalPrice = totalPrice.subtract(totalDiscount).subtract(totalCoupon);
         BigDecimal totalCommission = totalSoldCommission.subtract(totalDiscountCommission).subtract(totalCouponCommission);

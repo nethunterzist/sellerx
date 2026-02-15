@@ -42,9 +42,6 @@ export default function SupportPage() {
             <LifeBuoy className="h-6 w-6" />
             Destek Talepleri
           </h1>
-          <p className="text-muted-foreground mt-1">
-            Sorularınız ve sorunlarınız için destek talebi oluşturun
-          </p>
         </div>
         <Button onClick={() => setShowCreateModal(true)}>
           <Plus className="h-4 w-4 mr-2" />

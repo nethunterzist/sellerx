@@ -1,0 +1,195 @@
+{
+  "storeName": "Test Magazasi",
+  "storeEmail": "test@test.com",
+  "timestamp": "14.02.2026 23:48:10",
+  "sections": [
+    {
+      "title": "Dashboard Kartları",
+      "summary": {
+        "total": 11,
+        "matching": 5,
+        "warnings": 1,
+        "errors": 5,
+        "results": [
+          {
+            "field": "Bugun - Ciro",
+            "match": false,
+            "dbValue": 187812.84,
+            "frontendValue": 187812.84,
+            "trendyolValue": 0,
+            "deviation": 100,
+            "severity": "critical",
+            "note": "DB vs TY: diff=187812.84; FE vs TY: diff=187812.84"
+          },
+          {
+            "field": "Bugun - Siparis Sayisi",
+            "match": true,
+            "dbValue": 138,
+            "frontendValue": 138,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Bugun - Iade",
+            "match": true,
+            "dbValue": 0,
+            "frontendValue": 0,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Dun - Ciro",
+            "match": true,
+            "dbValue": 269612.43,
+            "frontendValue": 269612.43,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Dun - Siparis Sayisi",
+            "match": true,
+            "dbValue": 195,
+            "frontendValue": 195,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Bu Ay - Ciro",
+            "match": false,
+            "dbValue": 3060521.91,
+            "frontendValue": 2848160.06,
+            "trendyolValue": null,
+            "deviation": 6.94,
+            "severity": "critical",
+            "note": "DB vs FE: diff=212361.85"
+          },
+          {
+            "field": "Bu Ay - Siparis Sayisi",
+            "match": false,
+            "dbValue": 2412,
+            "frontendValue": 2242,
+            "trendyolValue": null,
+            "deviation": 7.05,
+            "severity": "critical",
+            "note": "DB vs FE: diff=170.00"
+          },
+          {
+            "field": "Bu Ay - Iade",
+            "match": true,
+            "dbValue": 0,
+            "frontendValue": 0,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Bu Ay - Brut Kar",
+            "match": false,
+            "dbValue": 1657296.87,
+            "frontendValue": 1985200.06,
+            "trendyolValue": null,
+            "deviation": 19.79,
+            "severity": "critical",
+            "note": "DB vs FE: diff=327903.19"
+          },
+          {
+            "field": "Gecen Ay - Ciro",
+            "match": false,
+            "dbValue": 8557537.78,
+            "frontendValue": 8514762.19,
+            "trendyolValue": null,
+            "deviation": 0.5,
+            "severity": "warning",
+            "note": "DB vs FE: diff=42775.59"
+          },
+          {
+            "field": "Gecen Ay - Siparis Sayisi",
+            "match": false,
+            "dbValue": 7058,
+            "frontendValue": 6999,
+            "trendyolValue": null,
+            "deviation": 0.84,
+            "severity": "critical",
+            "note": "DB vs FE: diff=59.00"
+          }
+        ]
+      },
+      "screenshots": [
+        "01-dashboard-cards-sellerx.png",
+        "01-dashboard-cards-trendyol.png"
+      ]
+    },
+    {
+      "title": "Dashboard Urun Tablosu (Ilk 10)",
+      "summary": {
+        "total": 0,
+        "matching": 0,
+        "warnings": 0,
+        "errors": 0,
+        "results": []
+      },
+      "screenshots": [
+        "02-products-table-sellerx.png",
+        "02-products-table-trendyol.png"
+      ]
+    },
+    {
+      "title": "Donem Detay Modali (Bu Ay)",
+      "summary": {
+        "total": 4,
+        "matching": 0,
+        "warnings": 0,
+        "errors": 4,
+        "results": [
+          {
+            "field": "Bu Ay Modal - Ciro",
+            "match": false,
+            "dbValue": 3060521.91,
+            "frontendValue": 14,
+            "trendyolValue": null,
+            "deviation": 100,
+            "severity": "critical",
+            "note": "DB vs FE: diff=3060507.91"
+          },
+          {
+            "field": "Bu Ay Modal - Siparis",
+            "match": false,
+            "dbValue": 2412,
+            "frontendValue": 14,
+            "trendyolValue": null,
+            "deviation": 99.42,
+            "severity": "critical",
+            "note": "DB vs FE: diff=2398.00"
+          },
+          {
+            "field": "Bu Ay Modal - Komisyon",
+            "match": false,
+            "dbValue": 477608.04,
+            "frontendValue": 14,
+            "trendyolValue": null,
+            "deviation": 100,
+            "severity": "critical",
+            "note": "DB vs FE: diff=477594.04"
+          },
+          {
+            "field": "Bu Ay Modal - Kargo",
+            "match": false,
+            "dbValue": 0,
+            "frontendValue": 14,
+            "trendyolValue": null,
+            "deviation": 100,
+            "severity": "critical",
+            "note": "DB vs FE: diff=14.00"
+          }
+        ]
+      },
+      "screenshots": [
+        "03c-period-detail-modal.png"
+      ]
+    }
+  ]
+}

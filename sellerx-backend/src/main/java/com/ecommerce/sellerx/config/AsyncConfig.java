@@ -21,16 +21,17 @@ public class AsyncConfig {
 
     /**
      * Executor for store onboarding tasks.
-     * - Core pool: 5 threads (handles normal load)
-     * - Max pool: 10 threads (handles peak - multiple stores onboarding simultaneously)
-     * - Queue: 100 tasks (buffering for burst)
+     * Scaled for 1500+ stores:
+     * - Core pool: 20 threads (handles normal load)
+     * - Max pool: 50 threads (handles peak - multiple stores onboarding simultaneously)
+     * - Queue: 500 tasks (buffering for burst)
      */
     @Bean(name = "onboardingExecutor")
     public Executor onboardingExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(5);
-        executor.setMaxPoolSize(10);
-        executor.setQueueCapacity(100);
+        executor.setCorePoolSize(20);
+        executor.setMaxPoolSize(50);
+        executor.setQueueCapacity(500);
         executor.setThreadNamePrefix("onboarding-");
         executor.setWaitForTasksToCompleteOnShutdown(true);
         executor.setAwaitTerminationSeconds(60);
@@ -42,13 +43,14 @@ public class AsyncConfig {
     /**
      * Executor for general async tasks.
      * Default executor for @Async methods without qualifier.
+     * Scaled for 1500+ stores.
      */
     @Bean(name = "taskExecutor")
     public Executor taskExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(3);
-        executor.setMaxPoolSize(8);
-        executor.setQueueCapacity(50);
+        executor.setCorePoolSize(10);
+        executor.setMaxPoolSize(30);
+        executor.setQueueCapacity(200);
         executor.setThreadNamePrefix("async-");
         executor.setWaitForTasksToCompleteOnShutdown(true);
         executor.setAwaitTerminationSeconds(30);

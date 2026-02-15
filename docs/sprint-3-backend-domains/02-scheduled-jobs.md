@@ -22,4 +22,13 @@ Tüm `@Scheduled` metodları: sınıf, metod, cron/fixedRate, zone, ShedLock nam
 | PatternDiscoveryService | runDailyPatternAnalysis | 0 0 3 * * * | — | — | Günlük pattern analizi; sorulardan bilgi önerileri üretilir. |
 | SeniorityService | reviewAutoSubmitEligibility | 0 0 * * * * | — | — | Saatlik: bekleyen pattern’ler için auto-submit uygunluğu incelenir. |
 
-**Toplam:** 17 scheduled metod. ShedLock kullananlar: HybridSyncScheduleConfig (8), TrendyolOrderScheduledService (2). ShedLockConfig: defaultLockAtMostFor = 10m; lock provider: JdbcTemplate (shedlock tablosu).
+| DataMaintenanceScheduler | runRetentionCleanup | 0 0 3 * * ? | — | retentionCleanup | Günlük veri saklama temizliği: webhook_events (90g), gönderilmiş e-postalar (30g), başarısız e-postalar (90g), activity_logs (1y), sync_tasks (30g). |
+| DataMaintenanceScheduler | refreshDashboardViews | 0 */15 * * * ? | — | refreshDashboardViews | Dashboard materialized view yenileme (CONCURRENTLY, 15 dakikada bir). |
+| DataMaintenanceScheduler | checkTableBloat | 0 0 4 * * ? | — | tableBloatCheck | Tablo bloat kontrolü; dead tuple oranı yüksek tablolar loglanır. |
+| EmailQueueProcessor | processQueue | fixedRate 60s (60_000 ms) | — | emailQueueProcessor | Bekleyen e-posta kuyruğunu işler, başarısız olanları retry eder. |
+| EmailQueueProcessor | cleanupOldEmails | 0 0 3 * * ? | — | emailQueueCleanup | Eski gönderilmiş/başarısız e-postaları siler (yapılandırılabilir gün). |
+| SubscriptionReminderJob | sendSevenDayReminders | 0 0 9 * * ? | — | subscriptionReminder7Days | 7 gün içinde sona erecek aboneliklere hatırlatma e-postası gönderir. |
+| SubscriptionReminderJob | sendOneDayReminders | 0 5 9 * * ? | — | subscriptionReminder1Day | Yarın sona erecek aboneliklere son hatırlatma e-postası gönderir. |
+| ExpenseRecurrenceScheduledService | generateRecurringExpenses | 0 5 0 * * * | Europe/Istanbul | — | Tekrarlayan gider şablonlarından (günlük, haftalık, aylık, yıllık) otomatik gider kaydı oluşturur. |
+
+**Toplam:** 25 scheduled metod. ShedLock kullananlar: HybridSyncScheduleConfig (8), TrendyolOrderScheduledService (2), DataMaintenanceScheduler (3), EmailQueueProcessor (2), SubscriptionReminderJob (2). ShedLockConfig: defaultLockAtMostFor = 10m; lock provider: JdbcTemplate (shedlock tablosu).

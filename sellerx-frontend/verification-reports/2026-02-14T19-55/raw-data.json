@@ -1,0 +1,136 @@
+{
+  "storeName": "Test Magazasi",
+  "storeEmail": "test@test.com",
+  "timestamp": "14.02.2026 22:56:21",
+  "sections": [
+    {
+      "title": "Donem Detay Modali (Bu Ay)",
+      "summary": {
+        "total": 4,
+        "matching": 0,
+        "warnings": 0,
+        "errors": 4,
+        "results": [
+          {
+            "field": "Bu Ay Modal - Ciro",
+            "match": false,
+            "dbValue": 3034482.21,
+            "frontendValue": 14,
+            "trendyolValue": null,
+            "deviation": 100,
+            "severity": "critical",
+            "note": "DB vs FE: diff=3034468.21"
+          },
+          {
+            "field": "Bu Ay Modal - Siparis",
+            "match": false,
+            "dbValue": 2396,
+            "frontendValue": 14,
+            "trendyolValue": null,
+            "deviation": 99.42,
+            "severity": "critical",
+            "note": "DB vs FE: diff=2382.00"
+          },
+          {
+            "field": "Bu Ay Modal - Komisyon",
+            "match": false,
+            "dbValue": 473671.51,
+            "frontendValue": 14,
+            "trendyolValue": null,
+            "deviation": 100,
+            "severity": "critical",
+            "note": "DB vs FE: diff=473657.51"
+          },
+          {
+            "field": "Bu Ay Modal - Kargo",
+            "match": false,
+            "dbValue": 0,
+            "frontendValue": 14,
+            "trendyolValue": null,
+            "deviation": 100,
+            "severity": "critical",
+            "note": "DB vs FE: diff=14.00"
+          }
+        ]
+      },
+      "screenshots": [
+        "03c-period-detail-modal.png"
+      ]
+    },
+    {
+      "title": "Siparisler Sayfasi",
+      "summary": {
+        "total": 6,
+        "matching": 0,
+        "warnings": 0,
+        "errors": 6,
+        "results": [
+          {
+            "field": "Son 7 Gun - Siparis Sayisi (DB vs FE tablo)",
+            "match": false,
+            "dbValue": 10,
+            "frontendValue": 5,
+            "trendyolValue": null,
+            "deviation": 50,
+            "severity": "critical",
+            "note": "DB vs FE: diff=5.00"
+          },
+          {
+            "field": "Siparis #10965903256 - Tutar",
+            "match": false,
+            "dbValue": 899.2,
+            "frontendValue": 26,
+            "trendyolValue": null,
+            "deviation": 97.11,
+            "severity": "critical",
+            "note": "DB vs FE: diff=873.20"
+          },
+          {
+            "field": "Siparis #10965874399 - Tutar",
+            "match": false,
+            "dbValue": 1798.4,
+            "frontendValue": 17,
+            "trendyolValue": null,
+            "deviation": 99.05,
+            "severity": "critical",
+            "note": "DB vs FE: diff=1781.40"
+          },
+          {
+            "field": "Siparis #10965853017 - Tutar",
+            "match": false,
+            "dbValue": 899.2,
+            "frontendValue": 14,
+            "trendyolValue": null,
+            "deviation": 98.44,
+            "severity": "critical",
+            "note": "DB vs FE: diff=885.20"
+          },
+          {
+            "field": "Siparis #10965839015 - Tutar",
+            "match": false,
+            "dbValue": 819,
+            "frontendValue": 4,
+            "trendyolValue": null,
+            "deviation": 99.51,
+            "severity": "critical",
+            "note": "DB vs FE: diff=815.00"
+          },
+          {
+            "field": "Siparis #10965814310 - Tutar",
+            "match": false,
+            "dbValue": 760,
+            "frontendValue": 54,
+            "trendyolValue": null,
+            "deviation": 92.89,
+            "severity": "critical",
+            "note": "DB vs FE: diff=706.00"
+          }
+        ]
+      },
+      "screenshots": [
+        "04-orders-sellerx.png",
+        "04-orders-trendyol.png"
+      ]
+    }
+  ]
+}

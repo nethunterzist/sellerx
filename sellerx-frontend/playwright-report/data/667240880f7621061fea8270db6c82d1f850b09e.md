@@ -1,0 +1,248 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]:
+        - link "sellerx" [ref=e6] [cursor=pointer]:
+          - /url: /dashboard
+          - generic [ref=e7]: sellerx
+        - button "Kenar çubuğunu daralt" [ref=e8] [cursor=pointer]:
+          - img [ref=e9]
+      - navigation [ref=e11]:
+        - link "Kontrol Paneli" [ref=e13] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e14]
+          - generic [ref=e19]: Kontrol Paneli
+        - link "Ürünler" [ref=e21] [cursor=pointer]:
+          - /url: /products
+          - img [ref=e22]
+          - generic [ref=e26]: Ürünler
+        - link "Buybox" [ref=e28] [cursor=pointer]:
+          - /url: /buybox
+          - img [ref=e29]
+          - generic [ref=e35]: Buybox
+        - link "Siparişler" [ref=e37] [cursor=pointer]:
+          - /url: /orders
+          - img [ref=e38]
+          - generic [ref=e42]: Siparişler
+        - link "Giderler" [ref=e44] [cursor=pointer]:
+          - /url: /expenses
+          - img [ref=e45]
+          - generic [ref=e48]: Giderler
+        - link "Kâr Analizi" [ref=e50] [cursor=pointer]:
+          - /url: /profit
+          - img [ref=e51]
+          - generic [ref=e54]: Kâr Analizi
+        - link "Faturalar" [ref=e56] [cursor=pointer]:
+          - /url: /financial/invoices
+          - img [ref=e57]
+          - generic [ref=e60]: Faturalar
+        - link "KDV" [ref=e62] [cursor=pointer]:
+          - /url: /kdv
+          - img [ref=e63]
+          - generic [ref=e65]: KDV
+        - link "Kâr Hesaplama" [ref=e67] [cursor=pointer]:
+          - /url: /kar-hesaplama
+          - img [ref=e68]
+          - generic [ref=e70]: Kâr Hesaplama
+        - link "Dümen" [ref=e72] [cursor=pointer]:
+          - /url: /dumen
+          - img [ref=e73]
+          - generic [ref=e76]: Dümen
+        - link "Satın Alma" [ref=e78] [cursor=pointer]:
+          - /url: /purchasing
+          - img [ref=e79]
+          - generic [ref=e84]: Satın Alma
+        - link "İadeler" [ref=e86] [cursor=pointer]:
+          - /url: /returns
+          - img [ref=e87]
+          - generic [ref=e90]: İadeler
+        - link "AI Asistan AI" [ref=e92] [cursor=pointer]:
+          - /url: /qa
+          - img [ref=e93]
+          - generic [ref=e95]:
+            - text: AI Asistan
+            - generic [ref=e96]: AI
+        - link "Müşteri Analizi" [ref=e98] [cursor=pointer]:
+          - /url: /customer-analytics
+          - img [ref=e99]
+          - generic [ref=e104]: Müşteri Analizi
+        - link "Uyarılar" [ref=e106] [cursor=pointer]:
+          - /url: /alerts
+          - img [ref=e107]
+          - generic [ref=e110]: Uyarılar
+        - link "Mağazalar" [ref=e112] [cursor=pointer]:
+          - /url: /new-store
+          - img [ref=e113]
+          - generic [ref=e118]: Mağazalar
+    - banner [ref=e119]:
+      - generic [ref=e120]:
+        - generic [ref=e121]:
+          - img [ref=e122]
+          - heading "Kontrol Paneli" [level=1] [ref=e127]
+        - generic [ref=e128]:
+          - button "Kartlar" [ref=e129] [cursor=pointer]:
+            - img [ref=e130]
+            - generic [ref=e135]: Kartlar
+          - button "Grafik" [ref=e136] [cursor=pointer]:
+            - img [ref=e137]
+            - generic [ref=e140]: Grafik
+          - button "Kar/Zarar" [ref=e141] [cursor=pointer]:
+            - img [ref=e142]
+            - generic [ref=e145]: Kar/Zarar
+          - button "Trendler" [ref=e146] [cursor=pointer]:
+            - img [ref=e147]
+            - generic [ref=e150]: Trendler
+          - button "Şehirler" [ref=e151] [cursor=pointer]:
+            - img [ref=e152]
+            - generic [ref=e155]: Şehirler
+      - button "k-pure" [ref=e157] [cursor=pointer]:
+        - generic [ref=e158]:
+          - img
+        - generic [ref=e159]: k-pure
+        - img
+      - generic [ref=e160]:
+        - button "8" [ref=e161] [cursor=pointer]:
+          - img
+          - generic [ref=e162]: "8"
+        - button [ref=e163] [cursor=pointer]:
+          - generic [ref=e164]:
+            - img
+        - button [ref=e165] [cursor=pointer]:
+          - img
+        - button "Bildirimler" [ref=e166] [cursor=pointer]:
+          - img
+        - button "U Kullanıcı" [ref=e167] [cursor=pointer]:
+          - generic [ref=e168]: U
+          - generic [ref=e169]: Kullanıcı
+          - img
+    - main [ref=e170]:
+      - generic [ref=e172]:
+        - generic [ref=e174]:
+          - generic [ref=e175] [cursor=pointer]:
+            - img [ref=e176]
+            - generic [ref=e179]: Ürün ara...
+          - generic [ref=e180]:
+            - button "Dönem" [ref=e181] [cursor=pointer]:
+              - img
+              - generic [ref=e182]: Dönem
+              - img
+            - button "TL" [ref=e183] [cursor=pointer]:
+              - generic [ref=e184]: TL
+              - img
+        - generic [ref=e339]:
+          - generic [ref=e340]:
+            - generic [ref=e341]:
+              - button "Ürünler" [ref=e342] [cursor=pointer]
+              - button "Sipariş Kalemleri" [ref=e343] [cursor=pointer]
+            - generic [ref=e344]:
+              - button "Filtrele" [ref=e345] [cursor=pointer]:
+                - img
+                - text: Filtrele
+              - button [ref=e346] [cursor=pointer]:
+                - img
+              - button [ref=e347] [cursor=pointer]:
+                - img
+          - table [ref=e350]:
+            - rowgroup [ref=e351]:
+              - row "Ürün Satılan İade Satış Komisyon Brüt Kâr Net Kâr Marj ROI" [ref=e352]:
+                - columnheader "Ürün" [ref=e353]
+                - columnheader "Satılan" [ref=e354] [cursor=pointer]:
+                  - generic [ref=e355]:
+                    - text: Satılan
+                    - img [ref=e356]
+                - columnheader "İade" [ref=e359] [cursor=pointer]:
+                  - generic [ref=e360]:
+                    - text: İade
+                    - img [ref=e361]
+                - columnheader "Satış" [ref=e364] [cursor=pointer]:
+                  - generic [ref=e365]:
+                    - text: Satış
+                    - img [ref=e366]
+                - columnheader "Komisyon" [ref=e368] [cursor=pointer]:
+                  - generic [ref=e369]:
+                    - text: Komisyon
+                    - img [ref=e370]
+                - columnheader "Brüt Kâr" [ref=e373] [cursor=pointer]:
+                  - generic [ref=e374]:
+                    - text: Brüt Kâr
+                    - img [ref=e375]
+                - columnheader "Net Kâr" [ref=e378] [cursor=pointer]:
+                  - generic [ref=e379]:
+                    - text: Net Kâr
+                    - img [ref=e380]
+                - columnheader "Marj" [ref=e383] [cursor=pointer]:
+                  - generic [ref=e384]:
+                    - text: Marj
+                    - img [ref=e385]
+                - columnheader "ROI" [ref=e388] [cursor=pointer]:
+                  - generic [ref=e389]:
+                    - text: ROI
+                    - img [ref=e390]
+                - columnheader [ref=e393]
+            - rowgroup [ref=e394]:
+              - row [ref=e395]:
+                - cell [ref=e396]
+                - cell [ref=e403]
+                - cell [ref=e405]
+                - cell [ref=e407]
+                - cell [ref=e409]
+                - cell [ref=e411]
+                - cell [ref=e413]
+                - cell [ref=e415]
+                - cell [ref=e417]
+                - cell [ref=e419]
+                - cell [ref=e421]
+              - row [ref=e423]:
+                - cell [ref=e424]
+                - cell [ref=e431]
+                - cell [ref=e433]
+                - cell [ref=e435]
+                - cell [ref=e437]
+                - cell [ref=e439]
+                - cell [ref=e441]
+                - cell [ref=e443]
+                - cell [ref=e445]
+                - cell [ref=e447]
+                - cell [ref=e449]
+              - row [ref=e451]:
+                - cell [ref=e452]
+                - cell [ref=e459]
+                - cell [ref=e461]
+                - cell [ref=e463]
+                - cell [ref=e465]
+                - cell [ref=e467]
+                - cell [ref=e469]
+                - cell [ref=e471]
+                - cell [ref=e473]
+                - cell [ref=e475]
+                - cell [ref=e477]
+              - row [ref=e479]:
+                - cell [ref=e480]
+                - cell [ref=e487]
+                - cell [ref=e489]
+                - cell [ref=e491]
+                - cell [ref=e493]
+                - cell [ref=e495]
+                - cell [ref=e497]
+                - cell [ref=e499]
+                - cell [ref=e501]
+                - cell [ref=e503]
+                - cell [ref=e505]
+              - row [ref=e507]:
+                - cell [ref=e508]
+                - cell [ref=e515]
+                - cell [ref=e517]
+                - cell [ref=e519]
+                - cell [ref=e521]
+                - cell [ref=e523]
+                - cell [ref=e525]
+                - cell [ref=e527]
+                - cell [ref=e529]
+                - cell [ref=e531]
+                - cell [ref=e533]
+  - region "Notifications alt+T"
+  - alert [ref=e535]
+```

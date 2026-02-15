@@ -1,16 +1,24 @@
 package com.ecommerce.sellerx.orders;
 
+import com.ecommerce.sellerx.sync.AsyncOrderSyncService;
+import com.ecommerce.sellerx.sync.SyncTask;
+import com.ecommerce.sellerx.sync.SyncTaskService;
+import com.ecommerce.sellerx.sync.SyncTaskType;
+import com.ecommerce.sellerx.sync.dto.StartSyncResponse;
+import com.ecommerce.sellerx.sync.dto.SyncTaskResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -22,15 +30,80 @@ public class TrendyolOrderController {
     private final TrendyolOrderService orderService;
     private final TrendyolOrderScheduledService scheduledService;
     private final OrderCommissionRecalculationService commissionRecalculationService;
+    private final SyncTaskService syncTaskService;
+    private final AsyncOrderSyncService asyncOrderSyncService;
 
     /**
-     * Fetch and save orders from Trendyol API for a specific store
+     * Start an async order sync operation.
+     * Returns immediately with 202 Accepted and a task ID to poll for status.
+     * This is the recommended way to sync orders - use /stores/{storeId}/sync/status/{taskId} to check progress.
      */
+    @PreAuthorize("@userSecurityRules.canAccessStore(authentication, #storeId)")
+    @PostMapping("/stores/{storeId}/sync/async")
+    public ResponseEntity<StartSyncResponse> startAsyncOrderSync(@PathVariable UUID storeId) {
+        log.info("Starting async order sync for store: {}", storeId);
+
+        // Check if there's already an active sync
+        if (syncTaskService.hasActiveTask(storeId, SyncTaskType.ORDERS)) {
+            log.warn("Active order sync already in progress for store: {}", storeId);
+            List<SyncTaskResponse> activeTasks = syncTaskService.getActiveTasks(storeId);
+            SyncTaskResponse activeTask = activeTasks.stream()
+                    .filter(t -> t.getTaskType() == SyncTaskType.ORDERS)
+                    .findFirst()
+                    .orElse(null);
+
+            if (activeTask != null) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(StartSyncResponse.builder()
+                                .taskId(activeTask.getTaskId())
+                                .storeId(storeId)
+                                .taskType(SyncTaskType.ORDERS)
+                                .status(activeTask.getStatus())
+                                .message("An order sync is already in progress. Check the status URL.")
+                                .statusUrl("/api/orders/stores/" + storeId + "/sync/status/" + activeTask.getTaskId())
+                                .build());
+            }
+        }
+
+        // Create task and start async execution
+        SyncTask task = syncTaskService.createTask(storeId, SyncTaskType.ORDERS);
+        asyncOrderSyncService.executeOrderSync(task.getId(), storeId);
+
+        StartSyncResponse response = StartSyncResponse.builder()
+                .taskId(task.getId())
+                .storeId(storeId)
+                .taskType(SyncTaskType.ORDERS)
+                .status(task.getStatus())
+                .message("Order sync operation started. Poll the status URL to check progress.")
+                .statusUrl("/api/orders/stores/" + storeId + "/sync/status/" + task.getId())
+                .build();
+
+        return ResponseEntity.accepted().body(response);
+    }
+
+    /**
+     * Get the status of an order sync task.
+     * Poll this endpoint to track sync progress.
+     */
+    @PreAuthorize("@userSecurityRules.canAccessStore(authentication, #storeId)")
+    @GetMapping("/stores/{storeId}/sync/status/{taskId}")
+    public ResponseEntity<SyncTaskResponse> getOrderSyncStatus(
+            @PathVariable UUID storeId,
+            @PathVariable UUID taskId) {
+        SyncTaskResponse status = syncTaskService.getTaskStatus(taskId, storeId);
+        return ResponseEntity.ok(status);
+    }
+
+    /**
+     * Synchronous order sync (DEPRECATED - use /stores/{storeId}/sync/async instead).
+     * Kept for backward compatibility, but may timeout for large order histories.
+     */
+    @Deprecated
     @PreAuthorize("@userSecurityRules.canAccessStore(authentication, #storeId)")
     @PostMapping("/stores/{storeId}/sync")
     public ResponseEntity<String> syncOrdersForStore(@PathVariable UUID storeId) {
         try {
-            log.info("Starting order sync for store: {}", storeId);
+            log.warn("Using deprecated synchronous sync endpoint for store {}. Consider using /stores/{}/sync/async", storeId, storeId);
             orderService.fetchAndSaveOrdersForStore(storeId);
             return ResponseEntity.ok("Orders synced successfully for store: " + storeId);
         } catch (Exception e) {
@@ -40,8 +113,10 @@ public class TrendyolOrderController {
     }
 
     /**
-     * Manually sync orders for all Trendyol stores
+     * Manually sync orders for all Trendyol stores.
+     * Only ADMIN users can trigger sync for all stores.
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/sync-all")
     public ResponseEntity<String> syncOrdersForAllStores() {
         try {
@@ -132,6 +207,26 @@ public class TrendyolOrderController {
             return ResponseEntity.ok(stats);
         } catch (Exception e) {
             log.error("Error fetching order statistics for store {}: {}", storeId, e.getMessage(), e);
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    /**
+     * Get order statistics for a store within a specific date range.
+     * Used for orders page to show statistics filtered by selected date range.
+     */
+    @PreAuthorize("@userSecurityRules.canAccessStore(authentication, #storeId)")
+    @GetMapping("/stores/{storeId}/statistics/by-date-range")
+    public ResponseEntity<OrderStatistics> getOrderStatisticsByDateRange(
+            @PathVariable UUID storeId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
+        try {
+            log.debug("Fetching order statistics for store {} from {} to {}", storeId, startDate, endDate);
+            OrderStatistics stats = orderService.getOrderStatisticsByDateRange(storeId, startDate, endDate);
+            return ResponseEntity.ok(stats);
+        } catch (Exception e) {
+            log.error("Error fetching order statistics by date range for store {}: {}", storeId, e.getMessage(), e);
             return ResponseEntity.badRequest().build();
         }
     }

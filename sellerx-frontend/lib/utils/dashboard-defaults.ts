@@ -14,31 +14,26 @@ export const VIEW_FILTER_CONFIG: Record<DashboardViewType, ViewFilterConfig> = {
     usesProducts: true,
     usesDateRange: true,
     usesCurrency: true,
-    usesComparison: true,
   },
   chart: {
     usesProducts: true,
     usesDateRange: false,
     usesCurrency: true,
-    usesComparison: false,
   },
   pl: {
     usesProducts: false,
     usesDateRange: false,
     usesCurrency: true,
-    usesComparison: true,
   },
   trends: {
     usesProducts: true,
     usesDateRange: false,
     usesCurrency: true,
-    usesComparison: false,
   },
   cities: {
     usesProducts: true,
     usesDateRange: true,
     usesCurrency: false,
-    usesComparison: false,
     singleProductOnly: true,
   },
 };
@@ -51,7 +46,6 @@ export const DEFAULT_TAB_FILTER: TabFilterState = {
   selectedPeriodGroup: "default",
   customDateRange: null,
   selectedPeriod: "today",
-  selectedComparison: "none",
   selectedCurrency: "TRY",
 };
 

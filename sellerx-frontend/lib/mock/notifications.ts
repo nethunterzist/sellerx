@@ -11,15 +11,6 @@ export const mockNotifications: Notification[] = [
     createdAt: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
   },
   {
-    id: "2",
-    type: "STOCK_ALERT",
-    title: "Düşük Stok Uyarısı",
-    message: "\"Bluetooth Kulaklık\" ürününde stok 5'in altına düştü",
-    read: false,
-    link: "/products",
-    createdAt: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
-  },
-  {
     id: "3",
     type: "SUCCESS",
     title: "Senkronizasyon Tamamlandı",
@@ -62,15 +53,6 @@ export const mockNotifications: Notification[] = [
     message: "Yeni özellikler eklendi: Gelişmiş raporlama ve analitik araçları",
     read: true,
     createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: "8",
-    type: "STOCK_ALERT",
-    title: "Stok Güncellendi",
-    message: "\"USB-C Kablo\" ürününe 100 adet stok eklendi",
-    read: true,
-    link: "/products",
-    createdAt: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
   },
   {
     id: "9",

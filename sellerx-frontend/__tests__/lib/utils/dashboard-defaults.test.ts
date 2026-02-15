@@ -19,7 +19,6 @@ describe("VIEW_FILTER_CONFIG", () => {
       usesProducts: true,
       usesDateRange: true,
       usesCurrency: true,
-      usesComparison: true,
     });
   });
 
@@ -38,7 +37,6 @@ describe("DEFAULT_TAB_FILTER", () => {
     expect(DEFAULT_TAB_FILTER.selectedPeriodGroup).toBe("default");
     expect(DEFAULT_TAB_FILTER.customDateRange).toBeNull();
     expect(DEFAULT_TAB_FILTER.selectedPeriod).toBe("today");
-    expect(DEFAULT_TAB_FILTER.selectedComparison).toBe("none");
     expect(DEFAULT_TAB_FILTER.selectedCurrency).toBe("TRY");
   });
 });

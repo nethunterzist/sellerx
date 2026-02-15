@@ -2,6 +2,7 @@ package com.ecommerce.sellerx.returns;
 
 import com.ecommerce.sellerx.common.BaseUnitTest;
 import com.ecommerce.sellerx.common.TestDataBuilder;
+import com.ecommerce.sellerx.orders.TrendyolOrderRepository;
 import com.ecommerce.sellerx.returns.dto.*;
 import com.ecommerce.sellerx.stores.Store;
 import com.ecommerce.sellerx.stores.StoreRepository;
@@ -16,6 +17,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
@@ -34,10 +38,16 @@ class TrendyolClaimsServiceTest extends BaseUnitTest {
     private TrendyolClaimRepository claimRepository;
 
     @Mock
+    private TrendyolOrderRepository orderRepository;
+
+    @Mock
     private StoreRepository storeRepository;
 
     @Mock
     private RestTemplate restTemplate;
+
+    @Mock
+    private ReturnRecordSyncService returnRecordSyncService;
 
     private TrendyolClaimsService service;
 
@@ -49,7 +59,7 @@ class TrendyolClaimsServiceTest extends BaseUnitTest {
     void setUp() {
         TestDataBuilder.resetSequence();
         ObjectMapper objectMapper = new ObjectMapper();
-        service = new TrendyolClaimsService(claimRepository, storeRepository, restTemplate, objectMapper);
+        service = new TrendyolClaimsService(claimRepository, orderRepository, storeRepository, restTemplate, objectMapper, returnRecordSyncService);
 
         testUser = TestDataBuilder.user().build();
         testStore = TestDataBuilder.completedStore(testUser).build();
@@ -216,33 +226,94 @@ class TrendyolClaimsServiceTest extends BaseUnitTest {
     class GetClaimIssueReasons {
 
         @Test
-        @DisplayName("should return all 13 claim issue reasons")
-        void shouldReturnAllReasons() {
+        @DisplayName("should return dynamic reasons from Trendyol API")
+        void shouldReturnDynamicReasonsFromApi() throws Exception {
+            // Setup: provide a Trendyol store
+            when(storeRepository.findByMarketplaceIgnoreCase("trendyol"))
+                    .thenReturn(List.of(testStore));
+
+            // Mock API response
+            String apiResponse = """
+                    {
+                      "content": [
+                        {"id": 1, "name": "İade gelen ürün sahte"},
+                        {"id": 51, "name": "İade gelen ürün kullanılmış"},
+                        {"id": 9999, "name": "Yeni Sebep"}
+                      ]
+                    }
+                    """;
+
+            when(restTemplate.exchange(
+                    contains("claim-issue-reasons"),
+                    eq(HttpMethod.GET),
+                    any(HttpEntity.class),
+                    eq(String.class)
+            )).thenReturn(ResponseEntity.ok(apiResponse));
+
             List<ClaimIssueReasonDto> reasons = service.getClaimIssueReasons();
 
-            assertThat(reasons).hasSize(13);
-            assertThat(reasons.stream().map(ClaimIssueReasonDto::getId))
-                    .contains(1, 51, 201, 251, 401, 101, 151, 301, 351, 1651, 1701, 1751, 451);
+            assertThat(reasons).hasSize(3);
+            assertThat(reasons.get(0).getId()).isEqualTo(1);
+            assertThat(reasons.get(0).isRequiresFile()).isTrue(); // Known ID
+            assertThat(reasons.get(2).getId()).isEqualTo(9999);
+            assertThat(reasons.get(2).getName()).isEqualTo("Yeni Sebep");
+            assertThat(reasons.get(2).isRequiresFile()).isFalse(); // Unknown ID defaults to false
         }
 
         @Test
-        @DisplayName("should have correct requiresFile flags")
-        void shouldHaveCorrectRequiresFileFlags() {
+        @DisplayName("should return fallback when no Trendyol credentials found")
+        void shouldReturnFallbackWhenNoCredentials() {
+            when(storeRepository.findByMarketplaceIgnoreCase("trendyol"))
+                    .thenReturn(Collections.emptyList());
+
             List<ClaimIssueReasonDto> reasons = service.getClaimIssueReasons();
 
-            // Reason 1651 (İade paketi elime ulaşmadı) should not require file
-            ClaimIssueReasonDto noFileReason = reasons.stream()
-                    .filter(r -> r.getId() == 1651)
-                    .findFirst()
-                    .orElseThrow();
-            assertThat(noFileReason.isRequiresFile()).isFalse();
+            assertThat(reasons).hasSize(13);
+            // Verify it's the fallback list
+            assertThat(reasons.stream().map(ClaimIssueReasonDto::getId))
+                    .contains(1, 51, 201, 251, 401, 101, 151, 301, 351, 1651, 1701, 1751, 451);
+            verify(restTemplate, never()).exchange(anyString(), any(), any(HttpEntity.class), eq(String.class));
+        }
 
-            // Reason 1 (İade gelen ürün sahte) should require file
-            ClaimIssueReasonDto fileReason = reasons.stream()
-                    .filter(r -> r.getId() == 1)
-                    .findFirst()
-                    .orElseThrow();
-            assertThat(fileReason.isRequiresFile()).isTrue();
+        @Test
+        @DisplayName("should return fallback when API throws exception")
+        void shouldReturnFallbackOnApiError() {
+            when(storeRepository.findByMarketplaceIgnoreCase("trendyol"))
+                    .thenReturn(List.of(testStore));
+            when(restTemplate.exchange(
+                    anyString(), eq(HttpMethod.GET), any(HttpEntity.class), eq(String.class)
+            )).thenThrow(new RuntimeException("API unavailable"));
+
+            List<ClaimIssueReasonDto> reasons = service.getClaimIssueReasons();
+
+            assertThat(reasons).hasSize(13); // Fallback list
+        }
+
+        @Test
+        @DisplayName("unknown reason ID should default requiresFile to false")
+        void unknownReasonIdShouldDefaultRequiresFileFalse() throws Exception {
+            when(storeRepository.findByMarketplaceIgnoreCase("trendyol"))
+                    .thenReturn(List.of(testStore));
+
+            String apiResponse = """
+                    {
+                      "content": [
+                        {"id": 77777, "name": "Bilinmeyen Sebep"}
+                      ]
+                    }
+                    """;
+
+            when(restTemplate.exchange(
+                    contains("claim-issue-reasons"),
+                    eq(HttpMethod.GET),
+                    any(HttpEntity.class),
+                    eq(String.class)
+            )).thenReturn(ResponseEntity.ok(apiResponse));
+
+            List<ClaimIssueReasonDto> reasons = service.getClaimIssueReasons();
+
+            assertThat(reasons).hasSize(1);
+            assertThat(reasons.get(0).isRequiresFile()).isFalse();
         }
     }
 
@@ -293,6 +364,102 @@ class TrendyolClaimsServiceTest extends BaseUnitTest {
 
             assertThat(response.isSuccess()).isFalse();
             assertThat(response.getMessage()).contains("WaitingInAction");
+        }
+    }
+
+    @Nested
+    @DisplayName("getClaimItemAudit")
+    class GetClaimItemAudit {
+
+        @Test
+        @DisplayName("should return audit trail from Trendyol API")
+        void shouldReturnAuditTrail() throws Exception {
+            when(storeRepository.findById(storeId)).thenReturn(Optional.of(testStore));
+
+            String apiResponse = """
+                    {
+                      "content": [
+                        {
+                          "claimId": "CLM-001",
+                          "claimItemId": "ITEM-001",
+                          "previousStatus": "Created",
+                          "newStatus": "WaitingInAction",
+                          "userInfoDocument": {
+                            "id": "sys-1",
+                            "app": "Trendyol",
+                            "user": null
+                          },
+                          "date": 1700000000000
+                        },
+                        {
+                          "claimId": "CLM-001",
+                          "claimItemId": "ITEM-001",
+                          "previousStatus": "WaitingInAction",
+                          "newStatus": "Accepted",
+                          "userInfoDocument": {
+                            "id": "seller-1",
+                            "app": "SellerCenter",
+                            "user": "seller@test.com"
+                          },
+                          "date": 1700100000000
+                        }
+                      ]
+                    }
+                    """;
+
+            when(restTemplate.exchange(
+                    contains("/claims/items/ITEM-001/audit"),
+                    eq(HttpMethod.GET),
+                    any(HttpEntity.class),
+                    eq(String.class)
+            )).thenReturn(ResponseEntity.ok(apiResponse));
+
+            List<ClaimItemAuditDto> audit = service.getClaimItemAudit(storeId, "ITEM-001");
+
+            assertThat(audit).hasSize(2);
+            assertThat(audit.get(0).getPreviousStatus()).isEqualTo("Created");
+            assertThat(audit.get(0).getNewStatus()).isEqualTo("WaitingInAction");
+            assertThat(audit.get(0).getExecutorApp()).isEqualTo("Trendyol");
+            assertThat(audit.get(1).getNewStatus()).isEqualTo("Accepted");
+            assertThat(audit.get(1).getExecutorUser()).isEqualTo("seller@test.com");
+        }
+
+        @Test
+        @DisplayName("should throw when store not found")
+        void shouldThrowWhenStoreNotFound() {
+            when(storeRepository.findById(storeId)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.getClaimItemAudit(storeId, "ITEM-001"))
+                    .isInstanceOf(RuntimeException.class)
+                    .hasMessage("Store not found");
+        }
+
+        @Test
+        @DisplayName("should throw when no Trendyol credentials")
+        void shouldThrowWhenNoCredentials() {
+            Store storeWithoutCreds = Store.builder()
+                    .id(storeId)
+                    .storeName("No Creds Store")
+                    .marketplace("other")
+                    .build();
+            when(storeRepository.findById(storeId)).thenReturn(Optional.of(storeWithoutCreds));
+
+            assertThatThrownBy(() -> service.getClaimItemAudit(storeId, "ITEM-001"))
+                    .isInstanceOf(RuntimeException.class)
+                    .hasMessageContaining("credentials not found");
+        }
+
+        @Test
+        @DisplayName("should throw when API returns error")
+        void shouldThrowOnApiError() {
+            when(storeRepository.findById(storeId)).thenReturn(Optional.of(testStore));
+            when(restTemplate.exchange(
+                    anyString(), eq(HttpMethod.GET), any(HttpEntity.class), eq(String.class)
+            )).thenThrow(new RuntimeException("Connection refused"));
+
+            assertThatThrownBy(() -> service.getClaimItemAudit(storeId, "ITEM-001"))
+                    .isInstanceOf(RuntimeException.class)
+                    .hasMessageContaining("Failed to fetch");
         }
     }
 

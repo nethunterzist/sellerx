@@ -28,9 +28,6 @@ interface PeriodCardProps {
   shippingCost?: number;
   itemsWithoutCost?: number;
   variant?: CardVariant;
-  percentageChange?: number;
-  salesChange?: number;
-  netProfitChange?: number;
   isSelected?: boolean;
   disabled?: boolean; // Tıklanamaz kartlar için (örn: forecast)
   onClick?: () => void;
@@ -64,11 +61,6 @@ const hoverBorderColors: Record<CardVariant, string> = {
   custom: "hover:border-b-[rgba(139,92,246,0.5)]", // Purple/Violet 50% opacity
 };
 
-function formatPercentage(value: number): string {
-  const formatted = Math.abs(value).toFixed(1);
-  return value >= 0 ? `+${formatted}%` : `-${formatted}%`;
-}
-
 export function PeriodCard({
   title,
   dateRange,
@@ -85,9 +77,6 @@ export function PeriodCard({
   shippingCost = 0,
   itemsWithoutCost = 0,
   variant = "today",
-  percentageChange,
-  salesChange,
-  netProfitChange,
   isSelected,
   disabled = false,
   onClick,
@@ -121,17 +110,7 @@ export function PeriodCard({
       <div className="p-4 flex flex-col flex-1">
         {/* Sales */}
         <div className="mb-4">
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">Satışlar</span>
-            {salesChange !== undefined && (
-              <span className={cn(
-                "text-xs font-medium",
-                salesChange >= 0 ? "text-green-600" : "text-red-600"
-              )}>
-                {formatPercentage(salesChange)}
-              </span>
-            )}
-          </div>
+          <span className="text-xs text-muted-foreground">Satışlar</span>
           <p className="text-2xl font-bold text-foreground">
             {formatCurrency(sales)}
           </p>
@@ -233,17 +212,7 @@ export function PeriodCard({
             </p>
           </div>
           <div className="text-right">
-            <div className="flex items-center justify-end gap-1">
-              <span className="text-muted-foreground">Net Kâr</span>
-              {netProfitChange !== undefined && (
-                <span className={cn(
-                  "text-xs font-medium",
-                  netProfitChange >= 0 ? "text-green-600" : "text-red-600"
-                )}>
-                  {formatPercentage(netProfitChange)}
-                </span>
-              )}
-            </div>
+            <span className="text-muted-foreground">Net Kâr</span>
             <p className={cn(
               "font-medium",
               netProfit >= 0 ? "text-green-600" : "text-red-600"

@@ -13,6 +13,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -70,23 +71,32 @@ public class AdminUserService {
     }
 
     /**
-     * Search users by email or name
+     * Search users by email or name with pagination
      */
-    public List<AdminUserListDto> searchUsers(String query) {
-        // Simple implementation - can be enhanced with Specification
-        return userRepository.findAll().stream()
-                .filter(user -> user.getEmail().toLowerCase().contains(query.toLowerCase())
-                        || (user.getName() != null && user.getName().toLowerCase().contains(query.toLowerCase())))
-                .map(this::toListDto)
-                .collect(Collectors.toList());
+    public Page<AdminUserListDto> searchUsers(String query, Pageable pageable) {
+        return userRepository.searchByEmailOrName(query, pageable)
+                .map(this::toListDto);
     }
 
     /**
-     * Get all users for export (no pagination)
+     * Legacy search method - limited to first 100 results for backward compatibility
+     * @deprecated Use searchUsers(String query, Pageable pageable) instead
+     */
+    @Deprecated
+    public List<AdminUserListDto> searchUsers(String query) {
+        return userRepository.searchByEmailOrName(query, PageRequest.of(0, 100))
+                .map(this::toListDto)
+                .getContent();
+    }
+
+    /**
+     * Get all users for export with chunked processing.
+     * WARNING: For large datasets (>10K users), consider using async streaming export.
+     * Limited to 10,000 users max to prevent memory issues.
      */
     public List<AdminUserListDto> getAllUsersForExport() {
-        log.info("Exporting all users");
-        return userRepository.findAll().stream()
+        log.info("Exporting all users (limited to 10K max)");
+        return userRepository.findAll(PageRequest.of(0, 10000)).stream()
                 .map(this::toListDto)
                 .collect(Collectors.toList());
     }

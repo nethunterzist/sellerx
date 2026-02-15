@@ -87,3 +87,43 @@ body {
     cursor: pointer;
   }
 }
+
+/* Airbnb-style Date Range Picker Styles */
+@layer components {
+  /* Range styling for react-day-picker */
+  .rdp-range-start,
+  .rdp-range-end {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Smooth transition for day buttons */
+  .rdp-day {
+    transition: background-color 150ms ease, transform 100ms ease, color 150ms ease;
+  }
+
+  .rdp-day:hover:not([disabled]):not([aria-selected]) {
+    transform: scale(1.05);
+  }
+
+  /* Caption styling */
+  .rdp-month_caption {
+    font-weight: 600;
+    font-size: 0.875rem;
+  }
+
+  /* Weekday headers */
+  .rdp-weekday {
+    font-weight: 500;
+    color: var(--muted-foreground);
+  }
+
+  /* Glassmorphism utilities for modern UI */
+  .glass-card {
+    @apply bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-white/20 dark:border-slate-800/50;
+  }
+
+  .glass-header {
+    @apply sticky top-0 z-10 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-b border-border/50;
+  }
+}

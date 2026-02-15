@@ -1,12 +1,15 @@
 package com.ecommerce.sellerx.stores;
 
 import com.ecommerce.sellerx.common.exception.UnauthorizedAccessException;
+import com.ecommerce.sellerx.expenses.ExpenseCategory;
+import com.ecommerce.sellerx.expenses.ExpenseCategoryRepository;
 import com.ecommerce.sellerx.webhook.TrendyolWebhookManagementService;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -19,6 +22,7 @@ public class StoreService {
     private final com.ecommerce.sellerx.users.UserService userService;
     private final TrendyolWebhookManagementService webhookManagementService;
     private final StoreOnboardingService storeOnboardingService;
+    private final ExpenseCategoryRepository expenseCategoryRepository;
 
     public List<StoreDto> getStoresByUser(com.ecommerce.sellerx.users.User user) {
         return storeRepository.findAllByUser(user)
@@ -56,6 +60,9 @@ public class StoreService {
 
         // Save store first
         storeRepository.save(store);
+
+        // Create default expense categories for the new store
+        createDefaultExpenseCategories(store);
 
         // Create webhook for Trendyol stores
         if ("TRENDYOL".equalsIgnoreCase(store.getMarketplace()) && store.getCredentials() instanceof TrendyolCredentials) {
@@ -175,5 +182,32 @@ public class StoreService {
         } catch (IllegalArgumentException e) {
             return false;
         }
+    }
+
+    /**
+     * Creates default expense categories for a newly registered store.
+     * These categories help users get started with expense tracking immediately.
+     */
+    private void createDefaultExpenseCategories(Store store) {
+        List<String> defaultCategories = List.of(
+            "Ambalaj",    // Packaging
+            "Kargo",      // Shipping
+            "Reklam",     // Advertising
+            "Ofis",       // Office
+            "Muhasebe",   // Accounting
+            "Diğer"       // Other
+        );
+
+        LocalDateTime now = LocalDateTime.now();
+        for (String categoryName : defaultCategories) {
+            ExpenseCategory category = new ExpenseCategory();
+            category.setStore(store);
+            category.setName(categoryName);
+            category.setCreatedAt(now);
+            category.setUpdatedAt(now);
+            expenseCategoryRepository.save(category);
+        }
+
+        log.info("Created {} default expense categories for store {}", defaultCategories.size(), store.getId());
     }
 }

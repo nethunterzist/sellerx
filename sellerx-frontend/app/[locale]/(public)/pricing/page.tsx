@@ -23,6 +23,7 @@ import {
 import { usePlans } from '@/hooks/queries/use-billing';
 import { formatCurrency, PLAN_FEATURES } from '@/types/billing';
 import type { BillingCycle } from '@/types/billing';
+import { FadeIn, StaggerChildren } from '@/components/motion';
 
 const FEATURE_LIST = [
   { code: 'max_stores', label: 'Mağaza Sayısı', type: 'limit' },
@@ -102,44 +103,46 @@ export default function PricingPage() {
     <TooltipProvider>
       <div className="container mx-auto px-4 py-16">
         {/* Hero Section */}
-        <div className="text-center mb-16">
-          <Badge variant="secondary" className="mb-4">
-            14 Gün Ücretsiz Deneme
-          </Badge>
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-4">
-            İşletmeniz için doğru planı seçin
-          </h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
-            Tüm planlar 14 günlük ücretsiz deneme ile başlar. Kredi kartı
-            bilgileriniz deneme süresi boyunca ücretlendirilmez.
-          </p>
+        <FadeIn direction="up">
+          <div className="text-center mb-16">
+            <Badge variant="secondary" className="mb-4">
+              14 Gün Ücretsiz Deneme
+            </Badge>
+            <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-4">
+              İşletmeniz için doğru planı seçin
+            </h1>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
+              Tüm planlar 14 günlük ücretsiz deneme ile başlar. Kredi kartı
+              bilgileriniz deneme süresi boyunca ücretlendirilmez.
+            </p>
 
-          {/* Billing Toggle */}
-          <div className="flex items-center justify-center gap-4">
-            <Label
-              htmlFor="billing-toggle"
-              className={billingCycle === 'MONTHLY' ? 'font-medium' : 'text-muted-foreground'}
-            >
-              Aylık
-            </Label>
-            <Switch
-              id="billing-toggle"
-              checked={isAnnual}
-              onCheckedChange={(checked) =>
-                setBillingCycle(checked ? 'SEMIANNUAL' : 'MONTHLY')
-              }
-            />
-            <Label
-              htmlFor="billing-toggle"
-              className={isAnnual ? 'font-medium' : 'text-muted-foreground'}
-            >
-              6 Aylık
-              <Badge variant="secondary" className="ml-2">
-                %20 İndirim
-              </Badge>
-            </Label>
+            {/* Billing Toggle */}
+            <div className="flex items-center justify-center gap-4">
+              <Label
+                htmlFor="billing-toggle"
+                className={billingCycle === 'MONTHLY' ? 'font-medium' : 'text-muted-foreground'}
+              >
+                Aylık
+              </Label>
+              <Switch
+                id="billing-toggle"
+                checked={isAnnual}
+                onCheckedChange={(checked) =>
+                  setBillingCycle(checked ? 'SEMIANNUAL' : 'MONTHLY')
+                }
+              />
+              <Label
+                htmlFor="billing-toggle"
+                className={isAnnual ? 'font-medium' : 'text-muted-foreground'}
+              >
+                6 Aylık
+                <Badge variant="secondary" className="ml-2">
+                  %20 İndirim
+                </Badge>
+              </Label>
+            </div>
           </div>
-        </div>
+        </FadeIn>
 
         {/* Pricing Cards */}
         {isLoading ? (
@@ -149,7 +152,7 @@ export default function PricingPage() {
             ))}
           </div>
         ) : (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-16">
+          <StaggerChildren staggerDelay={0.1} className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-16">
             {plans?.map((plan) => {
               const price = plan.prices.find((p) => p.billingCycle === billingCycle);
               // Use price.price (backend field) with priceAmount as fallback
@@ -233,7 +236,7 @@ export default function PricingPage() {
                 </Card>
               );
             })}
-          </div>
+          </StaggerChildren>
         )}
 
         {/* Feature Comparison Table */}

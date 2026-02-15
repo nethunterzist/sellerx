@@ -400,6 +400,33 @@ for (Store store : stores) {
 
 ---
 
+## sync/ Paketi (Async Sync Yönetimi)
+
+**Dosyalar**: `sync/SyncTask.java`, `SyncTaskService.java`, `SyncTaskRepository.java`, `SyncTaskStatus.java`, `SyncTaskType.java`
+
+Kullanıcı veya admin tetiklemeli async senkronizasyon işlerini yönetir. `SyncTask` entity'si sync işlemlerinin durumunu (PENDING, RUNNING, COMPLETED, FAILED) takip eder.
+
+**Async Sync Servisleri**: `sync/AsyncOrderSyncService.java`, `sync/AsyncProductSyncService.java` — Sipariş ve ürün sync'lerini asenkron olarak çalıştırır.
+
+## ParallelStoreSyncService (Paralel Sync)
+
+**Dosya**: `orders/ParallelStoreSyncService.java`
+
+Birden fazla mağazanın senkronizasyonunu paralel olarak orkestra eder. Her mağaza için ayrı thread kullanarak toplam sync süresini kısaltır. Store bazlı izolasyon sağlar (bir mağazanın hatası diğerlerini etkilemez).
+
+## ResilientSyncService (Dayanıklı Sync)
+
+**Dosya**: `orders/ResilientSyncService.java`
+
+Resilience4j pattern'leri ile güçlendirilmiş sync servisi:
+- **Circuit Breaker**: Trendyol API'si sürekli hata verdiğinde circuit açılır, gereksiz çağrılar engellenir.
+- **Retry**: Geçici hatalar için exponential backoff ile otomatik yeniden deneme.
+- **Rate Limiter**: Non-blocking rate limiting (Trendyol API limitlerine uyum).
+
+Detay: [../scaling/FAZ_2_RESILIENCE4J.md](../scaling/FAZ_2_RESILIENCE4J.md)
+
+---
+
 ## Ilgili Dokumantasyon
 
 - [STORE_ONBOARDING.md](STORE_ONBOARDING.md) — Magaza onboarding akisi

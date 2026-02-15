@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -27,14 +27,7 @@ import {
   useDeleteStockInfoByDate,
 } from "@/hooks/queries/use-products";
 import type { TrendyolProduct, CostAndStockInfo } from "@/types/product";
-import { AlertTriangle, Loader2, Package, TrendingUp, X, DollarSign, Percent, Target } from "lucide-react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { AlertTriangle, Loader2, Package, TrendingUp, X, Settings2, Globe, Percent } from "lucide-react";
 import {
   Collapsible,
   CollapsibleContent,
@@ -42,6 +35,7 @@ import {
 } from "@/components/ui/collapsible";
 import { CostHistoryTimeline } from "./cost-history-timeline";
 import { useCurrency } from "@/lib/contexts/currency-context";
+import { toast } from "sonner";
 
 const formSchema = z.object({
   quantity: z.coerce.number().min(1, "Miktar en az 1 olmalıdır"),
@@ -54,9 +48,6 @@ const formSchema = z.object({
   foreignCost: z.coerce.number().min(0).optional().nullable(),
   // ÖTV desteği
   otvRate: z.coerce.number().min(0).max(1).optional().nullable(),
-  // Reklam metrikleri
-  cpc: z.coerce.number().min(0).optional().nullable(),
-  cvr: z.coerce.number().min(0).max(1).optional().nullable(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -67,11 +58,10 @@ const COMMON_VAT_RATES = [0, 1, 10, 20];
 // Common ÖTV rates
 const COMMON_OTV_RATES = [0, 0.10, 0.20, 0.50];
 
-// Supported currencies
+// Supported foreign currencies (TRY excluded - this is for imports only)
 const CURRENCIES = [
-  { value: "TRY", label: "₺ TL", symbol: "₺" },
-  { value: "USD", label: "$ USD", symbol: "$" },
-  { value: "EUR", label: "€ EUR", symbol: "€" },
+  { value: "USD", label: "USD", symbol: "$" },
+  { value: "EUR", label: "EUR", symbol: "€" },
 ] as const;
 
 interface CostEditModalProps {
@@ -84,6 +74,7 @@ export function CostEditModal({ product, open, onOpenChange }: CostEditModalProp
   const { formatCurrency } = useCurrency();
   const [error, setError] = useState<string | null>(null);
   const [editingEntry, setEditingEntry] = useState<CostAndStockInfo | null>(null);
+  const [deletingEntry, setDeletingEntry] = useState<CostAndStockInfo | null>(null);
   const [isCustomVat, setIsCustomVat] = useState(false);
   const [isCustomOtv, setIsCustomOtv] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -94,7 +85,8 @@ export function CostEditModal({ product, open, onOpenChange }: CostEditModalProp
 
   const isPending = isAdding || isUpdating || isDeleting;
 
-  const today = new Date().toISOString().split("T")[0];
+  // Memoize today to prevent unnecessary re-renders
+  const today = useMemo(() => new Date().toISOString().split("T")[0], []);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -107,8 +99,6 @@ export function CostEditModal({ product, open, onOpenChange }: CostEditModalProp
       exchangeRate: null,
       foreignCost: null,
       otvRate: null,
-      cpc: null,
-      cvr: null,
     },
   });
 
@@ -118,8 +108,6 @@ export function CostEditModal({ product, open, onOpenChange }: CostEditModalProp
   const currentCurrency = form.watch("currency");
   const currentExchangeRate = form.watch("exchangeRate");
   const currentForeignCost = form.watch("foreignCost");
-  const currentCpc = form.watch("cpc");
-  const currentCvr = form.watch("cvr");
 
   // Reset form when modal opens/closes
   useEffect(() => {
@@ -133,15 +121,14 @@ export function CostEditModal({ product, open, onOpenChange }: CostEditModalProp
         exchangeRate: null,
         foreignCost: null,
         otvRate: null,
-        cpc: null,
-        cvr: null,
       });
       setIsCustomVat(false);
       setIsCustomOtv(false);
       setShowAdvanced(false);
       setError(null);
     }
-  }, [open, editingEntry, form, today]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, editingEntry]);
 
   // Update isCustomVat based on whether value is in common rates
   useEffect(() => {
@@ -163,7 +150,8 @@ export function CostEditModal({ product, open, onOpenChange }: CostEditModalProp
       const calculatedCost = currentForeignCost * currentExchangeRate;
       form.setValue("unitCost", Math.round(calculatedCost * 100) / 100);
     }
-  }, [currentForeignCost, currentExchangeRate, currentCurrency, form]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentForeignCost, currentExchangeRate, currentCurrency]);
 
   const handleVatSelect = (rate: number | "custom") => {
     if (rate === "custom") {
@@ -197,7 +185,7 @@ export function CostEditModal({ product, open, onOpenChange }: CostEditModalProp
     setIsCustomOtv(otvRate !== null && !COMMON_OTV_RATES.includes(otvRate));
 
     // Show advanced section if any advanced fields have values
-    const hasAdvancedValues = entry.currency || entry.otvRate || entry.cpc || entry.cvr;
+    const hasAdvancedValues = entry.currency || entry.otvRate;
     setShowAdvanced(!!hasAdvancedValues);
 
     form.reset({
@@ -209,31 +197,38 @@ export function CostEditModal({ product, open, onOpenChange }: CostEditModalProp
       exchangeRate: entry.exchangeRate ?? null,
       foreignCost: entry.foreignCost ?? null,
       otvRate: otvRate,
-      cpc: entry.cpc ?? null,
-      cvr: entry.cvr ?? null,
     });
   };
 
   const handleDelete = (entry: CostAndStockInfo) => {
-    if (!confirm(`${entry.stockDate} tarihli maliyet kaydını silmek istediğinizden emin misiniz?`)) {
-      return;
-    }
+    setDeletingEntry(entry);
+  };
+
+  const confirmDelete = () => {
+    if (!deletingEntry) return;
 
     setError(null);
     deleteCost(
       {
         productId: product.id,
-        stockDate: entry.stockDate,
+        stockDate: deletingEntry.stockDate,
       },
       {
         onSuccess: () => {
-          // Stay in modal, just refresh the list
+          toast.success("Maliyet kaydı silindi");
+          setDeletingEntry(null);
         },
         onError: (err: Error) => {
+          toast.error(err.message || "Maliyet silinirken bir hata oluştu");
           setError(err.message || "Maliyet silinirken bir hata oluştu");
+          setDeletingEntry(null);
         },
       }
     );
+  };
+
+  const cancelDelete = () => {
+    setDeletingEntry(null);
   };
 
   const handleCancelEdit = () => {
@@ -250,8 +245,6 @@ export function CostEditModal({ product, open, onOpenChange }: CostEditModalProp
       exchangeRate: null,
       foreignCost: null,
       otvRate: null,
-      cpc: null,
-      cvr: null,
     });
   };
 
@@ -269,9 +262,6 @@ export function CostEditModal({ product, open, onOpenChange }: CostEditModalProp
       foreignCost: values.currency !== "TRY" ? values.foreignCost : null,
       // ÖTV
       otvRate: values.otvRate,
-      // Reklam metrikleri
-      cpc: values.cpc,
-      cvr: values.cvr,
     };
 
     if (editingEntry) {
@@ -284,6 +274,7 @@ export function CostEditModal({ product, open, onOpenChange }: CostEditModalProp
         },
         {
           onSuccess: () => {
+            toast.success("Maliyet başarıyla güncellendi");
             setEditingEntry(null);
             setIsCustomVat(false);
             setIsCustomOtv(false);
@@ -297,11 +288,10 @@ export function CostEditModal({ product, open, onOpenChange }: CostEditModalProp
               exchangeRate: null,
               foreignCost: null,
               otvRate: null,
-              cpc: null,
-              cvr: null,
             });
           },
           onError: (err: Error) => {
+            toast.error(err.message || "Maliyet güncellenirken bir hata oluştu");
             setError(err.message || "Maliyet güncellenirken bir hata oluştu");
           },
         }
@@ -318,6 +308,7 @@ export function CostEditModal({ product, open, onOpenChange }: CostEditModalProp
         },
         {
           onSuccess: () => {
+            toast.success("Maliyet başarıyla eklendi");
             form.reset({
               quantity: 1,
               unitCost: 0,
@@ -327,8 +318,6 @@ export function CostEditModal({ product, open, onOpenChange }: CostEditModalProp
               exchangeRate: null,
               foreignCost: null,
               otvRate: null,
-              cpc: null,
-              cvr: null,
             });
             setIsCustomVat(false);
             setIsCustomOtv(false);
@@ -336,6 +325,7 @@ export function CostEditModal({ product, open, onOpenChange }: CostEditModalProp
             onOpenChange(false);
           },
           onError: (err: Error) => {
+            toast.error(err.message || "Maliyet eklenirken bir hata oluştu");
             setError(err.message || "Maliyet eklenirken bir hata oluştu");
           },
         }
@@ -401,9 +391,14 @@ export function CostEditModal({ product, open, onOpenChange }: CostEditModalProp
             costHistory={costHistory}
             salePrice={product.salePrice}
             vatRate={product.vatRate}
+            commissionRate={product.commissionRate}
+            lastShippingCostPerUnit={product.lastShippingCostPerUnit}
             onEdit={handleEdit}
             onDelete={handleDelete}
             editingDate={editingEntry?.stockDate}
+            deletingDate={deletingEntry?.stockDate}
+            onConfirmDelete={confirmDelete}
+            onCancelDelete={cancelDelete}
           />
         </div>
 
@@ -490,48 +485,43 @@ export function CostEditModal({ product, open, onOpenChange }: CostEditModalProp
                   render={({ field }) => (
                     <FormItem className="col-span-2">
                       <FormLabel>KDV Oranı</FormLabel>
-                      <div className="space-y-2">
-                        {/* Toggle buttons for common rates */}
-                        <div className="flex flex-wrap gap-2">
-                          {COMMON_VAT_RATES.map((rate) => (
-                            <Button
-                              key={rate}
-                              type="button"
-                              variant={!isCustomVat && field.value === rate ? "default" : "outline"}
-                              size="sm"
-                              onClick={() => handleVatSelect(rate)}
-                              className="min-w-[50px]"
-                            >
-                              %{rate}
-                            </Button>
-                          ))}
+                      <div className="flex flex-wrap items-center gap-2">
+                        {COMMON_VAT_RATES.map((rate) => (
                           <Button
+                            key={rate}
                             type="button"
-                            variant={isCustomVat ? "default" : "outline"}
+                            variant={!isCustomVat && field.value === rate ? "default" : "outline"}
                             size="sm"
-                            onClick={() => handleVatSelect("custom")}
+                            onClick={() => handleVatSelect(rate)}
+                            className="min-w-[50px]"
                           >
-                            Özel
+                            %{rate}
                           </Button>
-                        </div>
-
-                        {/* Custom input - shown when "Özel" is selected */}
+                        ))}
+                        <Button
+                          type="button"
+                          variant={isCustomVat ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => handleVatSelect("custom")}
+                        >
+                          Özel
+                        </Button>
                         {isCustomVat && (
-                          <div className="flex items-center gap-2">
+                          <>
                             <FormControl>
                               <Input
                                 type="number"
                                 min="0"
                                 max="100"
                                 step="0.01"
-                                placeholder="KDV oranı girin"
-                                className="w-32"
+                                placeholder="KDV"
+                                className="w-20"
                                 {...field}
                                 onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                               />
                             </FormControl>
                             <span className="text-sm text-muted-foreground">%</span>
-                          </div>
+                          </>
                         )}
                       </div>
                       <FormMessage />
@@ -574,8 +564,8 @@ export function CostEditModal({ product, open, onOpenChange }: CostEditModalProp
                     className="w-full flex items-center justify-between text-muted-foreground hover:text-foreground"
                   >
                     <span className="flex items-center gap-2">
-                      <Target className="h-4 w-4" />
-                      Gelişmiş Ayarlar (Döviz, ÖTV, Reklam)
+                      <Settings2 className="h-4 w-4" />
+                      Gelişmiş Ayarlar (Döviz, ÖTV)
                     </span>
                     <span className="text-xs">
                       {showAdvanced ? "Gizle" : "Göster"}
@@ -586,87 +576,82 @@ export function CostEditModal({ product, open, onOpenChange }: CostEditModalProp
                   {/* Currency Section */}
                   <div className="p-4 border rounded-lg space-y-4">
                     <h5 className="text-sm font-medium flex items-center gap-2">
-                      <DollarSign className="h-4 w-4" />
+                      <Globe className="h-4 w-4" />
                       Döviz Kuru (İthalat Ürünleri)
                     </h5>
 
-                    <div className="grid grid-cols-3 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="currency"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Para Birimi</FormLabel>
-                            <Select
-                              value={field.value || "TRY"}
-                              onValueChange={(val) => field.onChange(val as "TRY" | "USD" | "EUR")}
-                            >
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Seçin" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {CURRENCIES.map((curr) => (
-                                  <SelectItem key={curr.value} value={curr.value}>
-                                    {curr.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      {currentCurrency && currentCurrency !== "TRY" && (
-                        <>
-                          <FormField
-                            control={form.control}
-                            name="foreignCost"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>
-                                  Yabancı Maliyet ({CURRENCIES.find(c => c.value === currentCurrency)?.symbol})
-                                </FormLabel>
-                                <FormControl>
-                                  <Input
-                                    type="number"
-                                    min="0"
-                                    step="0.01"
-                                    placeholder="örn: 10"
-                                    value={field.value ?? ""}
-                                    onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : null)}
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-
-                          <FormField
-                            control={form.control}
-                            name="exchangeRate"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Döviz Kuru (TL)</FormLabel>
-                                <FormControl>
-                                  <Input
-                                    type="number"
-                                    min="0"
-                                    step="0.0001"
-                                    placeholder="örn: 44.50"
-                                    value={field.value ?? ""}
-                                    onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : null)}
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </>
+                    <FormField
+                      control={form.control}
+                      name="currency"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Para Birimi</FormLabel>
+                          <div className="flex items-center gap-2">
+                            {CURRENCIES.map((curr) => (
+                              <button
+                                key={curr.value}
+                                type="button"
+                                onClick={() => field.onChange(field.value === curr.value ? "TRY" : curr.value)}
+                                className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all ${
+                                  field.value === curr.value
+                                    ? "bg-primary text-primary-foreground border-primary"
+                                    : "bg-background text-muted-foreground border-border hover:bg-accent hover:text-accent-foreground hover:border-accent-foreground/20"
+                                }`}
+                              >
+                                {curr.symbol} {curr.label}
+                              </button>
+                            ))}
+                          </div>
+                          <FormMessage />
+                        </FormItem>
                       )}
-                    </div>
+                    />
+
+                    {currentCurrency && currentCurrency !== "TRY" && (
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="foreignCost"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Maliyet</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  placeholder="örn: 10"
+                                  value={field.value ?? ""}
+                                  onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : null)}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="exchangeRate"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Döviz Kuru (TL)</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  step="0.0001"
+                                  placeholder="örn: 44.50"
+                                  value={field.value ?? ""}
+                                  onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : null)}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    )}
 
                     {currentCurrency && currentCurrency !== "TRY" && currentForeignCost && currentExchangeRate && (
                       <div className="p-2 bg-green-50 dark:bg-green-900/20 rounded text-sm text-green-700 dark:text-green-300">
@@ -746,73 +731,6 @@ export function CostEditModal({ product, open, onOpenChange }: CostEditModalProp
                         </FormItem>
                       )}
                     />
-                  </div>
-
-                  {/* Advertising Section */}
-                  <div className="p-4 border rounded-lg space-y-4">
-                    <h5 className="text-sm font-medium flex items-center gap-2">
-                      <Target className="h-4 w-4" />
-                      Reklam Metrikleri (CPC/CVR)
-                    </h5>
-                    <p className="text-xs text-muted-foreground">
-                      Trendyol reklam kampanyası metrikleri. Reklam maliyeti = CPC / CVR
-                    </p>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="cpc"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>CPC - Tıklama Başı Maliyet (TL)</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                placeholder="örn: 3.50"
-                                value={field.value ?? ""}
-                                onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : null)}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="cvr"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>CVR - Dönüşüm Oranı (%)</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                min="0"
-                                max="100"
-                                step="0.01"
-                                placeholder="örn: 1.8"
-                                value={field.value !== null && field.value !== undefined ? (field.value * 100) : ""}
-                                onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) / 100 : null)}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    {currentCpc && currentCvr && currentCvr > 0 && (
-                      <div className="p-2 bg-purple-50 dark:bg-purple-900/20 rounded text-sm text-purple-700 dark:text-purple-300">
-                        <strong>1 Satış İçin Reklam Maliyeti:</strong>{" "}
-                        {formatCurrency(currentCpc / currentCvr)}
-                        {" "}(CPC {formatCurrency(currentCpc)} / CVR %{(currentCvr * 100).toFixed(2)})
-                        <br />
-                        <strong>ACOS:</strong>{" "}
-                        %{((currentCpc / currentCvr / product.salePrice) * 100).toFixed(2)}
-                      </div>
-                    )}
                   </div>
                 </CollapsibleContent>
               </Collapsible>

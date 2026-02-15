@@ -9,13 +9,8 @@ import {
   useStoppages,
 } from "@/hooks/queries/use-invoices";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Calendar as CalendarIcon, FileText, Percent, Loader2 } from "lucide-react";
+import { DateRangePicker } from "@/components/ui/date-range-picker";
+import { FileText, Percent, Loader2 } from "lucide-react";
 import { useCurrency } from "@/lib/contexts/currency-context";
 import {
   InvoiceSummaryCards,
@@ -24,51 +19,18 @@ import {
   InvoiceCategoryTable,
   InvoiceExportButton,
 } from "@/components/financial";
-import { format, subDays, startOfMonth, endOfMonth, subMonths, startOfYear, endOfYear, subYears } from "date-fns";
+import { format, subDays } from "date-fns";
 import { tr } from "date-fns/locale";
+import { FadeIn } from "@/components/motion";
 import type { InvoiceDetail, StoppageItem } from "@/types/invoice";
 
 // Category type matching summary cards
-type CategoryKey = "KOMISYON" | "KARGO" | "ULUSLARARASI" | "CEZA" | "REKLAM" | "IADE" | "DIGER" | "ALL" | "KESINTI" | "STOPAJ" | "HIZMET_BEDELI";
+type CategoryKey = "KOMISYON" | "KARGO" | "ULUSLARARASI" | "CEZA" | "REKLAM" | "IADE" | "DIGER" | "ALL" | "KESINTI" | "STOPAJ" | "HIZMET_BEDELI" | "PLATFORM_UCRETLERI";
 
-// Predefined date ranges
-const DATE_PRESETS = [
-  { label: "Son 7 Gün", value: "7d" },
-  { label: "Son 30 Gün", value: "30d" },
-  { label: "Son 90 Gün", value: "90d" },
-  { label: "Bu Ay", value: "thisMonth" },
-  { label: "Geçen Ay", value: "lastMonth" },
-  { label: "Bu Yıl", value: "thisYear" },
-  { label: "Geçen Yıl", value: "lastYear" },
-  { label: "Özel", value: "custom" },
-] as const;
-
-type DatePreset = (typeof DATE_PRESETS)[number]["value"];
-
-function getDateRange(preset: DatePreset): { start: Date; end: Date } {
+// Helper to get default date range (last 30 days)
+function getDefaultDateRange(): { from: Date; to: Date } {
   const today = new Date();
-  const end = today;
-
-  switch (preset) {
-    case "7d":
-      return { start: subDays(today, 7), end };
-    case "30d":
-      return { start: subDays(today, 30), end };
-    case "90d":
-      return { start: subDays(today, 90), end };
-    case "thisMonth":
-      return { start: startOfMonth(today), end };
-    case "lastMonth":
-      const lastMonth = subMonths(today, 1);
-      return { start: startOfMonth(lastMonth), end: endOfMonth(lastMonth) };
-    case "thisYear":
-      return { start: startOfYear(today), end };
-    case "lastYear":
-      const lastYear = subYears(today, 1);
-      return { start: startOfYear(lastYear), end: endOfYear(lastYear) };
-    default:
-      return { start: subDays(today, 30), end };
-  }
+  return { from: subDays(today, 30), to: today };
 }
 
 const INVOICES_PER_PAGE = 50;
@@ -181,13 +143,8 @@ export default function InvoicesPage() {
   const { data: selectedStore, isLoading: storeLoading } = useSelectedStore();
   const storeId = selectedStore?.selectedStoreId;
 
-  // Date range state
-  const [datePreset, setDatePreset] = useState<DatePreset>("30d");
-  const [customDateRange, setCustomDateRange] = useState<{
-    start: Date | undefined;
-    end: Date | undefined;
-  }>({ start: undefined, end: undefined });
-  const [calendarOpen, setCalendarOpen] = useState(false);
+  // Date range state - simplified with DateRangePicker component
+  const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>(getDefaultDateRange);
 
   // Category selection state
   const [selectedCategory, setSelectedCategory] = useState<CategoryKey | null>(null);
@@ -201,16 +158,9 @@ export default function InvoicesPage() {
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceDetail | null>(null);
   const [detailPanelOpen, setDetailPanelOpen] = useState(false);
 
-  // Calculate effective date range
-  const dateRange = useMemo(() => {
-    if (datePreset === "custom" && customDateRange.start && customDateRange.end) {
-      return { start: customDateRange.start, end: customDateRange.end };
-    }
-    return getDateRange(datePreset);
-  }, [datePreset, customDateRange]);
-
-  const startDateStr = format(dateRange.start, "yyyy-MM-dd");
-  const endDateStr = format(dateRange.end, "yyyy-MM-dd");
+  // Format dates for API calls
+  const startDateStr = format(dateRange.from, "yyyy-MM-dd");
+  const endDateStr = format(dateRange.to, "yyyy-MM-dd");
 
   // Fetch invoice summary
   const {
@@ -288,12 +238,15 @@ export default function InvoicesPage() {
     };
   }, [rawInvoiceData, isKesinti]);
 
-  // Reset allInvoices and allStoppages when date range changes
+  // Reset all state when date range or category changes
   useEffect(() => {
     setAllInvoices([]);
     setAllStoppages([]);
     setPage(0);
-  }, [startDateStr, endDateStr]);
+    // Close detail panel to prevent showing stale invoice data
+    setDetailPanelOpen(false);
+    setSelectedInvoice(null);
+  }, [startDateStr, endDateStr, selectedCategory]);
 
   // Accumulate invoices for lazy loading
   useEffect(() => {
@@ -309,7 +262,7 @@ export default function InvoicesPage() {
         });
       }
     }
-  }, [invoiceData, page, startDateStr, endDateStr]);
+  }, [invoiceData, page, startDateStr, endDateStr, selectedCategory]);
 
   // Accumulate stoppages for lazy loading
   useEffect(() => {
@@ -325,10 +278,10 @@ export default function InvoicesPage() {
         });
       }
     }
-  }, [stoppagesData, page, startDateStr, endDateStr]);
+  }, [stoppagesData, page, startDateStr, endDateStr, selectedCategory]);
 
-  // Reset pagination when filters change
-  // Note: allInvoices is now reset by date change useEffect
+  // Reset pagination helper (also used by handlers for immediate feedback)
+  // Note: Main state reset is handled by the useEffect above
   const resetPagination = useCallback(() => {
     setPage(0);
   }, []);
@@ -343,13 +296,13 @@ export default function InvoicesPage() {
     resetPagination();
   };
 
-  const handlePresetChange = (preset: DatePreset) => {
-    setDatePreset(preset);
-    resetPagination();
-    if (preset !== "custom") {
-      setCalendarOpen(false);
+  // Handle date range change from DateRangePicker
+  const handleDateRangeChange = useCallback((range: { from: Date; to: Date } | undefined) => {
+    if (range) {
+      setDateRange(range);
+      resetPagination();
     }
-  };
+  }, [resetPagination]);
 
   const handleInvoiceSelect = (invoice: InvoiceDetail) => {
     setSelectedInvoice(invoice);
@@ -386,70 +339,21 @@ export default function InvoicesPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header - Date on left, filters on right */}
+      {/* Header - Date display on left, DateRangePicker + Export on right */}
       <div className="flex items-center justify-between gap-4">
         {/* Date Range Display - Left */}
         <div className="text-sm font-medium text-foreground">
-          {format(dateRange.start, "d MMMM yyyy", { locale: tr })} -{" "}
-          {format(dateRange.end, "d MMMM yyyy", { locale: tr })}
+          {format(dateRange.from, "d MMMM yyyy", { locale: tr })} -{" "}
+          {format(dateRange.to, "d MMMM yyyy", { locale: tr })}
         </div>
 
-        {/* Date Range Selector + Export - Right */}
+        {/* Date Range Picker + Export - Right */}
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
-            {DATE_PRESETS.filter((p) => p.value !== "custom").map((preset) => (
-              <Button
-                key={preset.value}
-                variant={datePreset === preset.value ? "secondary" : "ghost"}
-                size="sm"
-                className="h-7 px-2 text-xs"
-                onClick={() => handlePresetChange(preset.value)}
-              >
-                {preset.label}
-              </Button>
-            ))}
-            <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant={datePreset === "custom" ? "secondary" : "ghost"}
-                  size="sm"
-                  className="h-7 px-2 text-xs gap-1"
-                  onClick={() => {
-                    setDatePreset("custom");
-                    setCalendarOpen(true);
-                  }}
-                >
-                  <CalendarIcon className="h-3 w-3" />
-                  {datePreset === "custom" &&
-                  customDateRange.start &&
-                  customDateRange.end
-                    ? `${format(customDateRange.start, "dd MMM", { locale: tr })} - ${format(customDateRange.end, "dd MMM", { locale: tr })}`
-                    : "Özel"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="end">
-                <Calendar
-                  mode="range"
-                  selected={{
-                    from: customDateRange.start,
-                    to: customDateRange.end,
-                  }}
-                  onSelect={(range) => {
-                    setCustomDateRange({
-                      start: range?.from,
-                      end: range?.to,
-                    });
-                    if (range?.from && range?.to) {
-                      setCalendarOpen(false);
-                      resetPagination();
-                    }
-                  }}
-                  numberOfMonths={2}
-                  locale="tr"
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
+          <DateRangePicker
+            value={dateRange}
+            onChange={handleDateRangeChange}
+            locale="tr"
+          />
 
           {/* Excel Export Button */}
           <InvoiceExportButton
@@ -470,12 +374,14 @@ export default function InvoicesPage() {
       )}
 
       {/* Summary Cards (Dashboard style) */}
-      <InvoiceSummaryCards
-        summary={summary}
-        selectedCategory={selectedCategory}
-        onCategorySelect={handleCategorySelect}
-        isLoading={isLoading}
-      />
+      <FadeIn>
+        <InvoiceSummaryCards
+          summary={summary}
+          selectedCategory={selectedCategory}
+          onCategorySelect={handleCategorySelect}
+          isLoading={isLoading}
+        />
+      </FadeIn>
 
       {/* Invoice Table - Show category table for KARGO/KOMISYON, stoppage table for STOPAJ, otherwise regular table */}
       {(summary || currentDataLoading) && (

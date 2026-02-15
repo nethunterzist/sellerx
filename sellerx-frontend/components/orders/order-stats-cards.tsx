@@ -1,75 +1,83 @@
 "use client";
 
-import { useOrderStatistics } from "@/hooks/queries/use-orders";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import {
-  ShoppingCart,
-  Clock,
-  Truck,
-  CheckCircle,
-  XCircle,
-  RotateCcw,
-  TrendingUp,
-  Receipt,
-} from "lucide-react";
+import { useOrderStatistics, useOrderStatisticsByDateRange } from "@/hooks/queries/use-orders";
+import { cn } from "@/lib/utils";
+import { ShoppingCart, TrendingUp, Receipt, XCircle } from "lucide-react";
 import { useCurrency } from "@/lib/contexts/currency-context";
 
 interface OrderStatsCardsProps {
   storeId: string | undefined;
+  startDate?: string;
+  endDate?: string;
 }
 
-function StatCard({
-  title,
-  value,
-  icon: Icon,
-  valuePrefix,
-  valueSuffix,
-  colorClass,
-}: {
+type CardVariant = "orders" | "revenue" | "average" | "cancelled";
+
+const headerColors: Record<CardVariant, string> = {
+  orders: "bg-blue-500",
+  revenue: "bg-green-600",
+  average: "bg-purple-500",
+  cancelled: "bg-red-500",
+};
+
+interface StatCardProps {
   title: string;
-  value: number | string;
+  value: string | number;
   icon: React.ElementType;
-  valuePrefix?: string;
-  valueSuffix?: string;
-  colorClass?: string;
-}) {
+  variant: CardVariant;
+}
+
+function StatCard({ title, value, icon: Icon, variant }: StatCardProps) {
+  const headerColor = headerColors[variant];
+
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
-          {title}
-        </CardTitle>
-        <Icon className={`h-4 w-4 ${colorClass || "text-muted-foreground"}`} />
-      </CardHeader>
-      <CardContent>
-        <div className={`text-2xl font-bold ${colorClass || ""}`}>
-          {valuePrefix}
-          {value}
-          {valueSuffix}
+    <div className="flex flex-col rounded-lg overflow-hidden min-w-[180px] flex-1 bg-card border border-border shadow-sm">
+      {/* Colored Header */}
+      <div className={cn("px-4 py-3", headerColor)}>
+        <div className="flex items-center gap-2">
+          <Icon className="h-4 w-4 text-white/80" />
+          <h3 className="text-sm font-semibold text-white">{title}</h3>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+
+      {/* Card Body */}
+      <div className="p-4">
+        <p className="text-2xl font-bold text-foreground">{value}</p>
+      </div>
+    </div>
   );
 }
 
 function StatCardSkeleton() {
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <Skeleton className="h-4 w-24" />
-        <Skeleton className="h-4 w-4 rounded" />
-      </CardHeader>
-      <CardContent>
-        <Skeleton className="h-8 w-20" />
-      </CardContent>
-    </Card>
+    <div className="flex flex-col rounded-lg overflow-hidden min-w-[180px] flex-1 bg-card border border-border shadow-sm">
+      <div className="px-4 py-3 bg-muted animate-pulse">
+        <div className="h-4 w-24 bg-muted-foreground/20 rounded" />
+      </div>
+      <div className="p-4">
+        <div className="h-8 w-20 bg-muted rounded animate-pulse" />
+      </div>
+    </div>
   );
 }
 
-export function OrderStatsCards({ storeId }: OrderStatsCardsProps) {
+export function OrderStatsCards({ storeId, startDate, endDate }: OrderStatsCardsProps) {
   const { formatCurrency } = useCurrency();
-  const { data, isLoading, error } = useOrderStatistics(storeId);
+
+  // Use date-filtered statistics if dates are provided, otherwise use all-time stats
+  const hasDateFilter = !!startDate && !!endDate;
+
+  const dateRangeQuery = useOrderStatisticsByDateRange(
+    hasDateFilter ? storeId : undefined,
+    startDate,
+    endDate
+  );
+
+  const allTimeQuery = useOrderStatistics(
+    !hasDateFilter ? storeId : undefined
+  );
+
+  const { data, isLoading, error } = hasDateFilter ? dateRangeQuery : allTimeQuery;
 
   if (error) {
     return (
@@ -83,8 +91,8 @@ export function OrderStatsCards({ storeId }: OrderStatsCardsProps) {
 
   if (isLoading || !data) {
     return (
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
-        {Array.from({ length: 8 }).map((_, i) => (
+      <div className="flex gap-4 overflow-x-auto pb-2 mb-6">
+        {Array.from({ length: 4 }).map((_, i) => (
           <StatCardSkeleton key={i} />
         ))}
       </div>
@@ -92,54 +100,30 @@ export function OrderStatsCards({ storeId }: OrderStatsCardsProps) {
   }
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
+    <div className="flex gap-4 overflow-x-auto pb-2 mb-6">
       <StatCard
         title="Toplam Sipariş"
-        value={data.totalOrders}
+        value={data.totalOrders.toLocaleString("tr-TR")}
         icon={ShoppingCart}
-        colorClass="text-blue-600"
-      />
-      <StatCard
-        title="Bekleyen"
-        value={data.pendingOrders}
-        icon={Clock}
-        colorClass="text-yellow-600"
-      />
-      <StatCard
-        title="Kargoda"
-        value={data.shippedOrders}
-        icon={Truck}
-        colorClass="text-blue-500"
-      />
-      <StatCard
-        title="Teslim Edildi"
-        value={data.deliveredOrders}
-        icon={CheckCircle}
-        colorClass="text-green-600"
-      />
-      <StatCard
-        title="İptal Edilen"
-        value={data.cancelledOrders}
-        icon={XCircle}
-        colorClass="text-red-600"
-      />
-      <StatCard
-        title="İade Edilen"
-        value={data.returnedOrders}
-        icon={RotateCcw}
-        colorClass="text-orange-600"
+        variant="orders"
       />
       <StatCard
         title="Toplam Ciro"
         value={formatCurrency(data.totalRevenue)}
         icon={TrendingUp}
-        colorClass="text-green-700"
+        variant="revenue"
       />
       <StatCard
         title="Ortalama Sipariş"
         value={formatCurrency(data.averageOrderValue)}
         icon={Receipt}
-        colorClass="text-purple-600"
+        variant="average"
+      />
+      <StatCard
+        title="İptal Edilen"
+        value={data.cancelledOrders.toLocaleString("tr-TR")}
+        icon={XCircle}
+        variant="cancelled"
       />
     </div>
   );

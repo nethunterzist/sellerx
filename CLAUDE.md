@@ -13,6 +13,8 @@ SellerX is an e-commerce management platform for Turkish marketplaces (primarily
 
 ## ⚠️ Claude Code Rules
 
+**NEVER use `docker-compose -f docker-compose.dev.yml`** - the backend container is broken. Use local startup instead.
+
 **Frontend Changes Require Rebuild**: After any frontend code change, ask the user:
 > "Frontend code was modified. Rebuild required (~1 min) to see changes. Should I rebuild?"
 
@@ -24,111 +26,118 @@ If approved: `cd sellerx-frontend && npm run build && npm start`
 
 ## Development Commands
 
-### Quick Start
+### ⚠️ Starting the Project
+
+**Use local startup** (OrbStack/Docker only for database):
+
 ```bash
-# Option 1: Use startup script (opens 4 Terminal windows)
-./start-sellerx.sh
+# 1. Start database (OrbStack/Docker container)
+./db.sh start
 
-# Option 2: Manual startup
-./db.sh start                            # 1. Start database (Docker)
-cd sellerx-backend && export JWT_SECRET='sellerx-development-jwt-secret-key-2026-minimum-256-bits-required' && ./mvnw spring-boot:run  # 2. Backend
-cd sellerx-frontend && npm run build && npm start  # 3. Frontend (production mode)
+# 2. Start backend (NEW TERMINAL)
+cd sellerx-backend
+export JWT_SECRET='sellerx-development-jwt-secret-key-2026-minimum-256-bits-required'
+./mvnw spring-boot:run
 
-# Access: Frontend=localhost:3000 | Backend=localhost:8080 | DB=localhost:5432
+# 3. Start frontend (NEW TERMINAL)
+cd sellerx-frontend
+npm run build && npm start
+
+# Access: http://localhost:3000
 # Test user: test@test.com / 123456
 ```
 
-### Database
+### Alternative: Single Command Startup
+```bash
+./start-sellerx.sh  # Opens 4 terminal windows
+```
+
+### Database (OrbStack)
 ```bash
 ./db.sh start    # Start PostgreSQL (port 5432)
-./db.sh stop     # Stop container
-./db.sh connect  # Connect to psql shell
-./db.sh reset    # Reset database (WARNING: deletes all data!)
+./db.sh stop     # Stop
+./db.sh connect  # psql shell
+./db.sh reset    # Reset (WARNING: deletes all data!)
 ```
 
 ### Frontend
 ```bash
 cd sellerx-frontend
-npm run build && npm start  # Production (recommended - low RAM)
-npm run dev                 # Development (hot reload, high RAM)
-npm run lint                # ESLint check
-npx tsc --noEmit            # TypeScript check (no build output)
-npx prettier --check .      # Check formatting
-npx prettier --write .      # Fix formatting
+npm run build && npm start              # Production (recommended - low RAM)
+npm run dev                             # Development (hot reload, high RAM)
+npm run lint                            # ESLint
+npx tsc --noEmit                        # TypeScript check
+npm run test                            # All tests (Vitest, watch mode)
+npm run test -- --run                   # Single run (no watch)
+npm run test -- path/to/file.test.ts    # Single test file
+npm run test -- --grep "test name"      # Filter by test name
+```
+
+### Frontend E2E Tests (Playwright)
+```bash
+cd sellerx-frontend
+npx playwright test                     # Run all E2E tests
+npx playwright test --ui                # Interactive UI mode
+npx playwright test path/to/test.ts     # Single E2E test
+npx playwright test --headed            # Run with visible browser
 ```
 
 ### Backend
 ```bash
 cd sellerx-backend
-./mvnw spring-boot:run                    # Start application
-./mvnw test                               # Run all tests (~619 tests)
-./mvnw test -Dtest=ClassName              # Run single test class
-./mvnw test -Dtest=ClassName#methodName   # Run single test method
-./mvnw test -Dtest=*ControllerTest        # Run all controller tests
-./mvnw clean install -DskipTests          # Build without tests
-```
-
-### Alternative: Full Docker Development
-```bash
-# First time (builds all containers)
-docker-compose -f docker-compose.dev.yml up --build -d
-
-# Subsequent runs
-docker-compose -f docker-compose.dev.yml up -d
-
-# Stop all services
-docker-compose -f docker-compose.dev.yml down
-
-# Reset everything including database
-docker-compose -f docker-compose.dev.yml down -v
+./mvnw spring-boot:run                    # Start server
+./mvnw test                               # All tests (~619 tests)
+./mvnw test -Dtest=ClassName              # Single test class
+./mvnw test -Dtest=ClassName#methodName   # Single test method
+./mvnw clean install -DskipTests          # Build (skip tests)
 ```
 
 ## CI/CD & Production Deployment
 
-### Otomatik Deployment (main branch'e push)
-`main` branch'e push yapıldığında GitHub Actions otomatik tetiklenir:
-- `sellerx-backend/**` değişikliği → Backend deploy (~5-10 dk)
-- `sellerx-frontend/**` değişikliği → Frontend deploy (~3-5 dk)
+### Automatic Deployment (push to main)
+Pushing to `main` branch triggers GitHub Actions automatically:
+- `sellerx-backend/**` changes → Backend deploy (~5-10 min)
+- `sellerx-frontend/**` changes → Frontend deploy (~3-5 min)
 
-### Akış
+### Flow
 ```
 git push origin main
-    ↓ (otomatik)
+    ↓ (automatic)
 GitHub Actions: Build & Test
     ↓
 Docker image → GHCR (ghcr.io/nethunterzist/sellerx/*)
     ↓
-SSH ile sunucuya bağlan
+SSH to server
     ↓
-Eski container'ı durdur (rollback için sakla)
+Stop old container (keep for rollback)
     ↓
-Yeni image'ı pull et ve başlat
+Pull and start new image
     ↓
-Health check (başarısız olursa otomatik rollback)
+Health check (auto rollback on failure)
     ↓
-✅ Deploy tamamlandı!
+✅ Deploy complete!
 ```
 
-### Manuel Deployment (Acil Durumlar)
+### Manual Deployment (Emergency)
 ```bash
-# GitHub Actions'ı manuel tetikle
+# Trigger GitHub Actions manually
 gh workflow run deploy-backend.yml
 gh workflow run deploy-frontend.yml
 ```
 
 ### Rollback
 ```bash
-# Sunucuda önceki versiyona dön
+# Roll back to previous version on server
 ssh root@157.180.78.53 "docker stop sellerx-backend && docker rm sellerx-backend && \
   docker run -d --name sellerx-backend ... ghcr.io/nethunterzist/sellerx/backend:rollback"
 ```
 
-### Deploy Durumunu Kontrol
+### Check Deploy Status
 ```bash
-# GitHub Actions durumu
+# GitHub Actions status
 gh run list --workflow=deploy-backend.yml
 
-# Container durumu (sunucuda)
+# Container status (on server)
 ssh root@157.180.78.53 "docker ps | grep sellerx"
 
 # Health check
@@ -141,21 +150,21 @@ curl -k https://sellerx.157.180.78.53.sslip.io
 - **Backend**: https://uwgss4kkocg4kks8880kwwwo.157.180.78.53.sslip.io
 - **Coolify Panel**: http://157.180.78.53:8000
 
-### GitHub Secrets (Gerekli)
-| Secret | Açıklama |
-|--------|----------|
-| `SSH_PRIVATE_KEY` | Sunucu SSH erişimi |
-| `DB_PASSWORD` | PostgreSQL şifresi |
-| `JWT_SECRET` | JWT signing key (32+ karakter) |
+### GitHub Secrets (Required)
+| Secret | Description |
+|--------|-------------|
+| `SSH_PRIVATE_KEY` | Server SSH access |
+| `DB_PASSWORD` | PostgreSQL password |
+| `JWT_SECRET` | JWT signing key (32+ chars) |
 | `ENCRYPTION_KEY` | AES encryption key |
-| `GHCR_PAT` | GitHub Container Registry erişimi |
+| `GHCR_PAT` | GitHub Container Registry access |
 
-### Workflow Dosyaları
-- `.github/workflows/ci.yml` - Build & Test (PR'larda)
+### Workflow Files
+- `.github/workflows/ci.yml` - Build & Test (on PRs)
 - `.github/workflows/deploy-backend.yml` - Backend deploy
 - `.github/workflows/deploy-frontend.yml` - Frontend deploy
 
-Detaylı rehber: [docs/deployment/CI_CD_GUIDE.md](docs/deployment/CI_CD_GUIDE.md)
+Detailed guide: [docs/deployment/CI_CD_GUIDE.md](docs/deployment/CI_CD_GUIDE.md)
 
 ---
 
@@ -189,7 +198,7 @@ app/
 
 **Key Directories**:
 - `components/` - React components by feature (auth, dashboard, products, settings, ui)
-- `hooks/queries/` - React Query hooks: `use-auth.ts`, `use-stores.ts`, `use-products.ts`, `use-orders.ts`, `use-webhooks.ts`, `use-financial.ts`, `use-ads.ts`, `use-qa.ts`, `use-returns.ts`, `use-purchasing.ts`, `use-billing.ts`, `use-hakedis.ts`, `use-admin.ts`
+- `hooks/queries/` - React Query hooks (34 files): `use-auth.ts`, `use-stores.ts`, `use-products.ts`, `use-orders.ts`, `use-webhooks.ts`, `use-financial.ts`, `use-invoices.ts`, `use-qa.ts`, `use-returns.ts`, `use-purchasing.ts`, `use-billing.ts`, `use-admin.ts`, `use-ai.ts`, `use-alerts.ts`, `use-customer-analytics.ts`, `use-expenses.ts`, `use-education.ts`, `use-notifications.ts`, `use-referrals.ts`, `use-settings.ts`, `use-stats.ts`, `use-stock-sync.ts`, `use-stock-tracking.ts`, `use-store-sync-progress.ts`, `use-suppliers.ts`, `use-support.ts`, `use-users.ts`, `use-city-stats.ts`, `use-activity-logs.ts`, `use-admin-activity.ts`, `use-admin-billing.ts`, `use-admin-email-templates.ts`, `use-admin-orders.ts`, `use-admin-referrals.ts`
 - `lib/api/client.ts` - Centralized API client with queue-based token refresh (prevents duplicate refresh requests via `isRefreshing` flag and subscriber queue)
 - `lib/validators/` - Zod schemas for form validation
 - `messages/` - i18n translations (en.json, tr.json)
@@ -197,7 +206,7 @@ app/
 ### Backend Structure (`sellerx-backend/src/main/java/com/ecommerce/sellerx/`)
 ```
 admin/          # Admin panel: users, stores, billing, referrals, notifications, activity logs
-auth/           # JWT auth, SecurityConfig, JwtAuthFilter
+auth/           # JWT auth, SecurityConfig, JwtAuthFilter, email verification, password reset
 users/          # User entity, service, controller, Role enum
 stores/         # Store management, credentials JSONB
 products/       # Trendyol products, cost/stock history JSONB
@@ -207,6 +216,7 @@ hakedis/        # Trendyol settlement (hakedis) calculation and simulation
 dashboard/      # Stats calculation, daily/monthly aggregations
 financial/      # Financial data sync from Trendyol
 expenses/       # Expense categories, frequency enum
+email/          # Queue-based email system with templates, events, and SMTP/SendGrid support
 trendyol/       # Trendyol API client integration
 webhook/        # Real-time Trendyol webhook receiver (public endpoints)
 common/         # TrendyolRateLimiter (10 req/sec), GlobalExceptionHandler
@@ -258,7 +268,7 @@ Key tables (Flyway migrations in `src/main/resources/db/migration/`):
 - Refresh token: 7 days validity, HTTP-only cookie (`refreshToken`)
 - Frontend middleware (`middleware.ts`) checks for cookie presence, redirects to `/sign-in` if missing
 - API client (`lib/api/client.ts`) auto-refreshes tokens on 401 with queue-based retry
-- Public routes (no auth required): `/sign-in`, `/register`, `/forgot-password`
+- Public routes (no auth required): `/sign-in`, `/register`, `/forgot-password`, `/reset-password`, `/verify-email`, `/verification-pending`, `/terms`, `/privacy`, `/pricing`, `/hesaplama`
 
 ## Environment Variables
 
@@ -326,13 +336,10 @@ After any code change, **always** run related tests first. If there's a bug, che
 
 ### Backend Debugging
 
-1. **Run tests** — first step after any change:
+1. **Run tests** — first step after any change (see "Backend" section above for all commands):
 ```bash
 cd sellerx-backend
-./mvnw test                               # All tests (~619 tests)
 ./mvnw test -Dtest=*ServiceTest           # Service tests only
-./mvnw test -Dtest=ClassName              # Single test class
-./mvnw test -Dtest=ClassName#methodName   # Single test method
 ```
 
 2. **Read logs** — structured logging is active at runtime:
@@ -354,12 +361,7 @@ curl localhost:8080/actuator/metrics/trendyol.api.calls  # Trendyol API call cou
 
 ### Frontend Debugging
 
-1. **Run tests**:
-```bash
-cd sellerx-frontend
-npm run test                  # All tests (Vitest, watch mode)
-npm run test -- --run         # CI mode (no watch)
-```
+1. **Run tests**: See "Frontend" section above for all test commands.
 
 2. **Error Boundary**: Shows error page instead of white screen on component crash. Errors are logged via `lib/logger.ts`.
 
@@ -485,14 +487,21 @@ All frontend API calls go through Next.js API routes (not directly to Spring Boo
 All documentation (inventory, maps, architecture) is in the **docs/** directory. Entry point: [docs/README.md](docs/README.md).
 
 Detailed architecture docs in `docs/architecture/`:
-- `STORE_ONBOARDING.md` - Async store sync flow
-- `COMMISSION_SYSTEM.md` - Estimated vs actual commission calculation
-- `WEBHOOK_SYSTEM.md` - Trendyol webhook processing
-- `HISTORICAL_SETTLEMENT_SYNC.md` - Workaround for Trendyol's 90-day API limit
+- `ADMIN_IMPERSONATION.md` - Admin read-only user view system
 - `ALERT_SYSTEM.md` - User-defined alert rules
-- `RATE_LIMITING.md` - Trendyol API rate limiting (10 req/sec)
-- `DATABASE_SCHEMA.md` - Full database schema reference
 - `ASYNC_PROCESSING.md` - @Async patterns and thread pools
+- `BACKEND_ARCHITECTURE.md` - Overall backend structure
+- `BILLING_SYSTEM.md` - Subscription and billing
+- `COMMISSION_SYSTEM.md` - Estimated vs actual commission calculation
+- `DATABASE_SCHEMA.md` - Full database schema reference
+- `HISTORICAL_SETTLEMENT_SYNC.md` - Workaround for Trendyol's 90-day API limit
+- `ORDER_SYNC_SYSTEM.md` - Order synchronization details
+- `RATE_LIMITING.md` - Trendyol API rate limiting (10 req/sec)
+- `STORE_ONBOARDING.md` - Async store sync flow
+- `STORE_SYNC_GUIDE.md` - Store sync troubleshooting
+- `SYNC_SYSTEM.md` - General sync architecture
+- `TEST_INFRASTRUCTURE.md` - Testing setup and patterns
 - `TRENDYOL_API_LIMITS.md` - API limitations and workarounds
+- `WEBHOOK_SYSTEM.md` - Trendyol webhook processing
 
 Development log: `docs/CHANGELOG.md`

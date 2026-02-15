@@ -1,0 +1,53 @@
+{
+  "hooks": [
+    {
+      "matcher": {
+        "event": "Stop"
+      },
+      "hooks": [
+        {
+          "type": "command",
+          "command": "bash -c 'CHANGED=$(git diff --name-only HEAD 2>/dev/null; git diff --name-only --cached 2>/dev/null; git ls-files --others --exclude-standard 2>/dev/null) && FRONTEND_CHANGES=$(echo \"$CHANGED\" | grep \"^sellerx-frontend/\" | head -20) && if [ -n \"$FRONTEND_CHANGES\" ]; then echo \"[REBUILD REQUIRED] Frontend files were modified:\"; echo \"$FRONTEND_CHANGES\" | head -10; echo \"\"; echo \"Run: cd sellerx-frontend && npm run build && npm start\"; fi'"
+        }
+      ]
+    },
+    {
+      "matcher": {
+        "event": "PreToolUse",
+        "tool_name": "Bash"
+      },
+      "hooks": [
+        {
+          "type": "command",
+          "command": "bash -c 'INPUT=$(cat); if echo \"$INPUT\" | grep -q \"docker-compose\" && echo \"$INPUT\" | grep -q \"docker-compose.dev.yml\"; then echo \"BLOCKED: docker-compose.dev.yml is broken and must not be used.\" >&2; echo \"Use local startup instead: ./db.sh start, then run backend and frontend separately.\" >&2; exit 2; fi'"
+        }
+      ]
+    },
+    {
+      "matcher": {
+        "event": "PreToolUse",
+        "tool_name": "Write",
+        "file_path": "sellerx-backend/src/main/resources/db/migration/V*.sql"
+      },
+      "hooks": [
+        {
+          "type": "command",
+          "command": "bash -c 'INPUT=$(cat); NEW_FILE=$(echo \"$INPUT\" | grep -oE \"V[0-9]+__\" | head -1 | grep -oE \"[0-9]+\"); LATEST=$(ls /Users/furkanyigit/Desktop/Sellerx/sellerx-backend/src/main/resources/db/migration/V*.sql 2>/dev/null | grep -oE \"V[0-9]+\" | grep -oE \"[0-9]+\" | sort -n | tail -1); if [ -n \"$NEW_FILE\" ] && [ -n \"$LATEST\" ]; then EXPECTED=$((LATEST + 1)); if [ \"$NEW_FILE\" -le \"$LATEST\" ]; then echo \"WARNING: Migration V${NEW_FILE} conflicts with existing migrations (latest: V${LATEST}).\" >&2; echo \"Expected: V${EXPECTED}__<description>.sql\" >&2; exit 2; fi; fi'"
+        }
+      ]
+    },
+    {
+      "matcher": {
+        "event": "PostToolUse",
+        "tool_name": "Write",
+        "file_path": "*.java"
+      },
+      "hooks": [
+        {
+          "type": "command",
+          "command": "bash -c 'INPUT=$(cat); FILE_PATH=$(echo \"$INPUT\" | grep -oE \"/[^ ]*\\.java\" | head -1); if [ -n \"$FILE_PATH\" ] && [ -f \"$FILE_PATH\" ]; then ERRORS=$(javac -d /tmp/sellerx-syntax-check -sourcepath /Users/furkanyigit/Desktop/Sellerx/sellerx-backend/src/main/java -proc:none \"$FILE_PATH\" 2>&1 | head -20); if [ $? -ne 0 ]; then echo \"Java syntax issues detected in $FILE_PATH:\"; echo \"$ERRORS\" | head -10; echo \"\"; echo \"Note: Some errors may be due to missing classpath dependencies (expected). Check for actual syntax errors above.\"; fi; fi'"
+        }
+      ]
+    }
+  ]
+}

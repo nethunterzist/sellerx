@@ -9,6 +9,11 @@ import {
   Tag,
   Percent,
   Calculator,
+  Undo2,
+  ArrowLeftRight,
+  Scale,
+  BadgePercent,
+  XCircle,
 } from "lucide-react";
 import {
   Sheet,
@@ -53,6 +58,66 @@ const transactionTypeConfig: Record<string, { icon: React.ReactNode; color: stri
     color: "text-blue-600",
     bgColor: "bg-blue-100 dark:bg-blue-900/30",
   },
+  DiscountCancel: {
+    icon: <XCircle className="h-4 w-4" />,
+    color: "text-orange-500",
+    bgColor: "bg-orange-50 dark:bg-orange-900/20",
+  },
+  CouponCancel: {
+    icon: <XCircle className="h-4 w-4" />,
+    color: "text-purple-500",
+    bgColor: "bg-purple-50 dark:bg-purple-900/20",
+  },
+  ManualRefund: {
+    icon: <Undo2 className="h-4 w-4" />,
+    color: "text-red-500",
+    bgColor: "bg-red-50 dark:bg-red-900/20",
+  },
+  ManualRefundCancel: {
+    icon: <XCircle className="h-4 w-4" />,
+    color: "text-red-400",
+    bgColor: "bg-red-50 dark:bg-red-900/10",
+  },
+  TYDiscount: {
+    icon: <BadgePercent className="h-4 w-4" />,
+    color: "text-teal-600",
+    bgColor: "bg-teal-50 dark:bg-teal-900/20",
+  },
+  TYDiscountCancel: {
+    icon: <XCircle className="h-4 w-4" />,
+    color: "text-teal-400",
+    bgColor: "bg-teal-50 dark:bg-teal-900/10",
+  },
+  TYCoupon: {
+    icon: <Tag className="h-4 w-4" />,
+    color: "text-teal-600",
+    bgColor: "bg-teal-50 dark:bg-teal-900/20",
+  },
+  TYCouponCancel: {
+    icon: <XCircle className="h-4 w-4" />,
+    color: "text-teal-400",
+    bgColor: "bg-teal-50 dark:bg-teal-900/10",
+  },
+  ProvisionPositive: {
+    icon: <Scale className="h-4 w-4" />,
+    color: "text-sky-600",
+    bgColor: "bg-sky-50 dark:bg-sky-900/20",
+  },
+  ProvisionNegative: {
+    icon: <Scale className="h-4 w-4" />,
+    color: "text-sky-500",
+    bgColor: "bg-sky-50 dark:bg-sky-900/20",
+  },
+  CommissionPositive: {
+    icon: <ArrowLeftRight className="h-4 w-4" />,
+    color: "text-indigo-600",
+    bgColor: "bg-indigo-50 dark:bg-indigo-900/20",
+  },
+  CommissionNegative: {
+    icon: <ArrowLeftRight className="h-4 w-4" />,
+    color: "text-indigo-500",
+    bgColor: "bg-indigo-50 dark:bg-indigo-900/20",
+  },
 };
 
 // Get display name for transaction type
@@ -62,6 +127,18 @@ function getTransactionTypeDisplay(type: string): string {
     Coupon: "Kupon",
     Discount: "İndirim",
     Commission: "Komisyon",
+    DiscountCancel: "İndirim İptali",
+    CouponCancel: "Kupon İptali",
+    ManualRefund: "Kısmi İade",
+    ManualRefundCancel: "Kısmi İade İptali",
+    TYDiscount: "Trendyol İndirimi",
+    TYDiscountCancel: "Trendyol İndirim İptali",
+    TYCoupon: "Trendyol Kuponu",
+    TYCouponCancel: "Trendyol Kupon İptali",
+    ProvisionPositive: "Karşılık (+)",
+    ProvisionNegative: "Karşılık (-)",
+    CommissionPositive: "Komisyon Düzeltme (+)",
+    CommissionNegative: "Komisyon Düzeltme (-)",
   };
   return displayNames[type] || type;
 }
@@ -96,10 +173,15 @@ function DetailRow({
   );
 }
 
-// Check if transaction type is a deduction (İndirim, Kupon) that reduces commission
+// Check if transaction type is a deduction (İndirim, Kupon etc.) that reduces commission
 function isDeductionType(transactionType: string): boolean {
-  return transactionType === "Discount" || transactionType === "Coupon" ||
-         transactionType === "İndirim" || transactionType === "Kupon";
+  const deductionTypes = [
+    "Discount", "Coupon", "İndirim", "Kupon",
+    "DiscountCancel", "CouponCancel",
+    "TYDiscount", "TYDiscountCancel", "TYCoupon", "TYCouponCancel",
+    "CommissionNegative",
+  ];
+  return deductionTypes.includes(transactionType);
 }
 
 // Transaction type breakdown row

@@ -20,4 +20,11 @@ Kod alanına göre hangi doc'a bakılacak.
 | Env değişkenleri, Docker, CI | sprint-6-cross-cutting/03-env-and-deploy.md |
 | Doc yapısı, hangi doc nerede | sprint-7-doc-map/01-doc-to-code.md, 02-code-to-doc.md, 03-doc-architecture.md |
 
+| maintenance/* | docs/scaling/FAZ_4_DATABASE.md (kısmi) |
+| queue/* | ❌ Dedicated doc yok (gap) — RabbitMQ consumer/producer, bkz. docs/scaling/FAZ_1_RABBITMQ.md |
+| resilience/* | docs/scaling/FAZ_2_RESILIENCE4J.md |
+| websocket/* | docs/scaling/FAZ_3_WEBSOCKET.md |
+| sync/* (SyncTask, SyncTaskService vb.) | docs/architecture/SYNC_SYSTEM.md (kısmi) |
+| email/entity/*, email/event/*, email/repository/*, email/scheduler/*, email/service/* | ❌ Dedicated doc yok (gap) — queue-based email system, templates, SMTP/SendGrid |
+
 **Kullanım:** Kodda değişiklik yaparken yukarıdaki alana göre ilgili doc'u güncelle (docs README Güncelleme Kuralı).

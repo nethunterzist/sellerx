@@ -11,6 +11,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -24,6 +25,10 @@ import java.util.List;
  * 1. Daily full sync at 6:15 AM - Orders, Products, Q&A, Returns
  * 2. Hourly catch-up sync - Orders (last 2 hours), Products, Q&A, Returns
  *
+ * Supports two modes:
+ * - Sequential: Original mode, processes stores one by one (for small deployments)
+ * - Parallel: Uses ParallelStoreSyncService for 1500+ stores scaling
+ *
  * Uses TrendyolRateLimiter to respect API rate limits (10 req/sec).
  */
 @Service
@@ -36,6 +41,10 @@ public class TrendyolOrderScheduledService {
     private final TrendyolClaimsService claimsService;
     private final StoreRepository storeRepository;
     private final TrendyolRateLimiter rateLimiter;
+    private final ResilientSyncService resilientSyncService;
+
+    @Value("${sellerx.sync.parallel.enabled:true}")
+    private boolean parallelSyncEnabled;
 
     private final Timer syncDurationTimer;
     private final Counter syncSuccessCounter;
@@ -48,6 +57,7 @@ public class TrendyolOrderScheduledService {
             TrendyolClaimsService claimsService,
             StoreRepository storeRepository,
             TrendyolRateLimiter rateLimiter,
+            ResilientSyncService resilientSyncService,
             MeterRegistry meterRegistry) {
         this.orderService = orderService;
         this.productService = productService;
@@ -55,6 +65,7 @@ public class TrendyolOrderScheduledService {
         this.claimsService = claimsService;
         this.storeRepository = storeRepository;
         this.rateLimiter = rateLimiter;
+        this.resilientSyncService = resilientSyncService;
 
         this.syncDurationTimer = Timer.builder("sellerx.orders.sync.duration")
                 .description("Duration of scheduled order sync operations")
@@ -72,12 +83,25 @@ public class TrendyolOrderScheduledService {
     /**
      * Daily full sync - runs at 6:15 AM Turkey time.
      * Syncs all data from Trendyol: Orders, Products, Q&A, Returns (Claims).
+     *
+     * Uses parallel sync if enabled (recommended for 100+ stores).
      */
     @Scheduled(cron = "0 15 6 * * ?", zone = "Europe/Istanbul")
     @SchedulerLock(name = "syncAllDataForAllTrendyolStores", lockAtLeastFor = "5m", lockAtMostFor = "60m")
     public void syncAllDataForAllTrendyolStores() {
-        log.info("Starting scheduled daily full sync for all Trendyol stores");
-        syncDurationTimer.record(() -> syncStoresWithRateLimit(false));
+        log.info("Starting scheduled daily full sync for all Trendyol stores (parallel={})", parallelSyncEnabled);
+
+        if (parallelSyncEnabled) {
+            syncDurationTimer.record(() -> {
+                var result = resilientSyncService.syncAllWithResilience(false);
+                log.info("Parallel full sync completed: {} success, {} failed",
+                        result.successCount(), result.failureCount());
+                syncSuccessCounter.increment(result.successCount());
+                syncFailureCounter.increment(result.failureCount());
+            });
+        } else {
+            syncDurationTimer.record(() -> syncStoresWithRateLimit(false));
+        }
     }
 
     /**
@@ -85,12 +109,24 @@ public class TrendyolOrderScheduledService {
      * Syncs all data to catch any updates missed by webhooks.
      *
      * This provides resilience: if webhooks fail, polling catches up.
+     * Uses parallel sync if enabled (recommended for 100+ stores).
      */
     @Scheduled(cron = "0 0 * * * ?", zone = "Europe/Istanbul")
     @SchedulerLock(name = "catchUpSync", lockAtLeastFor = "2m", lockAtMostFor = "30m")
     public void catchUpSync() {
-        log.info("Starting hourly catch-up sync for all Trendyol stores");
-        syncDurationTimer.record(() -> syncStoresWithRateLimit(true));
+        log.info("Starting hourly catch-up sync for all Trendyol stores (parallel={})", parallelSyncEnabled);
+
+        if (parallelSyncEnabled) {
+            syncDurationTimer.record(() -> {
+                var result = resilientSyncService.syncAllWithResilience(true);
+                log.info("Parallel catch-up sync completed: {} success, {} failed",
+                        result.successCount(), result.failureCount());
+                syncSuccessCounter.increment(result.successCount());
+                syncFailureCounter.increment(result.failureCount());
+            });
+        } else {
+            syncDurationTimer.record(() -> syncStoresWithRateLimit(true));
+        }
     }
 
     /**
@@ -198,9 +234,27 @@ public class TrendyolOrderScheduledService {
     /**
      * Manual sync for all Trendyol stores (can be called via endpoint)
      * Syncs all data: Orders, Products, Q&A, Returns.
+     *
+     * @return SyncResult with success/failure counts (only when parallel sync enabled)
      */
-    public void manualSyncAllStores() {
-        log.info("Starting manual full sync for all Trendyol stores");
-        syncStoresWithRateLimit(false);
+    public ParallelStoreSyncService.SyncResult manualSyncAllStores() {
+        log.info("Starting manual full sync for all Trendyol stores (parallel={})", parallelSyncEnabled);
+
+        if (parallelSyncEnabled) {
+            var result = resilientSyncService.syncAllWithResilience(false);
+            log.info("Manual parallel sync completed: {} success, {} failed",
+                    result.successCount(), result.failureCount());
+            return result;
+        } else {
+            syncStoresWithRateLimit(false);
+            return new ParallelStoreSyncService.SyncResult(0, 0, 0); // Legacy mode doesn't track counts
+        }
+    }
+
+    /**
+     * Check if parallel sync is enabled.
+     */
+    public boolean isParallelSyncEnabled() {
+        return parallelSyncEnabled;
     }
 }

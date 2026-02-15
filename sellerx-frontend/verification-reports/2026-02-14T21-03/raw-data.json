@@ -1,0 +1,360 @@
+{
+  "storeName": "Test Magazasi",
+  "storeEmail": "test@test.com",
+  "timestamp": "15.02.2026 00:03:51",
+  "sections": [
+    {
+      "title": "Dashboard Urun Tablosu (Ilk 10)",
+      "summary": {
+        "total": 36,
+        "matching": 22,
+        "warnings": 0,
+        "errors": 14,
+        "results": [
+          {
+            "field": "Urun 1 (8809686120406) - Satilan Adet",
+            "match": true,
+            "dbValue": 1183,
+            "frontendValue": 1183,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Urun 1 (8809686120406) - Satis Tutari",
+            "match": false,
+            "dbValue": 0,
+            "frontendValue": 992161.14,
+            "trendyolValue": null,
+            "deviation": 100,
+            "severity": "critical",
+            "note": "DB vs FE: diff=992161.14"
+          },
+          {
+            "field": "Urun 2 (8809686120390) - Satilan Adet",
+            "match": true,
+            "dbValue": 904,
+            "frontendValue": 904,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Urun 2 (8809686120390) - Satis Tutari",
+            "match": false,
+            "dbValue": 0,
+            "frontendValue": 760520.38,
+            "trendyolValue": null,
+            "deviation": 100,
+            "severity": "critical",
+            "note": "DB vs FE: diff=760520.38"
+          },
+          {
+            "field": "Urun 3 (8809686120345) - Satilan Adet",
+            "match": true,
+            "dbValue": 173,
+            "frontendValue": 173,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Urun 3 (8809686120345) - Satis Tutari",
+            "match": false,
+            "dbValue": 0,
+            "frontendValue": 132681.26,
+            "trendyolValue": null,
+            "deviation": 100,
+            "severity": "critical",
+            "note": "DB vs FE: diff=132681.26"
+          },
+          {
+            "field": "Urun 4 (8809700320805) - Ad",
+            "match": false,
+            "dbValue": 1,
+            "frontendValue": 1,
+            "trendyolValue": 0,
+            "deviation": 100,
+            "severity": "critical",
+            "note": "DB vs TY: diff=1.00; FE vs TY: diff=1.00"
+          },
+          {
+            "field": "Urun 4 (8809700320805) - Satilan Adet",
+            "match": true,
+            "dbValue": 103,
+            "frontendValue": 103,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Urun 4 (8809700320805) - Satis Tutari",
+            "match": false,
+            "dbValue": 0,
+            "frontendValue": 131627.63,
+            "trendyolValue": null,
+            "deviation": 100,
+            "severity": "critical",
+            "note": "DB vs FE: diff=131627.63"
+          },
+          {
+            "field": "Urun 4 (8809700320805) - Stok",
+            "match": true,
+            "dbValue": 683,
+            "frontendValue": null,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Urun 4 (8809700320805) - Satis Fiyati",
+            "match": true,
+            "dbValue": 1499,
+            "frontendValue": null,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Urun 4 (8809700320805) - Komisyon Orani",
+            "match": true,
+            "dbValue": 19,
+            "frontendValue": null,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Urun 5 (TYBX8YG0UTE1JT0D34) - Ad",
+            "match": false,
+            "dbValue": 1,
+            "frontendValue": 1,
+            "trendyolValue": 0,
+            "deviation": 100,
+            "severity": "critical",
+            "note": "DB vs TY: diff=1.00; FE vs TY: diff=1.00"
+          },
+          {
+            "field": "Urun 5 (TYBX8YG0UTE1JT0D34) - Satilan Adet",
+            "match": true,
+            "dbValue": 44,
+            "frontendValue": 44,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Urun 5 (TYBX8YG0UTE1JT0D34) - Satis Tutari",
+            "match": false,
+            "dbValue": 0,
+            "frontendValue": 111802.46,
+            "trendyolValue": null,
+            "deviation": 100,
+            "severity": "critical",
+            "note": "DB vs FE: diff=111802.46"
+          },
+          {
+            "field": "Urun 5 (TYBX8YG0UTE1JT0D34) - Stok",
+            "match": true,
+            "dbValue": 455,
+            "frontendValue": null,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Urun 5 (TYBX8YG0UTE1JT0D34) - Satis Fiyati",
+            "match": true,
+            "dbValue": 2799,
+            "frontendValue": null,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Urun 5 (TYBX8YG0UTE1JT0D34) - Komisyon Orani",
+            "match": true,
+            "dbValue": 14.6,
+            "frontendValue": null,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Urun 6 (8809686120307) - Ad",
+            "match": false,
+            "dbValue": 1,
+            "frontendValue": 1,
+            "trendyolValue": 0,
+            "deviation": 100,
+            "severity": "critical",
+            "note": "DB vs TY: diff=1.00; FE vs TY: diff=1.00"
+          },
+          {
+            "field": "Urun 6 (8809686120307) - Satilan Adet",
+            "match": true,
+            "dbValue": 135,
+            "frontendValue": 135,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Urun 6 (8809686120307) - Satis Tutari",
+            "match": false,
+            "dbValue": 0,
+            "frontendValue": 101239.91,
+            "trendyolValue": null,
+            "deviation": 100,
+            "severity": "critical",
+            "note": "DB vs FE: diff=101239.91"
+          },
+          {
+            "field": "Urun 6 (8809686120307) - Stok",
+            "match": true,
+            "dbValue": 661,
+            "frontendValue": null,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Urun 6 (8809686120307) - Satis Fiyati",
+            "match": true,
+            "dbValue": 1133,
+            "frontendValue": null,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Urun 6 (8809686120307) - Komisyon Orani",
+            "match": true,
+            "dbValue": 19,
+            "frontendValue": null,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Urun 7 (8809686120369) - Satilan Adet",
+            "match": true,
+            "dbValue": 84,
+            "frontendValue": 84,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Urun 7 (8809686120369) - Satis Tutari",
+            "match": false,
+            "dbValue": 0,
+            "frontendValue": 65451.1,
+            "trendyolValue": null,
+            "deviation": 100,
+            "severity": "critical",
+            "note": "DB vs FE: diff=65451.10"
+          },
+          {
+            "field": "Urun 8 (8809686120352) - Satilan Adet",
+            "match": true,
+            "dbValue": 65,
+            "frontendValue": 65,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Urun 8 (8809686120352) - Satis Tutari",
+            "match": false,
+            "dbValue": 0,
+            "frontendValue": 50402.13,
+            "trendyolValue": null,
+            "deviation": 100,
+            "severity": "critical",
+            "note": "DB vs FE: diff=50402.13"
+          },
+          {
+            "field": "Urun 9 (8809686120246) - Satilan Adet",
+            "match": true,
+            "dbValue": 46,
+            "frontendValue": 46,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Urun 9 (8809686120246) - Satis Tutari",
+            "match": false,
+            "dbValue": 0,
+            "frontendValue": 36245.27,
+            "trendyolValue": null,
+            "deviation": 100,
+            "severity": "critical",
+            "note": "DB vs FE: diff=36245.27"
+          },
+          {
+            "field": "Urun 10 (769915194012) - Ad",
+            "match": false,
+            "dbValue": 1,
+            "frontendValue": 1,
+            "trendyolValue": 0,
+            "deviation": 100,
+            "severity": "critical",
+            "note": "DB vs TY: diff=1.00; FE vs TY: diff=1.00"
+          },
+          {
+            "field": "Urun 10 (769915194012) - Satilan Adet",
+            "match": true,
+            "dbValue": 34,
+            "frontendValue": 34,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Urun 10 (769915194012) - Satis Tutari",
+            "match": false,
+            "dbValue": 0,
+            "frontendValue": 32266,
+            "trendyolValue": null,
+            "deviation": 100,
+            "severity": "critical",
+            "note": "DB vs FE: diff=32266.00"
+          },
+          {
+            "field": "Urun 10 (769915194012) - Stok",
+            "match": true,
+            "dbValue": 0,
+            "frontendValue": null,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Urun 10 (769915194012) - Satis Fiyati",
+            "match": true,
+            "dbValue": 949,
+            "frontendValue": null,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Urun 10 (769915194012) - Komisyon Orani",
+            "match": true,
+            "dbValue": 19,
+            "frontendValue": null,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          }
+        ]
+      },
+      "screenshots": [
+        "02-products-table-sellerx.png",
+        "02-products-table-trendyol.png"
+      ]
+    }
+  ]
+}

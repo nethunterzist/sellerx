@@ -1,8 +1,7 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { ordersApi, apiRequest } from "@/lib/api/client";
-import type { TrendyolOrder, SyncOrdersResponse, OrderStatistics, OrderStatus } from "@/types/order";
+import type { TrendyolOrder, OrderStatistics, OrderStatus } from "@/types/order";
 import type { PagedResponse } from "@/types/api";
-import { dashboardKeys } from "@/hooks/useDashboardStats";
 
 // Order Query Keys
 export const orderKeys = {
@@ -12,10 +11,16 @@ export const orderKeys = {
     [...orderKeys.all, "store", storeId, "paginated", { page, size }] as const,
   byDateRange: (storeId: string, startDate: string, endDate: string) =>
     [...orderKeys.all, "dateRange", storeId, startDate, endDate] as const,
+  byDateRangePaginated: (storeId: string, startDate: string, endDate: string, page: number, size: number) =>
+    [...orderKeys.all, "dateRange", storeId, startDate, endDate, "page", page, "size", size] as const,
   byStatus: (storeId: string, status: string) =>
     [...orderKeys.all, "byStatus", storeId, status] as const,
+  byStatusPaginated: (storeId: string, status: string, page: number, size: number) =>
+    [...orderKeys.all, "byStatus", storeId, status, "page", page, "size", size] as const,
   statistics: (storeId: string) =>
     [...orderKeys.all, "statistics", storeId] as const,
+  statisticsByDateRange: (storeId: string, startDate: string, endDate: string) =>
+    [...orderKeys.all, "statistics", storeId, "dateRange", startDate, endDate] as const,
 };
 
 // Get orders by store with pagination
@@ -42,25 +47,10 @@ export function useOrdersByDateRange(
   size = 20,
 ) {
   return useQuery<PagedResponse<TrendyolOrder>>({
-    queryKey: [...orderKeys.byDateRange(storeId!, startDate!, endDate!), { page, size }],
+    queryKey: orderKeys.byDateRangePaginated(storeId!, startDate!, endDate!, page, size),
     queryFn: () => ordersApi.getByDateRange(storeId!, startDate!, endDate!, page, size),
     enabled: !!storeId && !!startDate && !!endDate,
     staleTime: 2 * 60 * 1000,
-  });
-}
-
-// Sync orders from Trendyol
-export function useSyncOrders() {
-  const queryClient = useQueryClient();
-
-  return useMutation<SyncOrdersResponse, Error, string>({
-    mutationFn: (storeId: string) => ordersApi.sync(storeId),
-    onSuccess: (data, storeId) => {
-      // Invalidate orders for this store
-      queryClient.invalidateQueries({ queryKey: orderKeys.byStore(storeId) });
-      // Invalidate dashboard stats as order data has changed
-      queryClient.invalidateQueries({ queryKey: dashboardKeys.stats(storeId) });
-    },
   });
 }
 
@@ -74,6 +64,23 @@ export function useOrderStatistics(storeId: string | undefined) {
   });
 }
 
+// Get order statistics by date range
+export function useOrderStatisticsByDateRange(
+  storeId: string | undefined,
+  startDate: string | undefined,
+  endDate: string | undefined
+) {
+  return useQuery<OrderStatistics>({
+    queryKey: orderKeys.statisticsByDateRange(storeId!, startDate!, endDate!),
+    queryFn: () =>
+      apiRequest<OrderStatistics>(
+        `/orders/stores/${storeId}/statistics/by-date-range?startDate=${encodeURIComponent(startDate!)}&endDate=${encodeURIComponent(endDate!)}`
+      ),
+    enabled: !!storeId && !!startDate && !!endDate,
+    staleTime: 5 * 60 * 1000, // 5 dakika
+  });
+}
+
 // Get orders by status
 export function useOrdersByStatus(
   storeId: string | undefined,
@@ -82,7 +89,7 @@ export function useOrdersByStatus(
   size = 20
 ) {
   return useQuery<PagedResponse<TrendyolOrder>>({
-    queryKey: [...orderKeys.byStatus(storeId!, status || ""), { page, size }],
+    queryKey: orderKeys.byStatusPaginated(storeId!, status || "", page, size),
     queryFn: () =>
       apiRequest<PagedResponse<TrendyolOrder>>(
         `/orders/stores/${storeId}/by-status?status=${status}&page=${page}&size=${size}`

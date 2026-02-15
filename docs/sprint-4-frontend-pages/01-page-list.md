@@ -7,7 +7,14 @@ Tüm Next.js sayfaları: path (locale sonrası), layout grubu, auth, dosya yolu.
 | / | — | — | [locale]/page.tsx |
 | /sign-in | (auth) | Hayır | [locale]/(auth)/sign-in/page.tsx |
 | /register | (auth) | Hayır | [locale]/(auth)/register/page.tsx |
+| /forgot-password | (auth) | Hayır | [locale]/(auth)/forgot-password/page.tsx |
+| /reset-password | (auth) | Hayır | [locale]/(auth)/reset-password/page.tsx |
+| /verify-email | (auth) | Hayır | [locale]/(auth)/verify-email/page.tsx |
+| /verification-pending | (auth) | Hayır | [locale]/(auth)/verification-pending/page.tsx |
 | /pricing | (public) | Hayır | [locale]/(public)/pricing/page.tsx |
+| /hesaplama | (public) | Hayır | [locale]/(public)/hesaplama/page.tsx |
+| /privacy | (public) | Hayır | [locale]/(public)/privacy/page.tsx |
+| /terms | (public) | Hayır | [locale]/(public)/terms/page.tsx |
 | /dashboard | (app-shell) | Evet | [locale]/(app-shell)/dashboard/page.tsx |
 | /products | (app-shell) | Evet | [locale]/(app-shell)/products/page.tsx |
 | /orders | (app-shell) | Evet | [locale]/(app-shell)/orders/page.tsx |
@@ -19,7 +26,7 @@ Tüm Next.js sayfaları: path (locale sonrası), layout grubu, auth, dosya yolu.
 | /purchasing/[poId] | (app-shell) | Evet | [locale]/(app-shell)/purchasing/[poId]/page.tsx |
 | /purchasing/suppliers | (app-shell) | Evet | [locale]/(app-shell)/purchasing/suppliers/page.tsx |
 | /purchasing/reports/cost-history | (app-shell) | Evet | [locale]/(app-shell)/purchasing/reports/cost-history/page.tsx |
-| /purchasing/reports/profitability | (app-shell) | Evet | [locale]/(app-shell)/purchasing/reports/profitability/page.tsx |
+| /purchasing/orders | (app-shell) | Evet | [locale]/(app-shell)/purchasing/orders/page.tsx |
 | /purchasing/reports/stock-valuation | (app-shell) | Evet | [locale]/(app-shell)/purchasing/reports/stock-valuation/page.tsx |
 | /billing | (app-shell) | Evet | [locale]/(app-shell)/billing/page.tsx |
 | /billing/checkout | (app-shell) | Evet | [locale]/(app-shell)/billing/checkout/page.tsx |
@@ -35,9 +42,11 @@ Tüm Next.js sayfaları: path (locale sonrası), layout grubu, auth, dosya yolu.
 | /support | (app-shell) | Evet | [locale]/(app-shell)/support/page.tsx |
 | /support/[id] | (app-shell) | Evet | [locale]/(app-shell)/support/[id]/page.tsx |
 | /settings | (app-shell) | Evet | [locale]/(app-shell)/settings/page.tsx |
-| /profile | (app-shell) | Evet | [locale]/(app-shell)/profile/page.tsx |
 | /new-store | (app-shell) | Evet | [locale]/(app-shell)/new-store/page.tsx |
 | /analytics | (app-shell) | Evet | [locale]/(app-shell)/analytics/page.tsx |
+| /customer-analytics | (app-shell) | Evet | [locale]/(app-shell)/customer-analytics/page.tsx |
+| /kar-hesaplama | (app-shell) | Evet | [locale]/(app-shell)/kar-hesaplama/page.tsx |
+| /impersonate | (app-shell) | Evet | [locale]/(app-shell)/impersonate/page.tsx |
 | /dumen | (app-shell) | Evet | [locale]/(app-shell)/dumen/page.tsx |
 | /kdv | (app-shell) | Evet | [locale]/(app-shell)/kdv/page.tsx |
 | /admin/dashboard | (admin) | Admin | [locale]/(admin)/admin/dashboard/page.tsx |
@@ -55,6 +64,13 @@ Tüm Next.js sayfaları: path (locale sonrası), layout grubu, auth, dosya yolu.
 | /admin/support/[id] | (admin) | Admin | [locale]/(admin)/admin/support/[id]/page.tsx |
 | /admin/education | (admin) | Admin | [locale]/(admin)/admin/education/page.tsx |
 | /admin/notifications | (admin) | Admin | [locale]/(admin)/admin/notifications/page.tsx |
+| /admin/email-templates | (admin) | Admin | [locale]/(admin)/admin/email-templates/page.tsx |
+| /admin/email-templates/[type] | (admin) | Admin | [locale]/(admin)/admin/email-templates/[type]/page.tsx |
+| /admin/email-templates/layout-settings | (admin) | Admin | [locale]/(admin)/admin/email-templates/layout-settings/page.tsx |
+| /admin/sandbox/invoices | (admin) | Admin | [locale]/(admin)/admin/sandbox/invoices/page.tsx |
+| /admin/sandbox/orders | (admin) | Admin | [locale]/(admin)/admin/sandbox/orders/page.tsx |
+| /admin/sandbox/products | (admin) | Admin | [locale]/(admin)/admin/sandbox/products/page.tsx |
+| /admin/sandbox/returns | (admin) | Admin | [locale]/(admin)/admin/sandbox/returns/page.tsx |
 | /admin/security | (admin) | Admin | [locale]/(admin)/admin/security/page.tsx |
 
-**Toplam:** 52 sayfa. Dinamik segmentler: [id] (stock-tracking, support; admin: stores, users, support), [poId] (purchasing).
+**Toplam:** 68 sayfa. Dinamik segmentler: [id] (stock-tracking, support; admin: stores, users, support), [type] (admin: email-templates), [poId] (purchasing).

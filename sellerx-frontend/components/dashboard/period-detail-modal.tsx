@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { ChevronRight, ChevronDown, AlertTriangle, Calendar, X } from "lucide-react";
+import { ChevronRight, ChevronDown, AlertTriangle, Calendar, X, Loader2 } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -19,6 +19,7 @@ import {
   TooltipContent,
 } from "@/components/ui/tooltip";
 import { useCurrency } from "@/lib/contexts/currency-context";
+import { useDeductionBreakdown } from "@/hooks/useDashboardStats";
 
 export interface PeriodDetailStats {
   // Temel metrikler
@@ -100,6 +101,12 @@ interface PeriodDetailModalProps {
   dateRange: string;
   stats: PeriodDetailStats | null;
   headerColor?: string;
+  /** Store ID for fetching deduction breakdown - when provided, shows individual invoice types */
+  storeId?: string;
+  /** Start date in ISO format (YYYY-MM-DD) for deduction breakdown API */
+  startDate?: string;
+  /** End date in ISO format (YYYY-MM-DD) for deduction breakdown API */
+  endDate?: string;
 }
 
 function formatPercentage(value: number): string {
@@ -196,16 +203,22 @@ function SubRow({
   label,
   value,
   isNegative,
+  isPositive,
 }: {
   label: string;
   value: string;
   isNegative?: boolean;
+  isPositive?: boolean;
 }) {
   return (
     <div className="flex items-center justify-between py-2 px-4 pl-10 border-b border-border">
       <span className="text-sm text-muted-foreground">{label}</span>
-      <span className={cn("text-sm font-medium", isNegative ? "text-red-600" : "text-foreground")}>
-        {value}
+      <span className={cn(
+        "text-sm font-medium",
+        isNegative && "text-red-600",
+        isPositive && "text-green-600"
+      )}>
+        {isPositive ? `+${value}` : value}
       </span>
     </div>
   );
@@ -218,14 +231,29 @@ export function PeriodDetailModal({
   dateRange,
   stats,
   headerColor = "bg-[#3B82F6]",
+  storeId,
+  startDate,
+  endDate,
 }: PeriodDetailModalProps) {
   const { formatCurrency } = useCurrency();
+
+  // Fetch individual deduction breakdown when storeId and dates are available
+  const { data: deductionBreakdown, isLoading: isLoadingBreakdown } = useDeductionBreakdown(
+    storeId,
+    startDate,
+    endDate
+  );
 
   if (!stats) return null;
 
   // Calculate derived values
   const margin = stats.sales > 0 ? (stats.netProfit / stats.sales) * 100 : 0;
   const roi = stats.productCosts > 0 ? (stats.netProfit / stats.productCosts) * 100 : 0;
+
+  // Calculate total from breakdown for display
+  const breakdownTotal = deductionBreakdown?.reduce((acc, item) => {
+    return acc + (item.totalDebt || 0) - (item.totalCredit || 0);
+  }, 0) || 0;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -324,20 +352,22 @@ export function PeriodDetailModal({
             warningText={stats.itemsWithoutCost > 0 ? `${stats.itemsWithoutCost} ürünün maliyeti eksik` : undefined}
           />
 
-          {/* Iade Maliyeti */}
-          <div className="flex items-center justify-between py-2.5 px-4 border-b border-border">
-            <span className="text-sm text-muted-foreground flex items-center gap-2">
-              İade Maliyeti
-              {stats.refunds > 0 && (
-                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">
-                  {stats.refunds} ürün
-                </span>
-              )}
-            </span>
-            <span className={cn("text-sm font-medium", stats.refundCost > 0 ? "text-red-600" : "text-foreground")}>
-              {formatCurrency(-stats.refundCost)}
-            </span>
-          </div>
+          {/* Iade Maliyeti - sadece 0'dan büyükse göster */}
+          {(stats.refundCost > 0 || stats.refunds > 0) && (
+            <div className="flex items-center justify-between py-2.5 px-4 border-b border-border">
+              <span className="text-sm text-muted-foreground flex items-center gap-2">
+                İade Maliyeti
+                {stats.refunds > 0 && (
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">
+                    {stats.refunds} ürün
+                  </span>
+                )}
+              </span>
+              <span className={cn("text-sm font-medium", stats.refundCost > 0 ? "text-red-600" : "text-foreground")}>
+                {formatCurrency(-stats.refundCost)}
+              </span>
+            </div>
+          )}
 
           {/* Stopaj (Vergi Kesintisi) */}
           <ExpandableRow
@@ -350,46 +380,78 @@ export function PeriodDetailModal({
           <div className="h-1 bg-muted" />
 
           {/* ==================== KESİLEN FATURALAR (Birleşik) ==================== */}
-          {/* Platform Ücretleri + Kategori Bazlı Kesintiler tek bölümde */}
+          {/* Fatura tiplerini tek tek göster (API'den) veya grouped fallback */}
           <ExpandableRow
             label="Kesilen Faturalar"
-            value={formatCurrency(-(
-              // Platform Ücretleri (bireysel satırlar - invoiced* kategorilerinde sayılmayanlar)
-              (stats.platformServiceFee ?? 0) +
-              (stats.azPlatformServiceFee ?? 0) +
-              // Kategori Bazlı Kesintiler (invoiced* sorgularından)
-              (stats.invoicedAdvertisingFees ?? 0) +
-              (stats.invoicedPenaltyFees ?? 0) +
-              (stats.invoicedInternationalFees ?? 0) +
-              (stats.invoicedOtherFees ?? 0) -
-              // İadeler (çıkarılır)
-              (stats.invoicedRefunds ?? 0)
-            ))}
+            value={formatCurrency(deductionBreakdown && deductionBreakdown.length > 0
+              ? -breakdownTotal
+              : -(
+                  // Fallback: Platform Ücretleri + Kategori Bazlı Kesintiler
+                  (stats.platformServiceFee ?? 0) +
+                  (stats.azPlatformServiceFee ?? 0) +
+                  (stats.invoicedAdvertisingFees ?? 0) +
+                  (stats.invoicedPenaltyFees ?? 0) +
+                  (stats.invoicedInternationalFees ?? 0) +
+                  (stats.invoicedOtherFees ?? 0) -
+                  (stats.invoicedRefunds ?? 0)
+                )
+            )}
             isNegative={true}
           >
-            {/* Platform Ücretleri (bireysel - invoiced kategorilerinde sayılmayanlar) */}
-            {(stats.platformServiceFee ?? 0) > 0 && (
-              <SubRow label="Platform Hizmet Bedeli" value={formatCurrency(-(stats.platformServiceFee ?? 0))} isNegative />
+            {/* Loading state */}
+            {isLoadingBreakdown && (
+              <div className="flex items-center justify-center py-4 px-4">
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground mr-2" />
+                <span className="text-sm text-muted-foreground">Yükleniyor...</span>
+              </div>
             )}
-            {(stats.azPlatformServiceFee ?? 0) > 0 && (
-              <SubRow label="AZ-Platform Hizmet Bedeli" value={formatCurrency(-(stats.azPlatformServiceFee ?? 0))} isNegative />
-            )}
-            {/* Kategori Bazlı Kesintiler (invoiced* sorgularından) */}
-            {(stats.invoicedAdvertisingFees ?? 0) > 0 && (
-              <SubRow label="Reklam Bedeli" value={formatCurrency(-(stats.invoicedAdvertisingFees ?? 0))} isNegative />
-            )}
-            {(stats.invoicedPenaltyFees ?? 0) > 0 && (
-              <SubRow label="Ceza / Kesintiler" value={formatCurrency(-(stats.invoicedPenaltyFees ?? 0))} isNegative />
-            )}
-            {(stats.invoicedInternationalFees ?? 0) > 0 && (
-              <SubRow label="Uluslararası Kesintiler" value={formatCurrency(-(stats.invoicedInternationalFees ?? 0))} isNegative />
-            )}
-            {(stats.invoicedOtherFees ?? 0) > 0 && (
-              <SubRow label="Diğer Kesintiler" value={formatCurrency(-(stats.invoicedOtherFees ?? 0))} isNegative />
-            )}
-            {/* İadeler (Pozitif - Satıcıya geri ödeme) */}
-            {(stats.invoicedRefunds ?? 0) > 0 && (
-              <SubRow label="İadeler (Tazmin)" value={formatCurrency(stats.invoicedRefunds ?? 0)} />
+
+            {/* Individual invoice types from API */}
+            {!isLoadingBreakdown && deductionBreakdown && deductionBreakdown.length > 0 ? (
+              deductionBreakdown.map((item) => {
+                const isRefund = (item.totalCredit ?? 0) > 0;
+                const amount = isRefund ? (item.totalCredit ?? 0) : (item.totalDebt ?? 0);
+
+                // Skip items with zero amount
+                if (amount === 0) return null;
+
+                return (
+                  <SubRow
+                    key={item.transactionType}
+                    label={item.transactionType}
+                    value={formatCurrency(isRefund ? amount : -amount)}
+                    isNegative={!isRefund}
+                    isPositive={isRefund}
+                  />
+                );
+              })
+            ) : (
+              /* Fallback: Grouped categories (backwards compatibility) */
+              !isLoadingBreakdown && (
+                <>
+                  {(stats.platformServiceFee ?? 0) > 0 && (
+                    <SubRow label="Platform Hizmet Bedeli" value={formatCurrency(-(stats.platformServiceFee ?? 0))} isNegative />
+                  )}
+                  {(stats.azPlatformServiceFee ?? 0) > 0 && (
+                    <SubRow label="AZ-Platform Hizmet Bedeli" value={formatCurrency(-(stats.azPlatformServiceFee ?? 0))} isNegative />
+                  )}
+                  {(stats.invoicedAdvertisingFees ?? 0) > 0 && (
+                    <SubRow label="Reklam Bedeli" value={formatCurrency(-(stats.invoicedAdvertisingFees ?? 0))} isNegative />
+                  )}
+                  {(stats.invoicedPenaltyFees ?? 0) > 0 && (
+                    <SubRow label="Ceza / Kesintiler" value={formatCurrency(-(stats.invoicedPenaltyFees ?? 0))} isNegative />
+                  )}
+                  {(stats.invoicedInternationalFees ?? 0) > 0 && (
+                    <SubRow label="Uluslararası Kesintiler" value={formatCurrency(-(stats.invoicedInternationalFees ?? 0))} isNegative />
+                  )}
+                  {(stats.invoicedOtherFees ?? 0) > 0 && (
+                    <SubRow label="Diğer Kesintiler" value={formatCurrency(-(stats.invoicedOtherFees ?? 0))} isNegative />
+                  )}
+                  {(stats.invoicedRefunds ?? 0) > 0 && (
+                    <SubRow label="İadeler (Tazmin)" value={formatCurrency(stats.invoicedRefunds ?? 0)} />
+                  )}
+                </>
+              )
             )}
           </ExpandableRow>
 

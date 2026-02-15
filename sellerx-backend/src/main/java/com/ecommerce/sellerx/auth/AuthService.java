@@ -38,14 +38,16 @@ public class AuthService {
         return new LoginResponse(accessToken, refreshToken);
     }
 
-    public Jwt refreshAccessToken(String refreshToken) {
+    public LoginResponse refreshTokens(String refreshToken) {
         var jwt = jwtService.parseToken(refreshToken);
         if (jwt == null || jwt.isExpired()) {
             throw new BadCredentialsException("Invalid refresh token");
         }
 
         var user = userRepository.findById(jwt.getUserId()).orElseThrow();
-        return jwtService.generateAccessToken(user);
+        var newAccessToken = jwtService.generateAccessToken(user);
+        var newRefreshToken = jwtService.generateRefreshToken(user);
+        return new LoginResponse(newAccessToken, newRefreshToken);
     }
 }
 

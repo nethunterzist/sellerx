@@ -1,7 +1,6 @@
 export type NotificationType =
   | 'VIDEO_ADDED'
   | 'ORDER_UPDATE'
-  | 'STOCK_ALERT'
   | 'SYSTEM'
   | 'SUCCESS'
   | 'WARNING';

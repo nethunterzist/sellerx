@@ -1,0 +1,466 @@
+{
+  "storeName": "Test Magazasi",
+  "storeEmail": "test@test.com",
+  "timestamp": "14.02.2026 23:00:07",
+  "sections": [
+    {
+      "title": "Dashboard Kartları",
+      "summary": {
+        "total": 11,
+        "matching": 5,
+        "warnings": 1,
+        "errors": 5,
+        "results": [
+          {
+            "field": "Bugun - Ciro",
+            "match": false,
+            "dbValue": 161773.14,
+            "frontendValue": 161773.14,
+            "trendyolValue": 0,
+            "deviation": 100,
+            "severity": "critical",
+            "note": "DB vs TY: diff=161773.14; FE vs TY: diff=161773.14"
+          },
+          {
+            "field": "Bugun - Siparis Sayisi",
+            "match": true,
+            "dbValue": 122,
+            "frontendValue": 122,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Bugun - Iade",
+            "match": true,
+            "dbValue": 0,
+            "frontendValue": 0,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Dun - Ciro",
+            "match": true,
+            "dbValue": 269612.43,
+            "frontendValue": 269612.43,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Dun - Siparis Sayisi",
+            "match": true,
+            "dbValue": 195,
+            "frontendValue": 195,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Bu Ay - Ciro",
+            "match": false,
+            "dbValue": 3034482.21,
+            "frontendValue": 2822120.36,
+            "trendyolValue": null,
+            "deviation": 7,
+            "severity": "critical",
+            "note": "DB vs FE: diff=212361.85"
+          },
+          {
+            "field": "Bu Ay - Siparis Sayisi",
+            "match": false,
+            "dbValue": 2396,
+            "frontendValue": 2226,
+            "trendyolValue": null,
+            "deviation": 7.1,
+            "severity": "critical",
+            "note": "DB vs FE: diff=170.00"
+          },
+          {
+            "field": "Bu Ay - Iade",
+            "match": true,
+            "dbValue": 0,
+            "frontendValue": 0,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Bu Ay - Brut Kar",
+            "match": false,
+            "dbValue": 1641985.7000000002,
+            "frontendValue": 1965952.36,
+            "trendyolValue": null,
+            "deviation": 19.73,
+            "severity": "critical",
+            "note": "DB vs FE: diff=323966.66"
+          },
+          {
+            "field": "Gecen Ay - Ciro",
+            "match": false,
+            "dbValue": 8557537.78,
+            "frontendValue": 8514762.19,
+            "trendyolValue": null,
+            "deviation": 0.5,
+            "severity": "warning",
+            "note": "DB vs FE: diff=42775.59"
+          },
+          {
+            "field": "Gecen Ay - Siparis Sayisi",
+            "match": false,
+            "dbValue": 7058,
+            "frontendValue": 6999,
+            "trendyolValue": null,
+            "deviation": 0.84,
+            "severity": "critical",
+            "note": "DB vs FE: diff=59.00"
+          }
+        ]
+      },
+      "screenshots": [
+        "01-dashboard-cards-sellerx.png",
+        "01-dashboard-cards-trendyol.png"
+      ]
+    },
+    {
+      "title": "Dashboard Urun Tablosu (Ilk 10)",
+      "summary": {
+        "total": 0,
+        "matching": 0,
+        "warnings": 0,
+        "errors": 0,
+        "results": []
+      },
+      "screenshots": [
+        "02-products-table-sellerx.png",
+        "02-products-table-trendyol.png"
+      ]
+    },
+    {
+      "title": "Donem Detay Modali (Bu Ay)",
+      "summary": {
+        "total": 4,
+        "matching": 0,
+        "warnings": 0,
+        "errors": 4,
+        "results": [
+          {
+            "field": "Bu Ay Modal - Ciro",
+            "match": false,
+            "dbValue": 3034482.21,
+            "frontendValue": 14,
+            "trendyolValue": null,
+            "deviation": 100,
+            "severity": "critical",
+            "note": "DB vs FE: diff=3034468.21"
+          },
+          {
+            "field": "Bu Ay Modal - Siparis",
+            "match": false,
+            "dbValue": 2396,
+            "frontendValue": 14,
+            "trendyolValue": null,
+            "deviation": 99.42,
+            "severity": "critical",
+            "note": "DB vs FE: diff=2382.00"
+          },
+          {
+            "field": "Bu Ay Modal - Komisyon",
+            "match": false,
+            "dbValue": 473671.51,
+            "frontendValue": 14,
+            "trendyolValue": null,
+            "deviation": 100,
+            "severity": "critical",
+            "note": "DB vs FE: diff=473657.51"
+          },
+          {
+            "field": "Bu Ay Modal - Kargo",
+            "match": false,
+            "dbValue": 0,
+            "frontendValue": 14,
+            "trendyolValue": null,
+            "deviation": 100,
+            "severity": "critical",
+            "note": "DB vs FE: diff=14.00"
+          }
+        ]
+      },
+      "screenshots": [
+        "03c-period-detail-modal.png"
+      ]
+    },
+    {
+      "title": "Siparisler Sayfasi",
+      "summary": {
+        "total": 6,
+        "matching": 0,
+        "warnings": 0,
+        "errors": 6,
+        "results": [
+          {
+            "field": "Son 7 Gun - Siparis Sayisi (DB vs FE tablo)",
+            "match": false,
+            "dbValue": 10,
+            "frontendValue": 5,
+            "trendyolValue": null,
+            "deviation": 50,
+            "severity": "critical",
+            "note": "DB vs FE: diff=5.00"
+          },
+          {
+            "field": "Siparis #10965903256 - Tutar",
+            "match": false,
+            "dbValue": 899.2,
+            "frontendValue": 26,
+            "trendyolValue": null,
+            "deviation": 97.11,
+            "severity": "critical",
+            "note": "DB vs FE: diff=873.20"
+          },
+          {
+            "field": "Siparis #10965874399 - Tutar",
+            "match": false,
+            "dbValue": 1798.4,
+            "frontendValue": 17,
+            "trendyolValue": null,
+            "deviation": 99.05,
+            "severity": "critical",
+            "note": "DB vs FE: diff=1781.40"
+          },
+          {
+            "field": "Siparis #10965853017 - Tutar",
+            "match": false,
+            "dbValue": 899.2,
+            "frontendValue": 14,
+            "trendyolValue": null,
+            "deviation": 98.44,
+            "severity": "critical",
+            "note": "DB vs FE: diff=885.20"
+          },
+          {
+            "field": "Siparis #10965839015 - Tutar",
+            "match": false,
+            "dbValue": 819,
+            "frontendValue": 4,
+            "trendyolValue": null,
+            "deviation": 99.51,
+            "severity": "critical",
+            "note": "DB vs FE: diff=815.00"
+          },
+          {
+            "field": "Siparis #10965814310 - Tutar",
+            "match": false,
+            "dbValue": 760,
+            "frontendValue": 54,
+            "trendyolValue": null,
+            "deviation": 92.89,
+            "severity": "critical",
+            "note": "DB vs FE: diff=706.00"
+          }
+        ]
+      },
+      "screenshots": [
+        "04-orders-sellerx.png",
+        "04-orders-trendyol.png"
+      ]
+    },
+    {
+      "title": "Faturalar Sayfasi (Son 30 Gun)",
+      "summary": {
+        "total": 11,
+        "matching": 7,
+        "warnings": 0,
+        "errors": 4,
+        "results": [
+          {
+            "field": "Fatura - KOMISYON Toplam",
+            "match": false,
+            "dbValue": 0,
+            "frontendValue": 15,
+            "trendyolValue": null,
+            "deviation": 100,
+            "severity": "critical",
+            "note": "DB vs FE: diff=15.00"
+          },
+          {
+            "field": "Fatura - KOMISYON Adet",
+            "match": true,
+            "dbValue": 0,
+            "frontendValue": null,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Fatura - KARGO Toplam",
+            "match": false,
+            "dbValue": 0,
+            "frontendValue": 15,
+            "trendyolValue": null,
+            "deviation": 100,
+            "severity": "critical",
+            "note": "DB vs FE: diff=15.00"
+          },
+          {
+            "field": "Fatura - KARGO Adet",
+            "match": true,
+            "dbValue": 0,
+            "frontendValue": null,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Fatura - CEZA Toplam",
+            "match": false,
+            "dbValue": 125,
+            "frontendValue": 15,
+            "trendyolValue": null,
+            "deviation": 88,
+            "severity": "critical",
+            "note": "DB vs FE: diff=110.00"
+          },
+          {
+            "field": "Fatura - CEZA Adet",
+            "match": true,
+            "dbValue": 2,
+            "frontendValue": null,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Fatura - IADE Toplam",
+            "match": true,
+            "dbValue": 40,
+            "frontendValue": null,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Fatura - IADE Adet",
+            "match": true,
+            "dbValue": 1,
+            "frontendValue": null,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Fatura - REKLAM Toplam",
+            "match": false,
+            "dbValue": 500,
+            "frontendValue": 15,
+            "trendyolValue": null,
+            "deviation": 97,
+            "severity": "critical",
+            "note": "DB vs FE: diff=485.00"
+          },
+          {
+            "field": "Fatura - REKLAM Adet",
+            "match": true,
+            "dbValue": 2,
+            "frontendValue": null,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Toplam Fatura Sayisi (DB)",
+            "match": true,
+            "dbValue": 7,
+            "frontendValue": null,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          }
+        ]
+      },
+      "screenshots": [
+        "05-invoices-sellerx.png",
+        "05-invoices-trendyol.png"
+      ]
+    },
+    {
+      "title": "İadeler Sayfası (Son 30 Gün)",
+      "summary": {
+        "total": 4,
+        "matching": 1,
+        "warnings": 0,
+        "errors": 3,
+        "results": [
+          {
+            "field": "İade Adedi (Son 30 Gün)",
+            "match": false,
+            "dbValue": 0,
+            "frontendValue": 11,
+            "trendyolValue": null,
+            "deviation": 100,
+            "severity": "critical",
+            "note": "DB vs FE: diff=11.00"
+          },
+          {
+            "field": "İade Oranı (%)",
+            "match": false,
+            "dbValue": 0,
+            "frontendValue": 14,
+            "trendyolValue": null,
+            "deviation": 100,
+            "severity": "critical",
+            "note": "DB vs FE: diff=14.00"
+          },
+          {
+            "field": "Toplam İade Kaybi",
+            "match": false,
+            "dbValue": 0,
+            "frontendValue": 14,
+            "trendyolValue": null,
+            "deviation": 100,
+            "severity": "critical",
+            "note": "DB vs FE: diff=14.00"
+          },
+          {
+            "field": "Toplam İade Tutari",
+            "match": true,
+            "dbValue": 0,
+            "frontendValue": null,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          }
+        ]
+      },
+      "screenshots": [
+        "06-returns-sellerx.png",
+        "06-returns-trendyol.png"
+      ]
+    },
+    {
+      "title": "Ürünler Sayfası (İlk 20)",
+      "summary": {
+        "total": 1,
+        "matching": 1,
+        "warnings": 0,
+        "errors": 0,
+        "results": [
+          {
+            "field": "Ürün Sayısı (DB vs FE tablo)",
+            "match": true,
+            "dbValue": 20,
+            "frontendValue": 20,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          }
+        ]
+      },
+      "screenshots": [
+        "07-products-sellerx.png",
+        "07-products-trendyol.png"
+      ]
+    }
+  ]
+}

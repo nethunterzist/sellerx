@@ -16,12 +16,26 @@ import type {
   CustomerOrdersPageResponse,
 } from "@/types/customer-analytics";
 
+// Filter interface for customer list
+export interface CustomerListFilter {
+  minOrderCount?: number;
+  maxOrderCount?: number;
+  minItemCount?: number;
+  maxItemCount?: number;
+  minTotalSpend?: number;
+  maxTotalSpend?: number;
+  minAvgOrderValue?: number;
+  maxAvgOrderValue?: number;
+  minRepeatInterval?: number;
+  maxRepeatInterval?: number;
+}
+
 // Query Keys
 export const customerAnalyticsKeys = {
   all: ["customer-analytics"] as const,
   summary: (storeId: string) => [...customerAnalyticsKeys.all, "summary", storeId] as const,
-  customers: (storeId: string, page: number, size: number, search: string) =>
-    [...customerAnalyticsKeys.all, "customers", storeId, page, size, search] as const,
+  customers: (storeId: string, page: number, size: number, search: string, sortBy: string, sortDir: string, filters: CustomerListFilter) =>
+    [...customerAnalyticsKeys.all, "customers", storeId, page, size, search, sortBy, sortDir, JSON.stringify(filters)] as const,
   customerOrders: (storeId: string, customerId: string) =>
     [...customerAnalyticsKeys.all, "customer-orders", storeId, customerId] as const,
   productRepeat: (storeId: string) =>
@@ -57,19 +71,43 @@ export function useCustomerAnalyticsSummary(storeId: string | undefined) {
   });
 }
 
-// Get paginated customer list with optional search
+// Get paginated customer list with optional search, sorting, and filtering
 export function useCustomerList(
   storeId: string | undefined,
   page: number = 0,
   size: number = 20,
-  search: string = ""
+  search: string = "",
+  sortBy: string = "totalSpend",
+  sortDir: "asc" | "desc" = "desc",
+  filters: CustomerListFilter = {}
 ) {
   return useQuery({
-    queryKey: customerAnalyticsKeys.customers(storeId!, page, size, search),
+    queryKey: customerAnalyticsKeys.customers(storeId!, page, size, search, sortBy, sortDir, filters),
     queryFn: () => {
-      const searchParam = search.trim() ? `&search=${encodeURIComponent(search.trim())}` : "";
+      const params = new URLSearchParams();
+      params.set("page", String(page));
+      params.set("size", String(size));
+      params.set("sortBy", sortBy);
+      params.set("sortDir", sortDir);
+
+      if (search.trim()) {
+        params.set("search", search.trim());
+      }
+
+      // Add filter params
+      if (filters.minOrderCount !== undefined) params.set("minOrderCount", String(filters.minOrderCount));
+      if (filters.maxOrderCount !== undefined) params.set("maxOrderCount", String(filters.maxOrderCount));
+      if (filters.minItemCount !== undefined) params.set("minItemCount", String(filters.minItemCount));
+      if (filters.maxItemCount !== undefined) params.set("maxItemCount", String(filters.maxItemCount));
+      if (filters.minTotalSpend !== undefined) params.set("minTotalSpend", String(filters.minTotalSpend));
+      if (filters.maxTotalSpend !== undefined) params.set("maxTotalSpend", String(filters.maxTotalSpend));
+      if (filters.minAvgOrderValue !== undefined) params.set("minAvgOrderValue", String(filters.minAvgOrderValue));
+      if (filters.maxAvgOrderValue !== undefined) params.set("maxAvgOrderValue", String(filters.maxAvgOrderValue));
+      if (filters.minRepeatInterval !== undefined) params.set("minRepeatInterval", String(filters.minRepeatInterval));
+      if (filters.maxRepeatInterval !== undefined) params.set("maxRepeatInterval", String(filters.maxRepeatInterval));
+
       return apiRequest<CustomerListResponse>(
-        `/stores/${storeId}/customer-analytics/customers?page=${page}&size=${size}${searchParam}`
+        `/stores/${storeId}/customer-analytics/customers?${params.toString()}`
       );
     },
     enabled: !!storeId,

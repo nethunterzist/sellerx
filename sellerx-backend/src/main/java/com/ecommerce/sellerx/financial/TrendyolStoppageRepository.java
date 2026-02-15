@@ -104,4 +104,45 @@ public interface TrendyolStoppageRepository extends JpaRepository<TrendyolStoppa
             @Param("storeId") UUID storeId,
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate);
+
+    // ============== Sipariş Eşleştirme Sorguları ==============
+
+    /**
+     * Find stoppages by order number for order-stoppage reconciliation.
+     * Similar to cargo invoice matching pattern.
+     */
+    List<TrendyolStoppage> findByStoreIdAndOrderNumber(UUID storeId, String orderNumber);
+
+    /**
+     * Find stoppages by shipment package ID for order-stoppage reconciliation.
+     * Used for enrichOrderDto() to get real stoppage when order is served.
+     */
+    List<TrendyolStoppage> findByStoreIdAndShipmentPackageId(UUID storeId, Long shipmentPackageId);
+
+    /**
+     * Find all stoppages that have order matching data (for bulk reconciliation).
+     * Returns stoppages that haven't been matched to orders yet.
+     */
+    @Query("SELECT s FROM TrendyolStoppage s WHERE s.store.id = :storeId " +
+            "AND s.orderNumber IS NOT NULL AND s.shipmentPackageId IS NOT NULL")
+    List<TrendyolStoppage> findMatchableStoppages(@Param("storeId") UUID storeId);
+
+    /**
+     * Sum of stoppage amounts for a specific order (by order number).
+     * Used when order has multiple stoppage records.
+     */
+    @Query("SELECT COALESCE(SUM(s.amount), 0) FROM TrendyolStoppage s " +
+            "WHERE s.store.id = :storeId AND s.orderNumber = :orderNumber")
+    BigDecimal sumAmountByStoreAndOrderNumber(
+            @Param("storeId") UUID storeId,
+            @Param("orderNumber") String orderNumber);
+
+    /**
+     * Sum of stoppage amounts for a specific package.
+     */
+    @Query("SELECT COALESCE(SUM(s.amount), 0) FROM TrendyolStoppage s " +
+            "WHERE s.store.id = :storeId AND s.shipmentPackageId = :shipmentPackageId")
+    BigDecimal sumAmountByStoreAndShipmentPackageId(
+            @Param("storeId") UUID storeId,
+            @Param("shipmentPackageId") Long shipmentPackageId);
 }

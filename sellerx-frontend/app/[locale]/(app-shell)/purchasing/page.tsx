@@ -20,6 +20,7 @@ import { Plus, Loader2, Package, Warehouse } from "lucide-react";
 import type { PurchaseOrderStatus } from "@/types/purchasing";
 import type { DateRange } from "react-day-picker";
 import { format } from "date-fns";
+import { FadeIn } from "@/components/motion";
 import {
   StatCardSkeleton,
   FilterBarSkeleton,
@@ -96,6 +97,7 @@ export default function PurchasingPage() {
   if (statsLoading) return <PurchasingPageSkeleton />;
 
   return (
+    <FadeIn>
     <div className="space-y-8">
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -203,5 +205,6 @@ export default function PurchasingPage() {
       </div>
 
     </div>
+    </FadeIn>
   );
 }

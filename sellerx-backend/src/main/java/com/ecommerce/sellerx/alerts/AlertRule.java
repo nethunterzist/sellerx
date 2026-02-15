@@ -55,8 +55,8 @@ public class AlertRule {
     private BigDecimal threshold;
 
     // Optional scope filters
-    @Column(name = "product_barcode", length = 100)
-    private String productBarcode; // NULL = all products
+    @Column(name = "product_barcode", columnDefinition = "TEXT")
+    private String productBarcode; // NULL = all products, comma-separated for multiple
 
     @Column(name = "category_name", length = 200)
     private String categoryName; // NULL = all categories

@@ -1,6 +1,8 @@
 package com.ecommerce.sellerx.ai;
 
 import com.ecommerce.sellerx.ai.dto.AiGenerateResponse;
+import com.ecommerce.sellerx.crosssell.CrossSellService;
+import com.ecommerce.sellerx.crosssell.dto.CrossSellRecommendationDto;
 import com.ecommerce.sellerx.qa.TrendyolAnswer;
 import com.ecommerce.sellerx.qa.TrendyolAnswerRepository;
 import com.ecommerce.sellerx.qa.TrendyolQaService;
@@ -15,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -30,6 +33,7 @@ public class AiAnswerService {
     private final TrendyolQuestionRepository questionRepository;
     private final TrendyolAnswerRepository answerRepository;
     private final TrendyolQaService trendyolQaService;
+    private final CrossSellService crossSellService;
 
     @Transactional
     public AiGenerateResponse generateAnswer(UUID questionId) {
@@ -58,6 +62,14 @@ public class AiAnswerService {
 
         // Add context sources to response
         response.setContextSources(contextResult.sources());
+
+        // Get cross-sell recommendations
+        try {
+            List<CrossSellRecommendationDto> crossSellRecommendations = crossSellService.getRecommendations(question);
+            response.setCrossSellRecommendations(crossSellRecommendations);
+        } catch (Exception e) {
+            log.warn("Failed to get cross-sell recommendations for question {}: {}", questionId, e.getMessage());
+        }
 
         // Save to log
         AiAnswerLog aiLog = AiAnswerLog.builder()

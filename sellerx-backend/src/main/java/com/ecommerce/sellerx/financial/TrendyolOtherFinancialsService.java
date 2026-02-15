@@ -366,15 +366,20 @@ public class TrendyolOtherFinancialsService {
             amount = amount.subtract(item.getCredit());
         }
 
+        BigDecimal finalAmount = amount.abs();
+
         TrendyolStoppage stoppage = TrendyolStoppage.builder()
                 .store(store)
                 .transactionId(item.getId())
                 .transactionDate(transactionDate)
-                .amount(amount.abs())
+                .amount(finalAmount)
                 .invoiceSerialNumber(item.getInvoiceSerialNumber())
                 .paymentOrderId(item.getPaymentOrderId())
                 .receiptId(item.getReceiptId())
                 .description(item.getDescription())
+                // Order matching fields from OtherFinancials API
+                .orderNumber(item.getOrderNumber())
+                .shipmentPackageId(item.getShipmentPackageId())
                 .rawData(Map.of(
                         "debt", item.getDebt() != null ? item.getDebt() : BigDecimal.ZERO,
                         "credit", item.getCredit() != null ? item.getCredit() : BigDecimal.ZERO,
@@ -383,6 +388,7 @@ public class TrendyolOtherFinancialsService {
                 .build();
 
         stoppageRepository.save(stoppage);
+
         return 1;
     }
 
@@ -436,6 +442,22 @@ public class TrendyolOtherFinancialsService {
 
         BigDecimal shippingAmount = item.getAmount() != null ? item.getAmount() : BigDecimal.ZERO;
 
+        // Resolve barcode: Trendyol cargo invoice API returns empty barcode,
+        // so look it up from the order via order_number
+        String barcode = item.getBarcode();
+        if ((barcode == null || barcode.isEmpty()) && item.getOrderNumber() != null) {
+            var orders = orderRepository.findByStoreIdAndTyOrderNumber(
+                    store.getId(), item.getOrderNumber());
+            if (!orders.isEmpty()) {
+                var order = orders.get(0);
+                if (order.getOrderItems() != null && order.getOrderItems().size() == 1) {
+                    barcode = order.getOrderItems().get(0).getBarcode();
+                }
+            }
+        }
+
+        String resolvedBarcode = barcode != null ? barcode : "";
+
         TrendyolCargoInvoice cargoInvoice = TrendyolCargoInvoice.builder()
                 .store(store)
                 .invoiceSerialNumber(serialNumber)
@@ -447,7 +469,7 @@ public class TrendyolOtherFinancialsService {
                 .vatRate(20) // Cargo VAT is typically 20%
                 .invoiceDate(invoiceDate)
                 .rawData(Map.of(
-                        "barcode", item.getBarcode() != null ? item.getBarcode() : "",
+                        "barcode", resolvedBarcode,
                         "productName", item.getProductName() != null ? item.getProductName() : ""
                 ))
                 .build();
@@ -456,14 +478,14 @@ public class TrendyolOtherFinancialsService {
         cargoInvoiceRepository.save(cargoInvoice);
 
         // Update product's lastShippingCostPerUnit for future shipping estimations
-        if (item.getBarcode() != null && !item.getBarcode().isEmpty() && shippingAmount.compareTo(BigDecimal.ZERO) > 0) {
-            productRepository.findByStoreIdAndBarcode(store.getId(), item.getBarcode())
+        if (!resolvedBarcode.isEmpty() && shippingAmount.compareTo(BigDecimal.ZERO) > 0) {
+            productRepository.findByStoreIdAndBarcode(store.getId(), resolvedBarcode)
                     .ifPresent(product -> {
                         product.setLastShippingCostPerUnit(shippingAmount);
                         product.setLastShippingCostDate(LocalDateTime.now());
                         productRepository.save(product);
                         log.debug("Updated product {} lastShippingCostPerUnit to {} from cargo invoice {}",
-                                item.getBarcode(), shippingAmount, serialNumber);
+                                resolvedBarcode, shippingAmount, serialNumber);
                     });
         }
 
@@ -638,6 +660,29 @@ public class TrendyolOtherFinancialsService {
         return transactionType;
     }
 
+    /**
+     * Normalizes corrupted Turkish characters in transaction types.
+     * Trendyol API started returning corrupted encoding after Dec 30, 2025 update.
+     * First affected records appeared on Jan 21, 2026.
+     *
+     * Known corrupted patterns are mapped to correct Turkish equivalents.
+     */
+    private String normalizeTransactionType(String transactionType) {
+        if (transactionType == null) {
+            return null;
+        }
+
+        // Known corrupted patterns → correct Turkish
+        return switch (transactionType) {
+            case "AZ-YURTDÕ_Õ OPERASYON BEDELI %18" -> "AZ-Yurtdışı Operasyon Bedeli %18";
+            case "TEDARIK EDEMEME FATURASI" -> "Tedarik Edememe";
+            case "YANLIS URUN FATURASI" -> "Yanlış Ürün Faturası";
+            case "EKSIK URUN FATURASI" -> "Eksik Ürün Faturası";
+            case "KUSURLU URUN FATURASI" -> "Kusurlu Ürün Faturası";
+            default -> transactionType;
+        };
+    }
+
     // ============== Wrapper methods for controller usage ==============
 
     /**
@@ -666,8 +711,18 @@ public class TrendyolOtherFinancialsService {
         int deductionInvoicesCount = syncDeductionInvoicesInternal(store, credentials, startDate, endDate);
         int returnInvoicesCount = syncReturnInvoicesInternal(store, credentials, startDate, endDate);
 
-        log.info("Completed syncing other financials for store: {} - stoppages: {}, paymentOrders: {}, cargoInvoices: {}, deductionInvoices: {}, returnInvoices: {}",
-                storeId, stoppagesCount, paymentOrdersCount, cargoInvoicesCount, deductionInvoicesCount, returnInvoicesCount);
+        // Sync additional OtherFinancials transaction types
+        int cashAdvanceCount = syncGenericOtherFinancialsInternal(store, credentials, startDate, endDate, "CashAdvance");
+        int wireTransferCount = syncGenericOtherFinancialsInternal(store, credentials, startDate, endDate, "WireTransfer");
+        int incomingTransferCount = syncGenericOtherFinancialsInternal(store, credentials, startDate, endDate, "IncomingTransfer");
+        int commissionAgreementCount = syncGenericOtherFinancialsInternal(store, credentials, startDate, endDate, "CommissionAgreementInvoice");
+        int financialItemCount = syncGenericOtherFinancialsInternal(store, credentials, startDate, endDate, "FinancialItem");
+
+        log.info("Completed syncing other financials for store: {} - stoppages: {}, paymentOrders: {}, cargoInvoices: {}, " +
+                "deductionInvoices: {}, returnInvoices: {}, cashAdvance: {}, wireTransfer: {}, incomingTransfer: {}, " +
+                "commissionAgreement: {}, financialItem: {}",
+                storeId, stoppagesCount, paymentOrdersCount, cargoInvoicesCount, deductionInvoicesCount, returnInvoicesCount,
+                cashAdvanceCount, wireTransferCount, incomingTransferCount, commissionAgreementCount, financialItemCount);
 
         return SyncResult.builder()
                 .stoppagesCount(stoppagesCount)
@@ -675,6 +730,11 @@ public class TrendyolOtherFinancialsService {
                 .cargoInvoicesCount(cargoInvoicesCount)
                 .deductionInvoicesCount(deductionInvoicesCount)
                 .returnInvoicesCount(returnInvoicesCount)
+                .cashAdvanceCount(cashAdvanceCount)
+                .wireTransferCount(wireTransferCount)
+                .incomingTransferCount(incomingTransferCount)
+                .commissionAgreementCount(commissionAgreementCount)
+                .financialItemCount(financialItemCount)
                 .success(true)
                 .build();
     }
@@ -1146,7 +1206,7 @@ public class TrendyolOtherFinancialsService {
             return 0;
         }
 
-        // Check if already exists
+        // Check if already exists by Trendyol ID
         if (deductionInvoiceRepository.existsByStoreIdAndTrendyolId(store.getId(), item.getId())) {
             return 0;
         }
@@ -1154,6 +1214,16 @@ public class TrendyolOtherFinancialsService {
         LocalDateTime transactionDate = item.getTransactionDate() != null
                 ? LocalDateTime.ofInstant(Instant.ofEpochMilli(item.getTransactionDate()), ZoneId.of("Europe/Istanbul"))
                 : LocalDateTime.now();
+
+        // Additional check: Prevent duplicates when Trendyol returns different IDs for same invoice
+        // (e.g., first sync returns numeric ID, later sync returns DDF/AZD format)
+        BigDecimal debt = item.getDebt() != null ? item.getDebt() : BigDecimal.ZERO;
+        if (deductionInvoiceRepository.existsByStoreIdAndDebtAndTransactionDateAndTransactionType(
+                store.getId(), debt, transactionDate, item.getTransactionType())) {
+            log.debug("Skipping duplicate invoice by content match: {} (debt={}, date={}, type={})",
+                    item.getId(), debt, transactionDate, item.getTransactionType());
+            return 0;
+        }
 
         LocalDateTime paymentDate = item.getPaymentDate() != null
                 ? LocalDateTime.ofInstant(Instant.ofEpochMilli(item.getPaymentDate()), ZoneId.of("Europe/Istanbul"))
@@ -1219,9 +1289,22 @@ public class TrendyolOtherFinancialsService {
                     item.getId(), item.getTransactionType());
         }
 
+        // UNIVERSAL FALLBACK: For any remaining types where invoiceSerialNumber is still null/empty,
+        // use the Trendyol ID as fallback. This prevents NULL invoice_serial_number in database
+        // and ensures all invoice types are properly tracked.
+        // Examples: "Eksik Ürün Faturası", "Yanlış Ürün Faturası", and any future types
+        if ((invoiceSerialNum == null || invoiceSerialNum.isEmpty()) && item.getId() != null) {
+            invoiceSerialNum = item.getId();
+            log.debug("FALLBACK: using id '{}' as invoiceSerialNumber for unhandled type '{}'",
+                    item.getId(), item.getTransactionType());
+        }
+
         // Fix transaction type: Trendyol API returns "Yurt Dışı Operasyon Bedeli"
         // but it should be "Yurtdışı Operasyon Iade Bedeli" (as shown in Trendyol Excel export)
-        String correctedTransactionType = correctTransactionType(item.getTransactionType());
+        // Also normalize corrupted Turkish characters from API (since Dec 30, 2025 update)
+        String correctedTransactionType = normalizeTransactionType(
+                correctTransactionType(item.getTransactionType())
+        );
 
         TrendyolDeductionInvoice invoice = TrendyolDeductionInvoice.builder()
                 .storeId(store.getId())
@@ -1232,6 +1315,7 @@ public class TrendyolOtherFinancialsService {
                 .debt(item.getDebt() != null ? item.getDebt() : BigDecimal.ZERO)
                 .credit(item.getCredit() != null ? item.getCredit() : BigDecimal.ZERO)
                 .invoiceSerialNumber(invoiceSerialNum)
+                .officialSerialNumber(item.getInvoiceSerialNumber())
                 .paymentOrderId(item.getPaymentOrderId())
                 .paymentDate(paymentDate)
                 .orderNumber(item.getOrderNumber())
@@ -1251,21 +1335,29 @@ public class TrendyolOtherFinancialsService {
 
     /**
      * Updates orders with real shipping costs from cargo invoices.
-     * Matches trendyol_cargo_invoices with trendyol_orders by order_number.
-     * Sets is_shipping_estimated = false for matched orders.
+     * Filters by 'Gönderi Kargo Bedeli' for outbound shipping cost.
+     * Also updates return shipping costs from 'İade Kargo Bedeli' invoices.
      *
      * @param storeId The store ID
-     * @return Number of orders updated
+     * @return Number of orders updated (outbound shipping)
      */
     @Transactional
     public int updateOrdersWithRealShipping(UUID storeId) {
         log.info("Updating orders with real shipping costs for store: {}", storeId);
 
-        // Use native query from repository to update orders
-        int updatedCount = orderRepository.updateOrdersWithCargoInvoices(storeId);
+        // Update outbound shipping costs (Gönderi Kargo Bedeli)
+        int outboundCount = orderRepository.updateOrdersWithCargoInvoices(storeId);
+        log.info("Updated {} orders with real outbound shipping costs for store: {}", outboundCount, storeId);
 
-        log.info("Updated {} orders with real shipping costs for store: {}", updatedCount, storeId);
-        return updatedCount;
+        // Update return shipping costs (İade Kargo Bedeli)
+        int returnCount = orderRepository.updateOrdersWithReturnCargoInvoices(storeId);
+        log.info("Updated {} orders with real return shipping costs for store: {}", returnCount, storeId);
+
+        // Recalculate estimates for remaining orders using product reference data
+        int estimatedCount = orderRepository.recalculateEstimatedShipping(storeId);
+        log.info("Recalculated estimated shipping for {} orders using product reference data for store: {}", estimatedCount, storeId);
+
+        return outboundCount;
     }
 
     /**
@@ -1281,8 +1373,115 @@ public class TrendyolOtherFinancialsService {
         private int cargoInvoicesCount;
         private int deductionInvoicesCount;
         private int returnInvoicesCount;
+        private int cashAdvanceCount;
+        private int wireTransferCount;
+        private int incomingTransferCount;
+        private int commissionAgreementCount;
+        private int financialItemCount;
         private boolean success;
         private String errorMessage;
+    }
+
+    // ============== Generic OtherFinancials Sync Methods ==============
+    // For CashAdvance, WireTransfer, IncomingTransfer, CommissionAgreementInvoice, FinancialItem
+
+    /**
+     * Generic sync method for additional OtherFinancials transaction types.
+     * Stores records in trendyol_deduction_invoices table with their transactionType preserved.
+     * Supports: CashAdvance, WireTransfer, IncomingTransfer, CommissionAgreementInvoice, FinancialItem
+     */
+    private int syncGenericOtherFinancialsInternal(Store store, TrendyolCredentials credentials,
+                                                    LocalDate startDate, LocalDate endDate, String transactionType) {
+        log.info("Syncing {} for store: {} from {} to {}", transactionType, store.getId(), startDate, endDate);
+
+        // Trendyol API has a 15-day limit on date range
+        long daysBetween = java.time.temporal.ChronoUnit.DAYS.between(startDate, endDate);
+        if (daysBetween > 14) {
+            int totalSavedCount = 0;
+            LocalDate chunkStart = startDate;
+
+            while (chunkStart.isBefore(endDate) || chunkStart.isEqual(endDate)) {
+                LocalDate chunkEnd = chunkStart.plusDays(14);
+                if (chunkEnd.isAfter(endDate)) {
+                    chunkEnd = endDate;
+                }
+
+                totalSavedCount += syncGenericOtherFinancialsChunk(store, credentials, chunkStart, chunkEnd, transactionType);
+                chunkStart = chunkEnd.plusDays(1);
+            }
+
+            log.info("Total saved {} {} records across all chunks for store: {}", totalSavedCount, transactionType, store.getId());
+            return totalSavedCount;
+        }
+
+        return syncGenericOtherFinancialsChunk(store, credentials, startDate, endDate, transactionType);
+    }
+
+    private int syncGenericOtherFinancialsChunk(Store store, TrendyolCredentials credentials,
+                                                 LocalDate startDate, LocalDate endDate, String transactionType) {
+        HttpEntity<String> entity = createHttpEntity(credentials);
+        long startTimestamp = startDate.atStartOfDay(ZoneId.of("Europe/Istanbul")).toInstant().toEpochMilli();
+        long endTimestamp = endDate.plusDays(1).atStartOfDay(ZoneId.of("Europe/Istanbul")).toInstant().toEpochMilli();
+
+        int currentPage = 0;
+        int totalPages = 1;
+        int savedCount = 0;
+
+        while (currentPage < totalPages) {
+            rateLimiter.acquire(store.getId());
+
+            String url = TRENDYOL_BASE_URL + OTHER_FINANCIALS_ENDPOINT +
+                    "?transactionType=" + transactionType +
+                    "&startDate=" + startTimestamp +
+                    "&endDate=" + endTimestamp +
+                    "&page=" + currentPage +
+                    "&size=1000";
+
+            try {
+                ResponseEntity<TrendyolOtherFinancialsResponse> response = restTemplate.exchange(
+                        url,
+                        HttpMethod.GET,
+                        entity,
+                        TrendyolOtherFinancialsResponse.class,
+                        credentials.getSellerId()
+                );
+
+                if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                    TrendyolOtherFinancialsResponse data = response.getBody();
+
+                    if (currentPage == 0) {
+                        totalPages = data.getTotalPages() != null ? data.getTotalPages() : 1;
+                        if (data.getTotalElements() != null && data.getTotalElements() > 0) {
+                            log.info("Found {} total {} records across {} pages for store: {}",
+                                    data.getTotalElements(), transactionType, totalPages, store.getId());
+                        }
+                    }
+
+                    if (data.getContent() != null) {
+                        for (TrendyolOtherFinancialsItem item : data.getContent()) {
+                            savedCount += saveDeductionInvoice(store, item);
+                        }
+                    }
+                } else {
+                    log.warn("Failed to fetch {} page {} for store: {}", transactionType, currentPage, store.getId());
+                    break;
+                }
+
+                currentPage++;
+                Thread.sleep(200);
+
+            } catch (Exception e) {
+                log.error("Error fetching {} for store: {} - chunk {} to {}: {}",
+                        transactionType, store.getId(), startDate, endDate, e.getMessage());
+                break;
+            }
+        }
+
+        if (savedCount > 0) {
+            log.info("Saved {} {} records for chunk {} to {} for store: {}",
+                    savedCount, transactionType, startDate, endDate, store.getId());
+        }
+        return savedCount;
     }
 
     // ============== ReturnInvoices Sync Methods ==============
@@ -1409,7 +1608,7 @@ public class TrendyolOtherFinancialsService {
             return 0;
         }
 
-        // Check if already exists
+        // Check if already exists by Trendyol ID
         if (deductionInvoiceRepository.existsByStoreIdAndTrendyolId(store.getId(), item.getId())) {
             return 0;
         }
@@ -1417,6 +1616,15 @@ public class TrendyolOtherFinancialsService {
         LocalDateTime transactionDate = item.getTransactionDate() != null
                 ? LocalDateTime.ofInstant(Instant.ofEpochMilli(item.getTransactionDate()), ZoneId.of("Europe/Istanbul"))
                 : LocalDateTime.now();
+
+        // Additional check: Prevent duplicates when Trendyol returns different IDs for same invoice
+        BigDecimal credit = item.getCredit() != null ? item.getCredit() : BigDecimal.ZERO;
+        if (deductionInvoiceRepository.existsByStoreIdAndCreditAndTransactionDateAndTransactionType(
+                store.getId(), credit, transactionDate, item.getTransactionType())) {
+            log.debug("Skipping duplicate return invoice by content match: {} (credit={}, date={}, type={})",
+                    item.getId(), credit, transactionDate, item.getTransactionType());
+            return 0;
+        }
 
         LocalDateTime paymentDate = item.getPaymentDate() != null
                 ? LocalDateTime.ofInstant(Instant.ofEpochMilli(item.getPaymentDate()), ZoneId.of("Europe/Istanbul"))

@@ -3,6 +3,7 @@
 import { useAdminDashboardStats } from "@/hooks/queries/use-admin";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { FadeIn } from "@/components/motion";
 import {
   HeroMetrics,
   UserGrowthChart,
@@ -33,6 +34,7 @@ export default function AdminDashboardPage() {
   }
 
   return (
+    <FadeIn>
     <div className="space-y-6">
       {/* Page Header */}
       <div className="flex items-center justify-between">
@@ -79,5 +81,6 @@ export default function AdminDashboardPage() {
       {/* System Health Grid - 6 Mini Cards */}
       <SystemHealthGrid stats={stats} isLoading={isLoading} />
     </div>
+    </FadeIn>
   );
 }

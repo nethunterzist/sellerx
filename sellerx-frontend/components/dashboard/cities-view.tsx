@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { FadeIn } from "@/components/motion";
 import dynamic from "next/dynamic";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -27,7 +28,7 @@ import { cn } from "@/lib/utils";
 import { format, subDays, subMonths, startOfMonth, endOfMonth } from "date-fns";
 import { tr } from "date-fns/locale";
 import type { CityStats, CityStatsResponse } from "@/types/city-stats";
-import { CITY_NAME_TO_CODE } from "@/types/city-stats";
+import { CITY_NAME_TO_CODE, TURKEY_CITY_CODES } from "@/types/city-stats";
 import { useCurrency } from "@/lib/contexts/currency-context";
 import { useCityStats } from "@/hooks/queries/use-city-stats";
 import type { DateRange } from "react-day-picker";
@@ -89,6 +90,37 @@ interface CitiesViewProps {
 
 function formatNumber(value: number): string {
   return new Intl.NumberFormat("tr-TR").format(value);
+}
+
+/**
+ * Şehir isimlerini normalize eder (karşılaştırma için)
+ * - Boşlukları temizler
+ * - Küçük harfe çevirir
+ * - Türkçe karakterleri normalize eder
+ */
+function normalizeCityName(name: string | null | undefined): string {
+  if (!name) return "";
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/İ/g, "i")  // Türkçe büyük İ
+    .replace(/I/g, "ı")  // ASCII büyük I → Türkçe ı
+    .replace(/Ş/g, "ş")
+    .replace(/Ğ/g, "ğ")
+    .replace(/Ü/g, "ü")
+    .replace(/Ö/g, "ö")
+    .replace(/Ç/g, "ç");
+}
+
+/**
+ * cityCode'dan doğru şehir ismini döndürür
+ */
+function getCanonicalCityName(cityCode: number | null, fallbackName: string): string {
+  if (cityCode && TURKEY_CITY_CODES[cityCode]) {
+    return TURKEY_CITY_CODES[cityCode];
+  }
+  // Fallback: ilk harfi büyük yap
+  return fallbackName.charAt(0).toUpperCase() + fallbackName.slice(1).toLowerCase();
 }
 
 // Color scale based on order count
@@ -166,26 +198,69 @@ export function CitiesView({ storeId }: CitiesViewProps) {
     return preset?.label || "Son 7 gün";
   };
 
-  // Create a map of city name to stats
-  const cityStatsMap = useMemo(() => {
-    if (!cityStats?.cities) return new Map<string, CityStats>();
+  // Şehirleri normalize edip birleştir (tekrar eden şehirleri merge et)
+  const normalizedCities = useMemo(() => {
+    if (!cityStats?.cities) return [];
 
-    const map = new Map<string, CityStats>();
+    const cityMap = new Map<string, CityStats>();
+
     cityStats.cities.forEach((city) => {
-      // Normalize city name for matching
-      const normalizedName = city.cityName?.toLowerCase().trim();
+      const normalizedKey = normalizeCityName(city.cityName);
+      if (!normalizedKey) return;
+
+      const existing = cityMap.get(normalizedKey);
+
+      if (existing) {
+        // Mevcut şehre değerleri ekle (birleştir)
+        cityMap.set(normalizedKey, {
+          cityName: existing.cityName, // İlk gelen canonical ismi kullan
+          cityCode: existing.cityCode || city.cityCode, // cityCode'u al
+          totalOrders: existing.totalOrders + city.totalOrders,
+          totalRevenue: existing.totalRevenue + city.totalRevenue,
+          totalQuantity: existing.totalQuantity + city.totalQuantity,
+          averageOrderValue: 0, // Sonra hesaplanacak
+        });
+      } else {
+        // Yeni şehir ekle
+        const canonicalName = getCanonicalCityName(city.cityCode, city.cityName);
+        cityMap.set(normalizedKey, {
+          ...city,
+          cityName: canonicalName,
+        });
+      }
+    });
+
+    // averageOrderValue'ları hesapla ve sırala
+    const result = Array.from(cityMap.values())
+      .map((city) => ({
+        ...city,
+        averageOrderValue: city.totalOrders > 0 ? city.totalRevenue / city.totalOrders : 0,
+      }))
+      .sort((a, b) => b.totalOrders - a.totalOrders);
+
+    return result;
+  }, [cityStats?.cities]);
+
+  // Normalize edilmiş şehir sayısı
+  const normalizedTotalCities = normalizedCities.length;
+
+  // Create a map of city name to stats (for hover matching)
+  const cityStatsMap = useMemo(() => {
+    const map = new Map<string, CityStats>();
+    normalizedCities.forEach((city) => {
+      const normalizedName = normalizeCityName(city.cityName);
       if (normalizedName) {
         map.set(normalizedName, city);
       }
     });
     return map;
-  }, [cityStats]);
+  }, [normalizedCities]);
 
   // Get max order count for color scaling
   const maxOrders = useMemo(() => {
-    if (!cityStats?.cities || cityStats.cities.length === 0) return 0;
-    return Math.max(...cityStats.cities.map((c) => c.totalOrders));
-  }, [cityStats]);
+    if (normalizedCities.length === 0) return 0;
+    return Math.max(...normalizedCities.map((c) => c.totalOrders));
+  }, [normalizedCities]);
 
   // Get hovered city stats
   const hoveredCityStats = useMemo(() => {
@@ -198,7 +273,7 @@ export function CitiesView({ storeId }: CitiesViewProps) {
   const cityData = useMemo(() => {
     const data: Record<string, { value: number }> = {};
 
-    cityStats?.cities.forEach((city) => {
+    normalizedCities.forEach((city) => {
       // Try to find city code from name
       const cityCode = city.cityCode || CITY_NAME_TO_CODE[city.cityName];
       if (cityCode) {
@@ -208,7 +283,7 @@ export function CitiesView({ storeId }: CitiesViewProps) {
     });
 
     return data;
-  }, [cityStats]);
+  }, [normalizedCities]);
 
   if (isLoading) {
     return (
@@ -254,6 +329,7 @@ export function CitiesView({ storeId }: CitiesViewProps) {
   }
 
   return (
+    <FadeIn>
     <div className="space-y-6">
       {/* Map Card */}
       <Card>
@@ -311,7 +387,7 @@ export function CitiesView({ storeId }: CitiesViewProps) {
             </div>
 
             <div className="text-sm text-muted-foreground">
-              {cityStats.totalCities} şehirden sipariş
+              {normalizedTotalCities} şehirden sipariş
             </div>
           </div>
         </CardHeader>
@@ -339,7 +415,7 @@ export function CitiesView({ storeId }: CitiesViewProps) {
                 customStyle={{ idleColor: "#E3F2FD", hoverColor: "#1D70F1" }}
                 cityWrapper={(cityComponent, cityData) => {
                   const cityCode = cityData.plateNumber;
-                  const stats = cityStats.cities.find(
+                  const stats = normalizedCities.find(
                     (c) => c.cityCode === cityCode || CITY_NAME_TO_CODE[c.cityName] === cityCode
                   );
                   const fillColor = stats
@@ -455,7 +531,7 @@ export function CitiesView({ storeId }: CitiesViewProps) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {(showAllCities ? cityStats.cities : cityStats.cities.slice(0, 15)).map((city, index) => (
+              {(showAllCities ? normalizedCities : normalizedCities.slice(0, 15)).map((city, index) => (
                 <TableRow
                   key={city.cityCode || city.cityName}
                   className={cn(
@@ -485,18 +561,19 @@ export function CitiesView({ storeId }: CitiesViewProps) {
               ))}
             </TableBody>
           </Table>
-          {cityStats.cities.length > 15 && (
+          {normalizedCities.length > 15 && (
             <button
               onClick={() => setShowAllCities(!showAllCities)}
               className="w-full text-sm text-[#1D70F1] hover:text-[#1557c0] font-medium text-center mt-4 py-2 hover:bg-blue-50 rounded-md transition-colors"
             >
               {showAllCities
                 ? "Sadece ilk 15 şehri göster"
-                : `Tüm ${cityStats.cities.length} şehri göster`}
+                : `Tüm ${normalizedCities.length} şehri göster`}
             </button>
           )}
         </CardContent>
       </Card>
     </div>
+    </FadeIn>
   );
 }

@@ -22,8 +22,7 @@ export function ReturnCostBreakdown({
     { name: "Ürün Maliyeti", value: costBreakdown.productCost, color: COLORS[0] },
     { name: "Gidiş Kargo", value: costBreakdown.shippingCostOut, color: COLORS[1] },
     { name: "Dönüş Kargo", value: costBreakdown.shippingCostReturn, color: COLORS[2] },
-    { name: "Komisyon Kaybı", value: costBreakdown.commissionLoss, color: COLORS[3] },
-    { name: "Ambalaj", value: costBreakdown.packagingCost, color: COLORS[4] },
+    { name: "Ambalaj", value: costBreakdown.packagingCost, color: COLORS[3] },
   ].filter((item) => item.value > 0);
 
   const CustomTooltip = ({ active, payload }: any) => {

@@ -1,0 +1,171 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]:
+        - link "sellerx" [ref=e6] [cursor=pointer]:
+          - /url: /dashboard
+          - generic [ref=e7]: sellerx
+        - button "Kenar çubuğunu daralt" [ref=e8] [cursor=pointer]:
+          - img [ref=e9]
+      - navigation [ref=e11]:
+        - link "Kontrol Paneli" [ref=e13] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e14]
+          - generic [ref=e19]: Kontrol Paneli
+        - link "Ürünler" [ref=e21] [cursor=pointer]:
+          - /url: /products
+          - img [ref=e22]
+          - generic [ref=e26]: Ürünler
+        - link "Buybox" [ref=e28] [cursor=pointer]:
+          - /url: /buybox
+          - img [ref=e29]
+          - generic [ref=e35]: Buybox
+        - link "Siparişler" [ref=e37] [cursor=pointer]:
+          - /url: /orders
+          - img [ref=e38]
+          - generic [ref=e42]: Siparişler
+        - link "Giderler" [ref=e44] [cursor=pointer]:
+          - /url: /expenses
+          - img [ref=e45]
+          - generic [ref=e48]: Giderler
+        - link "Kâr Analizi" [ref=e50] [cursor=pointer]:
+          - /url: /profit
+          - img [ref=e51]
+          - generic [ref=e54]: Kâr Analizi
+        - link "Faturalar" [ref=e56] [cursor=pointer]:
+          - /url: /financial/invoices
+          - img [ref=e57]
+          - generic [ref=e60]: Faturalar
+        - link "KDV" [ref=e62] [cursor=pointer]:
+          - /url: /kdv
+          - img [ref=e63]
+          - generic [ref=e65]: KDV
+        - link "Kâr Hesaplama" [ref=e67] [cursor=pointer]:
+          - /url: /kar-hesaplama
+          - img [ref=e68]
+          - generic [ref=e70]: Kâr Hesaplama
+        - link "Dümen" [ref=e72] [cursor=pointer]:
+          - /url: /dumen
+          - img [ref=e73]
+          - generic [ref=e76]: Dümen
+        - link "Satın Alma" [ref=e78] [cursor=pointer]:
+          - /url: /purchasing
+          - img [ref=e79]
+          - generic [ref=e84]: Satın Alma
+        - link "İadeler" [ref=e86] [cursor=pointer]:
+          - /url: /returns
+          - img [ref=e87]
+          - generic [ref=e90]: İadeler
+        - link "AI Asistan AI" [ref=e92] [cursor=pointer]:
+          - /url: /qa
+          - img [ref=e93]
+          - generic [ref=e95]:
+            - text: AI Asistan
+            - generic [ref=e96]: AI
+        - link "Müşteri Analizi" [ref=e98] [cursor=pointer]:
+          - /url: /customer-analytics
+          - img [ref=e99]
+          - generic [ref=e104]: Müşteri Analizi
+        - link "Uyarılar" [ref=e106] [cursor=pointer]:
+          - /url: /alerts
+          - img [ref=e107]
+          - generic [ref=e110]: Uyarılar
+        - link "Mağazalar" [ref=e112] [cursor=pointer]:
+          - /url: /new-store
+          - img [ref=e113]
+          - generic [ref=e118]: Mağazalar
+    - banner [ref=e119]:
+      - generic [ref=e121]:
+        - img [ref=e122]
+        - heading "Müşteri Soruları" [level=1] [ref=e124]
+      - button "k-pure" [ref=e126] [cursor=pointer]:
+        - generic [ref=e127]:
+          - img
+        - generic [ref=e128]: k-pure
+        - img
+      - generic [ref=e129]:
+        - button "8" [ref=e130] [cursor=pointer]:
+          - img
+          - generic [ref=e131]: "8"
+        - button [ref=e132] [cursor=pointer]:
+          - generic [ref=e133]:
+            - img
+        - button [ref=e134] [cursor=pointer]:
+          - img
+        - button "Bildirimler" [ref=e135] [cursor=pointer]:
+          - img
+        - button "T Test User" [ref=e136] [cursor=pointer]:
+          - generic [ref=e137]: T
+          - generic [ref=e138]: Test User
+          - img
+    - main [ref=e139]:
+      - generic [ref=e141]:
+        - navigation [ref=e142]:
+          - generic [ref=e143]:
+            - button "Cevap Akışı" [ref=e144] [cursor=pointer]:
+              - generic [ref=e146]:
+                - img [ref=e147]
+                - generic [ref=e149]: Cevap Akışı
+            - button "AI Beyni 2" [ref=e150] [cursor=pointer]:
+              - generic [ref=e151]:
+                - img [ref=e152]
+                - generic [ref=e162]: AI Beyni
+                - generic [ref=e164]: "2"
+            - button "Kurallar" [ref=e165] [cursor=pointer]:
+              - generic [ref=e166]:
+                - img [ref=e167]
+                - generic [ref=e169]: Kurallar
+            - button "Performans" [ref=e170] [cursor=pointer]:
+              - generic [ref=e171]:
+                - img [ref=e172]
+                - generic [ref=e174]: Performans
+        - generic [ref=e178]:
+          - generic [ref=e179]:
+            - generic [ref=e180]:
+              - button "Bekleyen 1" [ref=e181] [cursor=pointer]:
+                - img [ref=e182]
+                - generic [ref=e185]: Bekleyen
+                - generic [ref=e186]: "1"
+              - button "Cevaplanan 1" [ref=e187] [cursor=pointer]:
+                - img [ref=e188]
+                - generic [ref=e191]: Cevaplanan
+                - generic [ref=e192]: "1"
+              - button "Manuel" [ref=e193] [cursor=pointer]:
+                - img [ref=e194]
+                - generic [ref=e197]: Manuel
+            - button "Exosome PDRN Sıkılaştırıcı Göz Kremi 30 ml | Yaşlanma Karşıtı & Göz Altı Bakımı 700 tl di fiyatlar neden yukseldi?? 14 gün önce Bekliyor" [ref=e199] [cursor=pointer]:
+              - generic [ref=e200]:
+                - generic [ref=e203]: Exosome PDRN Sıkılaştırıcı Göz Kremi 30 ml | Yaşlanma Karşıtı & Göz Altı Bakımı
+                - generic [ref=e204]:
+                  - img [ref=e205]
+                  - paragraph [ref=e207]: 700 tl di fiyatlar neden yukseldi??
+                - generic [ref=e208]:
+                  - generic [ref=e209]:
+                    - img [ref=e210]
+                    - generic [ref=e213]: 14 gün önce
+                  - generic [ref=e214]:
+                    - img
+                    - text: Bekliyor
+          - generic [ref=e216]:
+            - generic [ref=e218]: Soru Detayı
+            - generic [ref=e219]:
+              - generic [ref=e220]:
+                - img [ref=e221]
+                - generic [ref=e225]: Exosome PDRN Sıkılaştırıcı Göz Kremi 30 ml | Yaşlanma Karşıtı & Göz Altı Bakımı
+              - generic [ref=e226]:
+                - img [ref=e227]
+                - generic [ref=e230]: 14 gün önce
+              - generic [ref=e231]:
+                - generic [ref=e232]:
+                  - img [ref=e233]
+                  - generic [ref=e235]: Müşteri Sorusu
+                - paragraph [ref=e236]: 700 tl di fiyatlar neden yukseldi??
+              - button "AI Cevap Üret" [ref=e238] [cursor=pointer]:
+                - img
+                - text: AI Cevap Üret
+  - region "Notifications alt+T"
+  - alert [ref=e239]
+```

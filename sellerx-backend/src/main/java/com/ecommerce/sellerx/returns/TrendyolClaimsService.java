@@ -1,5 +1,7 @@
 package com.ecommerce.sellerx.returns;
 
+import com.ecommerce.sellerx.orders.TrendyolOrder;
+import com.ecommerce.sellerx.orders.TrendyolOrderRepository;
 import com.ecommerce.sellerx.returns.dto.*;
 import com.ecommerce.sellerx.stores.Store;
 import com.ecommerce.sellerx.stores.StoreRepository;
@@ -12,6 +14,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.*;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
@@ -32,10 +37,47 @@ public class TrendyolClaimsService {
     private static final String TRENDYOL_BASE_URL = "https://apigw.trendyol.com";
     private static final ZoneId TURKEY_ZONE = ZoneId.of("Europe/Istanbul");
 
+    private static final Set<String> RETURN_TRIGGERING_STATUSES = Set.of("Accepted");
+    private static final Set<String> PROTECTED_ORDER_STATUSES = Set.of("Cancelled", "Returned");
+
+    private static final Map<Integer, Boolean> REQUIRES_FILE_MAP = Map.ofEntries(
+            Map.entry(1, true),
+            Map.entry(51, true),
+            Map.entry(101, true),
+            Map.entry(151, true),
+            Map.entry(201, true),
+            Map.entry(251, true),
+            Map.entry(301, true),
+            Map.entry(351, true),
+            Map.entry(401, true),
+            Map.entry(451, false),
+            Map.entry(1651, false),
+            Map.entry(1701, false),
+            Map.entry(1751, false)
+    );
+
+    private static final List<ClaimIssueReasonDto> FALLBACK_REASONS = Arrays.asList(
+            ClaimIssueReasonDto.builder().id(1).name("İade gelen ürün sahte").requiresFile(true).build(),
+            ClaimIssueReasonDto.builder().id(51).name("İade gelen ürün kullanılmış").requiresFile(true).build(),
+            ClaimIssueReasonDto.builder().id(201).name("İade gelen ürün yanlış").requiresFile(true).build(),
+            ClaimIssueReasonDto.builder().id(251).name("İade gelen ürün defolu/zarar görmüş").requiresFile(true).build(),
+            ClaimIssueReasonDto.builder().id(401).name("Eksik ürün").requiresFile(true).build(),
+            ClaimIssueReasonDto.builder().id(101).name("Fazla ürün").requiresFile(true).build(),
+            ClaimIssueReasonDto.builder().id(151).name("Ürünün parçası/aksesuarı eksik").requiresFile(true).build(),
+            ClaimIssueReasonDto.builder().id(301).name("Ürün bana ait değil").requiresFile(true).build(),
+            ClaimIssueReasonDto.builder().id(351).name("İade paketi boş geldi").requiresFile(true).build(),
+            ClaimIssueReasonDto.builder().id(1651).name("İade paketi elime ulaşmadı").requiresFile(false).build(),
+            ClaimIssueReasonDto.builder().id(1701).name("Ürün yanlış değil").requiresFile(false).build(),
+            ClaimIssueReasonDto.builder().id(1751).name("Ürün kusurlu değil").requiresFile(false).build(),
+            ClaimIssueReasonDto.builder().id(451).name("Diğer").requiresFile(false).build()
+    );
+
     private final TrendyolClaimRepository claimRepository;
+    private final TrendyolOrderRepository orderRepository;
     private final StoreRepository storeRepository;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
+    private final ReturnRecordSyncService returnRecordSyncService;
 
     /**
      * Sync claims from Trendyol API
@@ -59,6 +101,7 @@ public class TrendyolClaimsService {
         int totalFetched = 0;
         int newClaims = 0;
         int updatedClaims = 0;
+        int ordersBridged = 0;
         int page = 0;
         int size = 50;
         boolean hasMore = true;
@@ -98,17 +141,21 @@ public class TrendyolClaimsService {
 
                             Optional<TrendyolClaim> existingOpt = claimRepository.findByStoreIdAndClaimId(storeId, claimId);
 
+                            TrendyolClaim savedClaim;
                             if (existingOpt.isPresent()) {
                                 TrendyolClaim existing = existingOpt.get();
                                 updateClaimFromJson(existing, claimNode);
-                                claimRepository.save(existing);
+                                savedClaim = claimRepository.save(existing);
                                 updatedClaims++;
                             } else {
                                 TrendyolClaim newClaim = createClaimFromJson(store, claimNode);
-                                claimRepository.save(newClaim);
+                                savedClaim = claimRepository.save(newClaim);
                                 newClaims++;
                             }
                             totalFetched++;
+
+                            // Bridge: update order status based on claim status
+                            ordersBridged += bridgeClaimToOrderStatus(storeId, savedClaim);
                         }
 
                         int totalPages = root.path("totalPages").asInt(1);
@@ -122,14 +169,24 @@ public class TrendyolClaimsService {
                 }
             }
 
-            log.info("Claims sync completed for store {}: {} fetched, {} new, {} updated",
-                    storeId, totalFetched, newClaims, updatedClaims);
+            log.info("Claims sync completed for store {}: {} fetched, {} new, {} updated, {} orders bridged",
+                    storeId, totalFetched, newClaims, updatedClaims, ordersBridged);
+
+            // Sync return records from accepted claims
+            try {
+                int created = returnRecordSyncService.syncReturnRecordsForStore(storeId);
+                log.info("Return records sync: {} new records for store {}", created, storeId);
+            } catch (Exception e) {
+                log.error("Return records sync failed for store {}: {}", storeId, e.getMessage());
+            }
 
             return ClaimsSyncResponse.builder()
                     .totalFetched(totalFetched)
                     .newClaims(newClaims)
                     .updatedClaims(updatedClaims)
-                    .message("Sync completed successfully")
+                    .message(ordersBridged > 0
+                            ? String.format("Sync completed successfully. %d order(s) marked as Returned.", ordersBridged)
+                            : "Sync completed successfully")
                     .build();
 
         } catch (Exception e) {
@@ -222,10 +279,15 @@ public class TrendyolClaimsService {
                 claim.setSyncedAt(LocalDateTime.now());
                 claimRepository.save(claim);
 
-                log.info("Claim {} approved successfully for store {}", claimId, storeId);
+                // Bridge: mark matching orders as Returned
+                int bridged = bridgeClaimToOrderStatus(storeId, claim);
+
+                log.info("Claim {} approved successfully for store {} ({} orders bridged)", claimId, storeId, bridged);
                 return ClaimActionResponse.builder()
                         .success(true)
-                        .message("Claim approved successfully")
+                        .message(bridged > 0
+                                ? String.format("Claim approved successfully. %d order(s) marked as Returned.", bridged)
+                                : "Claim approved successfully")
                         .claimId(claimId)
                         .newStatus("Accepted")
                         .build();
@@ -331,24 +393,55 @@ public class TrendyolClaimsService {
     }
 
     /**
-     * Get claim issue reasons (static list based on Trendyol documentation)
+     * Get claim issue reasons dynamically from Trendyol API with fallback to static list.
+     * Cached daily and refreshed at 06:00 via scheduled eviction.
      */
+    @Cacheable("claimIssueReasons")
     public List<ClaimIssueReasonDto> getClaimIssueReasons() {
-        return Arrays.asList(
-                ClaimIssueReasonDto.builder().id(1).name("İade gelen ürün sahte").requiresFile(true).build(),
-                ClaimIssueReasonDto.builder().id(51).name("İade gelen ürün kullanılmış").requiresFile(true).build(),
-                ClaimIssueReasonDto.builder().id(201).name("İade gelen ürün yanlış").requiresFile(true).build(),
-                ClaimIssueReasonDto.builder().id(251).name("İade gelen ürün defolu/zarar görmüş").requiresFile(true).build(),
-                ClaimIssueReasonDto.builder().id(401).name("Eksik ürün").requiresFile(true).build(),
-                ClaimIssueReasonDto.builder().id(101).name("Fazla ürün").requiresFile(true).build(),
-                ClaimIssueReasonDto.builder().id(151).name("Ürünün parçası/aksesuarı eksik").requiresFile(true).build(),
-                ClaimIssueReasonDto.builder().id(301).name("Ürün bana ait değil").requiresFile(true).build(),
-                ClaimIssueReasonDto.builder().id(351).name("İade paketi boş geldi").requiresFile(true).build(),
-                ClaimIssueReasonDto.builder().id(1651).name("İade paketi elime ulaşmadı").requiresFile(false).build(),
-                ClaimIssueReasonDto.builder().id(1701).name("Ürün yanlış değil").requiresFile(false).build(),
-                ClaimIssueReasonDto.builder().id(1751).name("Ürün kusurlu değil").requiresFile(false).build(),
-                ClaimIssueReasonDto.builder().id(451).name("Diğer").requiresFile(false).build()
-        );
+        TrendyolCredentials credentials = findAnyTrendyolCredentials();
+        if (credentials == null) {
+            log.info("No Trendyol credentials found, returning fallback claim issue reasons");
+            return FALLBACK_REASONS;
+        }
+
+        try {
+            String url = TRENDYOL_BASE_URL + "/integration/order/claim-issue-reasons";
+            HttpEntity<String> entity = createHttpEntity(credentials);
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+
+            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                JsonNode root = objectMapper.readTree(response.getBody());
+                JsonNode content = root.path("content");
+
+                if (content.isArray() && content.size() > 0) {
+                    List<ClaimIssueReasonDto> reasons = new ArrayList<>();
+                    for (JsonNode node : content) {
+                        int id = node.path("id").asInt();
+                        String name = node.path("name").asText("");
+                        boolean requiresFile = REQUIRES_FILE_MAP.getOrDefault(id, false);
+                        reasons.add(ClaimIssueReasonDto.builder()
+                                .id(id)
+                                .name(name)
+                                .requiresFile(requiresFile)
+                                .build());
+                    }
+                    log.info("Fetched {} claim issue reasons from Trendyol API", reasons.size());
+                    return reasons;
+                }
+            }
+
+            log.warn("Empty or invalid response from claim issue reasons API, using fallback");
+            return FALLBACK_REASONS;
+        } catch (Exception e) {
+            log.warn("Failed to fetch claim issue reasons from API: {}, using fallback", e.getMessage());
+            return FALLBACK_REASONS;
+        }
+    }
+
+    @Scheduled(cron = "0 0 6 * * ?")
+    @CacheEvict(value = "claimIssueReasons", allEntries = true)
+    public void refreshClaimIssueReasonsCache() {
+        log.info("Claim issue reasons cache evicted, will refresh on next request");
     }
 
     /**
@@ -370,6 +463,60 @@ public class TrendyolClaimsService {
                 .unresolvedClaims(unresolved)
                 .waitingFraudCheckClaims(waitingFraudCheck)
                 .build();
+    }
+
+    /**
+     * Get audit trail for a claim item
+     * GET /integration/order/sellers/{sellerId}/claims/items/{claimItemsId}/audit
+     */
+    public List<ClaimItemAuditDto> getClaimItemAudit(UUID storeId, String claimItemId) {
+        Store store = storeRepository.findById(storeId)
+                .orElseThrow(() -> new RuntimeException("Store not found"));
+        TrendyolCredentials credentials = extractTrendyolCredentials(store);
+
+        if (credentials == null) {
+            throw new RuntimeException("Trendyol credentials not found for store: " + storeId);
+        }
+
+        try {
+            String url = String.format(
+                    "%s/integration/order/sellers/%s/claims/items/%s/audit",
+                    TRENDYOL_BASE_URL, credentials.getSellerId(), claimItemId
+            );
+
+            HttpEntity<String> entity = createHttpEntity(credentials);
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+
+            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                JsonNode root = objectMapper.readTree(response.getBody());
+                JsonNode content = root.path("content");
+
+                List<ClaimItemAuditDto> auditList = new ArrayList<>();
+                if (content.isArray()) {
+                    for (JsonNode node : content) {
+                        JsonNode userInfo = node.path("userInfoDocument");
+                        auditList.add(ClaimItemAuditDto.builder()
+                                .claimId(node.path("claimId").asText(null))
+                                .claimItemId(node.path("claimItemId").asText(null))
+                                .previousStatus(node.path("previousStatus").asText(null))
+                                .newStatus(node.path("newStatus").asText(null))
+                                .executorId(userInfo.path("id").asText(null))
+                                .executorApp(userInfo.path("app").asText(null))
+                                .executorUser(userInfo.path("user").asText(null))
+                                .date(parseTimestamp(node.path("date").asLong()))
+                                .build());
+                    }
+                }
+
+                log.info("Fetched {} audit entries for claim item {}", auditList.size(), claimItemId);
+                return auditList;
+            }
+
+            return Collections.emptyList();
+        } catch (Exception e) {
+            log.error("Error fetching audit for claim item {}: {}", claimItemId, e.getMessage());
+            throw new RuntimeException("Failed to fetch claim item audit: " + e.getMessage());
+        }
     }
 
     /**
@@ -537,7 +684,76 @@ public class TrendyolClaimsService {
                 .build();
     }
 
+    // ============== Claims → Orders Bridge ==============
+
+    /**
+     * Updates order status based on claim status.
+     * When a claim is "Accepted", matching orders are marked as "Returned".
+     * When a claim is "Rejected" or "Cancelled", orders revert to "Delivered"
+     * (only if they were previously set to "Returned" by a claim, not by cargo invoice).
+     *
+     * @param storeId The store ID
+     * @param claim The claim entity
+     * @return Number of orders updated
+     */
+    private int bridgeClaimToOrderStatus(UUID storeId, TrendyolClaim claim) {
+        if (claim.getOrderNumber() == null || claim.getOrderNumber().isEmpty()) {
+            return 0;
+        }
+
+        List<TrendyolOrder> matchingOrders = orderRepository.findByStoreIdAndTyOrderNumber(storeId, claim.getOrderNumber());
+        if (matchingOrders.isEmpty()) {
+            return 0;
+        }
+
+        int updated = 0;
+        String claimStatus = claim.getStatus();
+
+        if (RETURN_TRIGGERING_STATUSES.contains(claimStatus)) {
+            // Claim accepted → mark orders as Returned
+            for (TrendyolOrder order : matchingOrders) {
+                if (!PROTECTED_ORDER_STATUSES.contains(order.getStatus())) {
+                    order.setStatus("Returned");
+                    orderRepository.save(order);
+                    updated++;
+                }
+            }
+            if (updated > 0) {
+                log.info("Claims bridge: marked {} order(s) as Returned for orderNumber={} (claim={})",
+                        updated, claim.getOrderNumber(), claim.getClaimId());
+            }
+        } else if ("Rejected".equals(claimStatus) || "Cancelled".equals(claimStatus)) {
+            // Claim rejected/cancelled → revert orders to Delivered
+            // Only revert if order has no return shipping cost (i.e., not confirmed by cargo invoice)
+            for (TrendyolOrder order : matchingOrders) {
+                if ("Returned".equals(order.getStatus())
+                        && (order.getReturnShippingCost() == null || order.getReturnShippingCost().compareTo(BigDecimal.ZERO) == 0)) {
+                    order.setStatus("Delivered");
+                    orderRepository.save(order);
+                    updated++;
+                }
+            }
+            if (updated > 0) {
+                log.info("Claims bridge: reverted {} order(s) to Delivered for orderNumber={} (claim={}, status={})",
+                        updated, claim.getOrderNumber(), claim.getClaimId(), claimStatus);
+            }
+        }
+
+        return updated;
+    }
+
     // Helper methods
+
+    private TrendyolCredentials findAnyTrendyolCredentials() {
+        List<Store> trendyolStores = storeRepository.findByMarketplaceIgnoreCase("trendyol");
+        for (Store store : trendyolStores) {
+            TrendyolCredentials credentials = extractTrendyolCredentials(store);
+            if (credentials != null) {
+                return credentials;
+            }
+        }
+        return null;
+    }
 
     private TrendyolCredentials extractTrendyolCredentials(Store store) {
         MarketplaceCredentials credentials = store.getCredentials();
@@ -572,28 +788,8 @@ public class TrendyolClaimsService {
     }
 
     private TrendyolClaim createClaimFromJson(Store store, JsonNode node) {
-        List<ClaimItem> items = new ArrayList<>();
-        JsonNode itemsNode = node.path("items");
-        if (itemsNode.isArray()) {
-            for (JsonNode itemNode : itemsNode) {
-                items.add(ClaimItem.builder()
-                        .claimItemId(itemNode.path("id").asText())
-                        .barcode(itemNode.path("barcode").asText(null))
-                        .productName(itemNode.path("productName").asText(null))
-                        .productSize(itemNode.path("productSize").asText(null))
-                        .productColor(itemNode.path("productColor").asText(null))
-                        .price(new BigDecimal(itemNode.path("price").asText("0")))
-                        .quantity(new BigDecimal(itemNode.path("quantity").asText("1")))
-                        .reasonName(itemNode.path("reason").path("name").asText(null))
-                        .reasonCode(itemNode.path("reason").path("code").asText(null))
-                        .status(itemNode.path("status").asText(null))
-                        .customerNote(itemNode.path("customerNote").asText(null))
-                        .autoAccepted(itemNode.path("autoAccepted").asBoolean(false))
-                        .acceptedBySeller(itemNode.path("acceptedBySeller").asBoolean(false))
-                        .imageUrl(itemNode.path("imageUrl").asText(null))
-                        .build());
-            }
-        }
+        List<ClaimItem> items = parseClaimItems(node);
+
 
         return TrendyolClaim.builder()
                 .store(store)
@@ -621,29 +817,63 @@ public class TrendyolClaimsService {
         claim.setSyncedAt(LocalDateTime.now());
 
         // Update items
+        claim.setItems(parseClaimItems(node));
+    }
+
+    /**
+     * Parse claim items from the nested Trendyol API response.
+     * API structure: items[i].orderLine (product info) + items[i].claimItems[j] (claim details)
+     */
+    private List<ClaimItem> parseClaimItems(JsonNode node) {
         List<ClaimItem> items = new ArrayList<>();
         JsonNode itemsNode = node.path("items");
         if (itemsNode.isArray()) {
             for (JsonNode itemNode : itemsNode) {
-                items.add(ClaimItem.builder()
-                        .claimItemId(itemNode.path("id").asText())
-                        .barcode(itemNode.path("barcode").asText(null))
-                        .productName(itemNode.path("productName").asText(null))
-                        .productSize(itemNode.path("productSize").asText(null))
-                        .productColor(itemNode.path("productColor").asText(null))
-                        .price(new BigDecimal(itemNode.path("price").asText("0")))
-                        .quantity(new BigDecimal(itemNode.path("quantity").asText("1")))
-                        .reasonName(itemNode.path("reason").path("name").asText(null))
-                        .reasonCode(itemNode.path("reason").path("code").asText(null))
-                        .status(itemNode.path("status").asText(null))
-                        .customerNote(itemNode.path("customerNote").asText(null))
-                        .autoAccepted(itemNode.path("autoAccepted").asBoolean(false))
-                        .acceptedBySeller(itemNode.path("acceptedBySeller").asBoolean(false))
-                        .imageUrl(itemNode.path("imageUrl").asText(null))
-                        .build());
+                JsonNode orderLine = itemNode.path("orderLine");
+                JsonNode claimItemsNode = itemNode.path("claimItems");
+
+                // Product info from orderLine
+                String barcode = orderLine.path("barcode").asText(null);
+                String productName = orderLine.path("productName").asText(null);
+                String productSize = orderLine.path("productSize").asText(null);
+                String productColor = orderLine.path("productColor").asText(null);
+                BigDecimal price = new BigDecimal(orderLine.path("price").asText("0"));
+
+                // Create a ClaimItem for each claimItem entry
+                if (claimItemsNode.isArray() && claimItemsNode.size() > 0) {
+                    for (JsonNode claimItemNode : claimItemsNode) {
+                        items.add(ClaimItem.builder()
+                                .claimItemId(claimItemNode.path("id").asText())
+                                .barcode(barcode)
+                                .productName(productName)
+                                .productSize(productSize)
+                                .productColor(productColor)
+                                .price(price)
+                                .quantity(BigDecimal.ONE)
+                                .reasonName(claimItemNode.path("customerClaimItemReason").path("name").asText(null))
+                                .reasonCode(claimItemNode.path("customerClaimItemReason").path("code").asText(null))
+                                .status(claimItemNode.path("claimItemStatus").path("name").asText(null))
+                                .customerNote(claimItemNode.path("customerNote").asText(null))
+                                .autoAccepted(claimItemNode.path("autoAccepted").asBoolean(false))
+                                .acceptedBySeller(claimItemNode.path("acceptedBySeller").asBoolean(false))
+                                .imageUrl(claimItemNode.path("imageUrl").asText(null))
+                                .build());
+                    }
+                } else {
+                    // Fallback: if no claimItems array, create item with product info only
+                    items.add(ClaimItem.builder()
+                            .claimItemId(itemNode.path("id").asText())
+                            .barcode(barcode)
+                            .productName(productName)
+                            .productSize(productSize)
+                            .productColor(productColor)
+                            .price(price)
+                            .quantity(BigDecimal.ONE)
+                            .build());
+                }
             }
         }
-        claim.setItems(items);
+        return items;
     }
 
     private LocalDateTime parseTimestamp(long timestamp) {

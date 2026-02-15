@@ -47,6 +47,8 @@ class TrendyolInvoiceServicePurchaseVatTest extends BaseUnitTest {
     private StoreRepository storeRepository;
     @Mock
     private PurchaseOrderRepository purchaseOrderRepository;
+    @Mock
+    private TrendyolStoppageRepository stoppageRepository;
 
     @InjectMocks
     private TrendyolInvoiceService invoiceService;

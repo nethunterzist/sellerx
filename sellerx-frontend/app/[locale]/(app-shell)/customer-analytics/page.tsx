@@ -14,6 +14,7 @@ import {
   useCohortAnalysis,
   useFrequencyDistribution,
   useClvSummary,
+  type CustomerListFilter,
 } from "@/hooks/queries/use-customer-analytics";
 import { useCurrency } from "@/lib/contexts/currency-context";
 import { cn } from "@/lib/utils";
@@ -44,9 +45,21 @@ import {
   Hash,
   Calendar,
   Search,
+  Filter,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  X,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Tooltip as UITooltip,
   TooltipContent,
@@ -77,6 +90,7 @@ import type {
 } from "@/types/customer-analytics";
 import { CustomerDetailPanel } from "@/components/customer-analytics/customer-detail-panel";
 import { ProductRepeatDetailPanel } from "@/components/customer-analytics/product-repeat-detail-panel";
+import { FadeIn } from "@/components/motion";
 
 type Tab = "overview" | "products" | "customers" | "cross-sell";
 
@@ -148,6 +162,14 @@ export default function CustomerAnalyticsPage() {
   const [selectedProduct, setSelectedProduct] = useState<ProductRepeatData | null>(null);
   const [productDetailPanelOpen, setProductDetailPanelOpen] = useState(false);
 
+  // Sorting and filtering state
+  const [sortBy, setSortBy] = useState<string>("totalSpend");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [filters, setFilters] = useState<CustomerListFilter>({});
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [tempFilters, setTempFilters] = useState<CustomerListFilter>({});
+  const [showRepeatOnly, setShowRepeatOnly] = useState(true);
+
   const { data: selectedStore, isLoading: storeLoading } = useSelectedStore();
   const storeId = selectedStore?.selectedStoreId;
 
@@ -172,8 +194,11 @@ export default function CustomerAnalyticsPage() {
 
   const { data: analytics, isLoading: analyticsLoading } =
     useCustomerAnalyticsSummary(storeId || undefined);
+  const effectiveFilters = showRepeatOnly
+    ? { ...filters, minOrderCount: Math.max(filters.minOrderCount ?? 0, 2) }
+    : filters;
   const { data: customerList, isLoading: customersLoading } =
-    useCustomerList(storeId || undefined, customerPage, 20, customerSearch);
+    useCustomerList(storeId || undefined, customerPage, 20, customerSearch, sortBy, sortDir, effectiveFilters);
   const { data: productRepeat, isLoading: productRepeatLoading } =
     useProductRepeatAnalysis(storeId || undefined);
   const { data: crossSell, isLoading: crossSellLoading } =
@@ -238,6 +263,7 @@ export default function CustomerAnalyticsPage() {
     <div className="space-y-6">
 
       {/* Summary Cards */}
+      <FadeIn>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {/* Total Customers */}
         <div className="bg-card rounded-xl border border-border p-4">
@@ -310,6 +336,7 @@ export default function CustomerAnalyticsPage() {
           </p>
         </div>
       </div>
+      </FadeIn>
 
       {/* ===== OVERVIEW TAB ===== */}
       {activeTab === "overview" && (
@@ -1096,24 +1123,256 @@ export default function CustomerAnalyticsPage() {
           <div className="p-4 border-b border-border">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div>
-                <h3 className="font-semibold text-foreground">Musteri Listesi</h3>
+                <h3 className="font-semibold text-foreground">Müşteri Listesi</h3>
                 <p className="text-xs text-muted-foreground mt-1">
-                  RFM (Recency-Frequency-Monetary) skoruna gore segmentlenmis
-                  musteri listesi
+                  Müşterilerinizi filtreleyin ve sıralayın
                 </p>
               </div>
-              <div className="relative w-full sm:w-64">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <input
-                  type="text"
-                  placeholder="Musteri adi veya sehir ara..."
-                  value={customerSearch}
-                  onChange={(e) => {
-                    setCustomerSearch(e.target.value);
-                    setCustomerPage(0); // Reset to first page on search
-                  }}
-                  className="w-full pl-9 pr-4 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
-                />
+              <div className="flex items-center gap-2">
+                {/* Repeat / All toggle */}
+                <div className="flex items-center rounded-lg border border-border overflow-hidden">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={cn(
+                      "h-8 rounded-none px-3 text-xs font-medium",
+                      showRepeatOnly
+                        ? "bg-[#E8F1FE] text-[#1D70F1] hover:bg-[#E8F1FE] dark:bg-blue-900/30 dark:text-blue-400"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                    onClick={() => {
+                      setShowRepeatOnly(true);
+                      setCustomerPage(0);
+                    }}
+                  >
+                    <Repeat className="h-3.5 w-3.5 mr-1.5" />
+                    Tekrar Edenler
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={cn(
+                      "h-8 rounded-none px-3 text-xs font-medium",
+                      !showRepeatOnly
+                        ? "bg-[#E8F1FE] text-[#1D70F1] hover:bg-[#E8F1FE] dark:bg-blue-900/30 dark:text-blue-400"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                    onClick={() => {
+                      setShowRepeatOnly(false);
+                      setCustomerPage(0);
+                    }}
+                  >
+                    <Users className="h-3.5 w-3.5 mr-1.5" />
+                    Tümü
+                  </Button>
+                </div>
+                {/* Search bar */}
+                <div className="relative w-full sm:w-64">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <input
+                    type="text"
+                    placeholder="Müşteri adı veya şehir ara..."
+                    value={customerSearch}
+                    onChange={(e) => {
+                      setCustomerSearch(e.target.value);
+                      setCustomerPage(0);
+                    }}
+                    className="w-full pl-9 pr-4 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  />
+                </div>
+
+                {/* Filter Popover */}
+                <Popover open={filterOpen} onOpenChange={setFilterOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className={cn(
+                        "gap-2",
+                        Object.values(filters).some(v => v !== undefined) && "border-primary text-primary"
+                      )}
+                    >
+                      <Filter className="h-4 w-4" />
+                      Filtreler
+                      {Object.values(filters).filter(v => v !== undefined).length > 0 && (
+                        <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">
+                          {Object.values(filters).filter(v => v !== undefined).length}
+                        </Badge>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-80 p-4" align="end">
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-medium text-sm">Filtreler</h4>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 px-2 text-xs"
+                          onClick={() => {
+                            setTempFilters({});
+                            setFilters({});
+                            setShowRepeatOnly(true);
+                            setCustomerPage(0);
+                            setFilterOpen(false);
+                          }}
+                        >
+                          Temizle
+                        </Button>
+                      </div>
+
+                      {/* Sipariş Sayısı */}
+                      <div className="space-y-2">
+                        <Label className="text-xs font-medium">Sipariş Sayısı</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            type="number"
+                            placeholder={showRepeatOnly ? "Min (2+)" : "Min"}
+                            className="h-8 text-sm"
+                            value={tempFilters.minOrderCount ?? ""}
+                            onChange={(e) => setTempFilters(prev => ({
+                              ...prev,
+                              minOrderCount: e.target.value ? Number(e.target.value) : undefined
+                            }))}
+                          />
+                          <Input
+                            type="number"
+                            placeholder="Max"
+                            className="h-8 text-sm"
+                            value={tempFilters.maxOrderCount ?? ""}
+                            onChange={(e) => setTempFilters(prev => ({
+                              ...prev,
+                              maxOrderCount: e.target.value ? Number(e.target.value) : undefined
+                            }))}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Ürün Adedi */}
+                      <div className="space-y-2">
+                        <Label className="text-xs font-medium">Ürün Adedi</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            type="number"
+                            placeholder="Min"
+                            className="h-8 text-sm"
+                            value={tempFilters.minItemCount ?? ""}
+                            onChange={(e) => setTempFilters(prev => ({
+                              ...prev,
+                              minItemCount: e.target.value ? Number(e.target.value) : undefined
+                            }))}
+                          />
+                          <Input
+                            type="number"
+                            placeholder="Max"
+                            className="h-8 text-sm"
+                            value={tempFilters.maxItemCount ?? ""}
+                            onChange={(e) => setTempFilters(prev => ({
+                              ...prev,
+                              maxItemCount: e.target.value ? Number(e.target.value) : undefined
+                            }))}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Toplam Harcama */}
+                      <div className="space-y-2">
+                        <Label className="text-xs font-medium">Toplam Harcama (TL)</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            type="number"
+                            placeholder="Min"
+                            className="h-8 text-sm"
+                            value={tempFilters.minTotalSpend ?? ""}
+                            onChange={(e) => setTempFilters(prev => ({
+                              ...prev,
+                              minTotalSpend: e.target.value ? Number(e.target.value) : undefined
+                            }))}
+                          />
+                          <Input
+                            type="number"
+                            placeholder="Max"
+                            className="h-8 text-sm"
+                            value={tempFilters.maxTotalSpend ?? ""}
+                            onChange={(e) => setTempFilters(prev => ({
+                              ...prev,
+                              maxTotalSpend: e.target.value ? Number(e.target.value) : undefined
+                            }))}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Ort. Sipariş */}
+                      <div className="space-y-2">
+                        <Label className="text-xs font-medium">Ort. Sipariş (TL)</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            type="number"
+                            placeholder="Min"
+                            className="h-8 text-sm"
+                            value={tempFilters.minAvgOrderValue ?? ""}
+                            onChange={(e) => setTempFilters(prev => ({
+                              ...prev,
+                              minAvgOrderValue: e.target.value ? Number(e.target.value) : undefined
+                            }))}
+                          />
+                          <Input
+                            type="number"
+                            placeholder="Max"
+                            className="h-8 text-sm"
+                            value={tempFilters.maxAvgOrderValue ?? ""}
+                            onChange={(e) => setTempFilters(prev => ({
+                              ...prev,
+                              maxAvgOrderValue: e.target.value ? Number(e.target.value) : undefined
+                            }))}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Tekrar Sıklığı */}
+                      <div className="space-y-2">
+                        <Label className="text-xs font-medium">Tekrar Sıklığı (gün)</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            type="number"
+                            placeholder="Min"
+                            className="h-8 text-sm"
+                            value={tempFilters.minRepeatInterval ?? ""}
+                            onChange={(e) => setTempFilters(prev => ({
+                              ...prev,
+                              minRepeatInterval: e.target.value ? Number(e.target.value) : undefined
+                            }))}
+                          />
+                          <Input
+                            type="number"
+                            placeholder="Max"
+                            className="h-8 text-sm"
+                            value={tempFilters.maxRepeatInterval ?? ""}
+                            onChange={(e) => setTempFilters(prev => ({
+                              ...prev,
+                              maxRepeatInterval: e.target.value ? Number(e.target.value) : undefined
+                            }))}
+                          />
+                        </div>
+                      </div>
+
+                      <Button
+                        className="w-full"
+                        size="sm"
+                        onClick={() => {
+                          setFilters(tempFilters);
+                          if (tempFilters.minOrderCount !== undefined && tempFilters.minOrderCount < 2) {
+                            setShowRepeatOnly(false);
+                          }
+                          setCustomerPage(0);
+                          setFilterOpen(false);
+                        }}
+                      >
+                        Uygula
+                      </Button>
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </div>
             </div>
           </div>
@@ -1137,28 +1396,115 @@ export default function CustomerAnalyticsPage() {
                   <thead>
                     <tr className="border-b border-border bg-muted/30">
                       <th className="text-left p-3 text-xs font-medium text-muted-foreground">
-                        Musteri
+                        Müşteri
                       </th>
                       <th className="text-left p-3 text-xs font-medium text-muted-foreground">
-                        Sehir
+                        Şehir
                       </th>
-                      <th className="text-right p-3 text-xs font-medium text-muted-foreground">
-                        Siparis
+                      <th
+                        className="text-right p-3 text-xs font-medium text-muted-foreground cursor-pointer hover:bg-muted/50 transition-colors select-none"
+                        onClick={() => {
+                          if (sortBy === "orderCount") {
+                            setSortDir(sortDir === "asc" ? "desc" : "asc");
+                          } else {
+                            setSortBy("orderCount");
+                            setSortDir("desc");
+                          }
+                          setCustomerPage(0);
+                        }}
+                      >
+                        <div className="flex items-center justify-end gap-1">
+                          Sipariş
+                          {sortBy === "orderCount" ? (
+                            sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                          ) : (
+                            <ArrowUpDown className="h-3 w-3 opacity-40" />
+                          )}
+                        </div>
                       </th>
-                      <th className="text-right p-3 text-xs font-medium text-muted-foreground">
-                        Urun Adedi
+                      <th
+                        className="text-right p-3 text-xs font-medium text-muted-foreground cursor-pointer hover:bg-muted/50 transition-colors select-none"
+                        onClick={() => {
+                          if (sortBy === "itemCount") {
+                            setSortDir(sortDir === "asc" ? "desc" : "asc");
+                          } else {
+                            setSortBy("itemCount");
+                            setSortDir("desc");
+                          }
+                          setCustomerPage(0);
+                        }}
+                      >
+                        <div className="flex items-center justify-end gap-1">
+                          Ürün Adedi
+                          {sortBy === "itemCount" ? (
+                            sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                          ) : (
+                            <ArrowUpDown className="h-3 w-3 opacity-40" />
+                          )}
+                        </div>
                       </th>
-                      <th className="text-right p-3 text-xs font-medium text-muted-foreground">
-                        Toplam Harcama
+                      <th
+                        className="text-right p-3 text-xs font-medium text-muted-foreground cursor-pointer hover:bg-muted/50 transition-colors select-none"
+                        onClick={() => {
+                          if (sortBy === "totalSpend") {
+                            setSortDir(sortDir === "asc" ? "desc" : "asc");
+                          } else {
+                            setSortBy("totalSpend");
+                            setSortDir("desc");
+                          }
+                          setCustomerPage(0);
+                        }}
+                      >
+                        <div className="flex items-center justify-end gap-1">
+                          Toplam Harcama
+                          {sortBy === "totalSpend" ? (
+                            sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                          ) : (
+                            <ArrowUpDown className="h-3 w-3 opacity-40" />
+                          )}
+                        </div>
                       </th>
-                      <th className="text-right p-3 text-xs font-medium text-muted-foreground">
-                        Ort. Siparis
+                      <th
+                        className="text-right p-3 text-xs font-medium text-muted-foreground cursor-pointer hover:bg-muted/50 transition-colors select-none"
+                        onClick={() => {
+                          if (sortBy === "avgOrderValue") {
+                            setSortDir(sortDir === "asc" ? "desc" : "asc");
+                          } else {
+                            setSortBy("avgOrderValue");
+                            setSortDir("desc");
+                          }
+                          setCustomerPage(0);
+                        }}
+                      >
+                        <div className="flex items-center justify-end gap-1">
+                          Ort. Sipariş
+                          {sortBy === "avgOrderValue" ? (
+                            sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                          ) : (
+                            <ArrowUpDown className="h-3 w-3 opacity-40" />
+                          )}
+                        </div>
                       </th>
-                      <th className="text-center p-3 text-xs font-medium text-muted-foreground">
-                        RFM Segment
-                      </th>
-                      <th className="text-center p-3 text-xs font-medium text-muted-foreground">
-                        Tekrar Sikligi
+                      <th
+                        className="text-center p-3 text-xs font-medium text-muted-foreground cursor-pointer hover:bg-muted/50 transition-colors select-none"
+                        onClick={() => {
+                          if (sortBy === "avgRepeatIntervalDays") {
+                            setSortDir(sortDir === "asc" ? "desc" : "asc");
+                          } else {
+                            setSortBy("avgRepeatIntervalDays");
+                            setSortDir("desc");
+                          }
+                          setCustomerPage(0);
+                        }}
+                      >
+                        <div className="flex items-center justify-center gap-1">
+                          Tekrar Sıklığı
+                          {sortBy === "avgRepeatIntervalDays" ? (
+                            sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                          ) : (
+                            <ArrowUpDown className="h-3 w-3 opacity-40" />
+                          )}
+                        </div>
                       </th>
                       <th className="text-center p-3 text-xs font-medium text-muted-foreground">
                         Detay
@@ -1198,17 +1544,6 @@ export default function CustomerAnalyticsPage() {
                           </td>
                           <td className="p-3 text-sm text-muted-foreground text-right">
                             {formatCurrency(c.avgOrderValue)}
-                          </td>
-                          <td className="p-3 text-center">
-                            <Badge
-                              variant="secondary"
-                              className={cn(
-                                "text-[10px] px-2 py-0.5 font-medium",
-                                getRfmBadgeClass(c.rfmSegment)
-                              )}
-                            >
-                              {c.rfmSegment}
-                            </Badge>
                           </td>
                           <td className="p-3 text-center">
                             <span className="text-xs font-medium text-foreground">

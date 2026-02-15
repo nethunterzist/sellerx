@@ -19,6 +19,12 @@ Next.js API routes (`app/api/**/route.ts`). BFF path = dosya yolundan (app/api k
 | /api/auth/refresh | POST | /auth/refresh | app/api/auth/refresh/route.ts |
 | /api/auth/me | GET | /auth/me | app/api/auth/me/route.ts |
 | /api/auth/register | POST | /users | app/api/auth/register/route.ts |
+| /api/auth/forgot-password | POST | /auth/forgot-password | app/api/auth/forgot-password/route.ts |
+| /api/auth/reset-password | POST | /auth/reset-password | app/api/auth/reset-password/route.ts |
+| /api/auth/verify-email | GET | /auth/verify-email | app/api/auth/verify-email/route.ts |
+| /api/auth/resend-verification | POST | /auth/resend-verification | app/api/auth/resend-verification/route.ts |
+| /api/auth/verify-reset-token | GET | /auth/verify-reset-token | app/api/auth/verify-reset-token/route.ts |
+| /api/auth/verification-status | GET | /auth/verification-status | app/api/auth/verification-status/route.ts |
 
 ---
 
@@ -40,6 +46,20 @@ Next.js API routes (`app/api/**/route.ts`). BFF path = dosya yolundan (app/api k
 | /api/stores/[id]/webhooks/test | POST | /api/stores/{id}/webhooks/test | app/api/stores/[id]/webhooks/test/route.ts |
 | /api/stores/test-credentials | POST | /trendyol/test-credentials | app/api/stores/test-credentials/route.ts |
 | /api/stores/test-connection | POST | /trendyol/test-connection | app/api/stores/test-connection/route.ts |
+| /api/stores/[id]/customer-analytics/summary | GET | /api/stores/{id}/customer-analytics/summary | app/api/stores/[id]/customer-analytics/summary/route.ts |
+| /api/stores/[id]/customer-analytics/lifecycle | GET | /api/stores/{id}/customer-analytics/lifecycle | app/api/stores/[id]/customer-analytics/lifecycle/route.ts |
+| /api/stores/[id]/customer-analytics/cohorts | GET | /api/stores/{id}/customer-analytics/cohorts | app/api/stores/[id]/customer-analytics/cohorts/route.ts |
+| /api/stores/[id]/customer-analytics/frequency-distribution | GET | /api/stores/{id}/customer-analytics/frequency-distribution | app/api/stores/[id]/customer-analytics/frequency-distribution/route.ts |
+| /api/stores/[id]/customer-analytics/clv-summary | GET | /api/stores/{id}/customer-analytics/clv-summary | app/api/stores/[id]/customer-analytics/clv-summary/route.ts |
+| /api/stores/[id]/customer-analytics/customers | GET | /api/stores/{id}/customer-analytics/customers | app/api/stores/[id]/customer-analytics/customers/route.ts |
+| /api/stores/[id]/customer-analytics/customers/[customerId]/orders | GET | /api/stores/{id}/customer-analytics/customers/{customerId}/orders | app/api/stores/[id]/customer-analytics/customers/[customerId]/orders/route.ts |
+| /api/stores/[id]/customer-analytics/product-repeat | GET | /api/stores/{id}/customer-analytics/product-repeat | app/api/stores/[id]/customer-analytics/product-repeat/route.ts |
+| /api/stores/[id]/customer-analytics/products/[barcode] | GET | /api/stores/{id}/customer-analytics/products/{barcode} | app/api/stores/[id]/customer-analytics/products/[barcode]/route.ts |
+| /api/stores/[id]/customer-analytics/products/[barcode]/buyers | GET | /api/stores/{id}/customer-analytics/products/{barcode}/buyers | app/api/stores/[id]/customer-analytics/products/[barcode]/buyers/route.ts |
+| /api/stores/[id]/customer-analytics/cross-sell | GET | /api/stores/{id}/customer-analytics/cross-sell | app/api/stores/[id]/customer-analytics/cross-sell/route.ts |
+| /api/stores/[id]/customer-analytics/backfill-status | GET | /api/stores/{id}/customer-analytics/backfill-status | app/api/stores/[id]/customer-analytics/backfill-status/route.ts |
+| /api/stores/[id]/customer-analytics/trigger-backfill | POST | /api/stores/{id}/customer-analytics/trigger-backfill | app/api/stores/[id]/customer-analytics/trigger-backfill/route.ts |
+| /api/stores/[id]/deductions/breakdown | GET | /api/stores/{id}/deductions/breakdown | app/api/stores/[id]/deductions/breakdown/route.ts |
 
 ---
 
@@ -64,6 +84,7 @@ Next.js API routes (`app/api/**/route.ts`). BFF path = dosya yolundan (app/api k
 | /api/products/sync/[storeId] | POST | /products/sync/{storeId} | app/api/products/sync/[storeId]/route.ts |
 | /api/products/[id]/cost-and-stock | PUT | /products/{id}/cost-and-stock | app/api/products/[id]/cost-and-stock/route.ts |
 | /api/products/[id]/stock-info | POST | /products/{id}/stock-info | app/api/products/[id]/stock-info/route.ts |
+| /api/products/[id]/stock-info/[stockDate] | GET | /products/{id}/stock-info/{stockDate} | app/api/products/[id]/stock-info/[stockDate]/route.ts |
 
 ---
 
@@ -76,6 +97,7 @@ Next.js API routes (`app/api/**/route.ts`). BFF path = dosya yolundan (app/api k
 | /api/orders/stores/[storeId]/by-date-range | GET | /orders/stores/{storeId}/by-date-range | app/api/orders/stores/[storeId]/by-date-range/route.ts |
 | /api/orders/stores/[storeId]/by-status | GET | /api/orders/stores/{storeId}/by-status | app/api/orders/stores/[storeId]/by-status/route.ts |
 | /api/orders/stores/[storeId]/statistics | GET | /api/orders/stores/{storeId}/statistics | app/api/orders/stores/[storeId]/statistics/route.ts |
+| /api/orders/stores/[storeId]/statistics/by-date-range | GET | /api/orders/stores/{storeId}/statistics/by-date-range | app/api/orders/stores/[storeId]/statistics/by-date-range/route.ts |
 | /api/orders/stock-sync/status/[storeId] | GET | /api/orders/stock-sync/status/{storeId} | app/api/orders/stock-sync/status/[storeId]/route.ts |
 | /api/orders/stock-sync/synchronize/[storeId] | POST | /api/orders/stock-sync/synchronize/{storeId} | app/api/orders/stock-sync/synchronize/[storeId]/route.ts |
 
@@ -107,6 +129,13 @@ Next.js API routes (`app/api/**/route.ts`). BFF path = dosya yolundan (app/api k
 | /api/invoices/stores/[storeId]/category/[category]/products | GET | /api/invoices/stores/{storeId}/category/{category}/products | app/api/invoices/stores/[storeId]/category/[category]/products/route.ts |
 | /api/invoices/stores/[storeId]/products/[barcode]/commission-breakdown | GET | /api/invoices/stores/{storeId}/products/{barcode}/commission-breakdown | app/api/invoices/stores/[storeId]/products/[barcode]/commission-breakdown/route.ts |
 | /api/invoices/stores/[storeId]/products/[barcode]/cargo-breakdown | GET | /api/invoices/stores/{storeId}/products/{barcode}/cargo-breakdown | app/api/invoices/stores/[storeId]/products/[barcode]/cargo-breakdown/route.ts |
+| /api/invoices/stores/[storeId]/products/[barcode]/expense-breakdown | GET | /api/invoices/stores/{storeId}/products/{barcode}/expense-breakdown | app/api/invoices/stores/[storeId]/products/[barcode]/expense-breakdown/route.ts |
+| /api/invoices/stores/[storeId]/stoppages | GET | /api/invoices/stores/{storeId}/stoppages | app/api/invoices/stores/[storeId]/stoppages/route.ts |
+| /api/invoices/stores/[storeId]/stoppages/summary | GET | /api/invoices/stores/{storeId}/stoppages/summary | app/api/invoices/stores/[storeId]/stoppages/summary/route.ts |
+| /api/invoices/stores/[storeId]/by-order/[orderNumber] | GET | /api/invoices/stores/{storeId}/by-order/{orderNumber} | app/api/invoices/stores/[storeId]/by-order/[orderNumber]/route.ts |
+| /api/invoices/stores/[storeId]/cargo-items/[invoiceSerialNumber]/paginated | GET | /api/invoices/stores/{storeId}/cargo-items/{invoiceSerialNumber}/paginated | app/api/invoices/stores/[storeId]/cargo-items/[invoiceSerialNumber]/paginated/route.ts |
+| /api/invoices/stores/[storeId]/commission-items/[invoiceSerialNumber]/paginated | GET | /api/invoices/stores/{storeId}/commission-items/{invoiceSerialNumber}/paginated | app/api/invoices/stores/[storeId]/commission-items/[invoiceSerialNumber]/paginated/route.ts |
+| /api/invoices/stores/[storeId]/items/[invoiceSerialNumber]/paginated | GET | /api/invoices/stores/{storeId}/items/{invoiceSerialNumber}/paginated | app/api/invoices/stores/[storeId]/items/[invoiceSerialNumber]/paginated/route.ts |
 
 ---
 
@@ -159,6 +188,8 @@ Next.js API routes (`app/api/**/route.ts`). BFF path = dosya yolundan (app/api k
 | /api/expenses/categories | GET | /expenses/categories | app/api/expenses/categories/route.ts |
 | /api/expenses/store/[storeId] | GET, POST | /expenses/store/{storeId} | app/api/expenses/store/[storeId]/route.ts |
 | /api/expenses/store/[storeId]/[expenseId] | PUT, DELETE | /expenses/store/{storeId}/{expenseId} | app/api/expenses/store/[storeId]/[expenseId]/route.ts |
+| /api/expenses/store/[storeId]/categories | GET, POST | /expenses/store/{storeId}/categories | app/api/expenses/store/[storeId]/categories/route.ts |
+| /api/expenses/store/[storeId]/categories/[categoryId] | PUT, DELETE | /expenses/store/{storeId}/categories/{categoryId} | app/api/expenses/store/[storeId]/categories/[categoryId]/route.ts |
 
 ---
 
@@ -177,6 +208,8 @@ Next.js API routes (`app/api/**/route.ts`). BFF path = dosya yolundan (app/api k
 | /api/alerts/stats | GET | /api/alerts/stats | app/api/alerts/stats/route.ts |
 | /api/alerts/[id] | GET | /api/alerts/{id} | app/api/alerts/[id]/route.ts |
 | /api/alerts/[id]/read | PUT | /api/alerts/{id}/read | app/api/alerts/[id]/read/route.ts |
+| /api/alerts/[id]/approve | PUT | /api/alerts/{id}/approve | app/api/alerts/[id]/approve/route.ts |
+| /api/alerts/[id]/dismiss | PUT | /api/alerts/{id}/dismiss | app/api/alerts/[id]/dismiss/route.ts |
 | /api/alerts/read-all | PUT | /api/alerts/read-all | app/api/alerts/read-all/route.ts |
 
 ---
@@ -209,6 +242,9 @@ Next.js API routes (`app/api/**/route.ts`). BFF path = dosya yolundan (app/api k
 | /api/returns/stores/[storeId]/claims/[claimId]/approve | PUT | /api/returns/stores/{storeId}/claims/{claimId}/approve | app/api/returns/stores/[storeId]/claims/[claimId]/approve/route.ts |
 | /api/returns/stores/[storeId]/claims/[claimId]/reject | POST | /api/returns/stores/{storeId}/claims/{claimId}/reject | app/api/returns/stores/[storeId]/claims/[claimId]/reject/route.ts |
 | /api/returns/stores/[storeId]/claims/bulk-approve | POST | /api/returns/stores/{storeId}/claims/bulk-approve | app/api/returns/stores/[storeId]/claims/bulk-approve/route.ts |
+| /api/returns/stores/[storeId]/analytics | GET | /api/returns/stores/{storeId}/analytics | app/api/returns/stores/[storeId]/analytics/route.ts |
+| /api/returns/stores/[storeId]/analytics/current-month | GET | /api/returns/stores/{storeId}/analytics/current-month | app/api/returns/stores/[storeId]/analytics/current-month/route.ts |
+| /api/returns/stores/[storeId]/analytics/last-30-days | GET | /api/returns/stores/{storeId}/analytics/last-30-days | app/api/returns/stores/[storeId]/analytics/last-30-days/route.ts |
 
 ---
 
@@ -365,3 +401,20 @@ Next.js API routes (`app/api/**/route.ts`). BFF path = dosya yolundan (app/api k
 | /api/admin/support/tickets/[id]/reply | POST | /api/admin/support/tickets/{id}/reply | app/api/admin/support/tickets/[id]/reply/route.ts |
 | /api/admin/support/tickets/[id]/status | PUT | /api/admin/support/tickets/{id}/status | app/api/admin/support/tickets/[id]/status/route.ts |
 | /api/admin/support/tickets/[id]/assign | PUT | /api/admin/support/tickets/{id}/assign | app/api/admin/support/tickets/[id]/assign/route.ts |
+| /api/admin/users/[id]/impersonate | POST | /api/admin/users/{id}/impersonate | app/api/admin/users/[id]/impersonate/route.ts |
+| /api/admin/sandbox/products | GET, POST | /api/admin/sandbox/products | app/api/admin/sandbox/products/route.ts |
+| /api/admin/sandbox/products/[id] | DELETE | /api/admin/sandbox/products/{id} | app/api/admin/sandbox/products/[id]/route.ts |
+| /api/admin/sandbox/orders | GET, POST | /api/admin/sandbox/orders | app/api/admin/sandbox/orders/route.ts |
+| /api/admin/sandbox/orders/[id] | DELETE | /api/admin/sandbox/orders/{id} | app/api/admin/sandbox/orders/[id]/route.ts |
+| /api/admin/sandbox/orders/[id]/settle | POST | /api/admin/sandbox/orders/{id}/settle | app/api/admin/sandbox/orders/[id]/settle/route.ts |
+| /api/admin/sandbox/orders/settle-all | POST | /api/admin/sandbox/orders/settle-all | app/api/admin/sandbox/orders/settle-all/route.ts |
+| /api/admin/sandbox/invoices | GET, POST | /api/admin/sandbox/invoices | app/api/admin/sandbox/invoices/route.ts |
+| /api/admin/sandbox/invoices/[id] | PUT, DELETE | /api/admin/sandbox/invoices/{id} | app/api/admin/sandbox/invoices/[id]/route.ts |
+| /api/admin/sandbox/returns | GET, POST | /api/admin/sandbox/returns | app/api/admin/sandbox/returns/route.ts |
+| /api/admin/sandbox/returns/[id] | DELETE | /api/admin/sandbox/returns/{id} | app/api/admin/sandbox/returns/[id]/route.ts |
+| /api/admin/email-templates | GET | /api/admin/email-templates | app/api/admin/email-templates/route.ts |
+| /api/admin/email-templates/variables | GET | /api/admin/email-templates/variables | app/api/admin/email-templates/variables/route.ts |
+| /api/admin/email-templates/base-layout | GET, PUT | /api/admin/email-templates/base-layout | app/api/admin/email-templates/base-layout/route.ts |
+| /api/admin/email-templates/[type] | GET, PUT | /api/admin/email-templates/{type} | app/api/admin/email-templates/[type]/route.ts |
+| /api/admin/email-templates/[type]/preview | POST | /api/admin/email-templates/{type}/preview | app/api/admin/email-templates/[type]/preview/route.ts |
+| /api/admin/email-templates/[type]/test | POST | /api/admin/email-templates/{type}/test | app/api/admin/email-templates/[type]/test/route.ts |

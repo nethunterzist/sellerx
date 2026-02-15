@@ -21,7 +21,7 @@ function CollapsibleContent({
   return (
     <CollapsiblePrimitive.Content
       data-slot="collapsible-content"
-      className="data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down overflow-hidden"
+      className="data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down overflow-hidden"
       {...props}
     />
   )

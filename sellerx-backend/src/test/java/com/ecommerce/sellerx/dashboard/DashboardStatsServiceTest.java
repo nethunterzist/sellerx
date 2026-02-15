@@ -10,7 +10,8 @@ import com.ecommerce.sellerx.orders.TrendyolOrderRepository;
 import com.ecommerce.sellerx.products.TrendyolProduct;
 import com.ecommerce.sellerx.products.TrendyolProductRepository;
 import com.ecommerce.sellerx.returns.ReturnRecordRepository;
-import com.ecommerce.sellerx.financial.TrendyolStoppageRepository;
+import com.ecommerce.sellerx.returns.TrendyolClaim;
+import com.ecommerce.sellerx.returns.TrendyolClaimRepository;
 import com.ecommerce.sellerx.financial.TrendyolDeductionInvoiceRepository;
 import com.ecommerce.sellerx.financial.TrendyolCargoInvoiceRepository;
 import com.ecommerce.sellerx.financial.TrendyolInvoiceRepository;
@@ -54,9 +55,6 @@ class DashboardStatsServiceTest extends BaseUnitTest {
     private ReturnRecordRepository returnRecordRepository;
 
     @Mock
-    private TrendyolStoppageRepository stoppageRepository;
-
-    @Mock
     private TrendyolDeductionInvoiceRepository deductionInvoiceRepository;
 
     @Mock
@@ -65,6 +63,9 @@ class DashboardStatsServiceTest extends BaseUnitTest {
     @Mock
     private TrendyolInvoiceRepository invoiceRepository;
 
+    @Mock
+    private TrendyolClaimRepository claimRepository;
+
     private DashboardStatsService dashboardService;
 
     private UUID testStoreId;
@@ -72,7 +73,7 @@ class DashboardStatsServiceTest extends BaseUnitTest {
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        dashboardService = new DashboardStatsService(orderRepository, storeExpenseRepository, productRepository, returnRecordRepository, stoppageRepository, deductionInvoiceRepository, cargoInvoiceRepository, invoiceRepository);
+        dashboardService = new DashboardStatsService(orderRepository, storeExpenseRepository, productRepository, returnRecordRepository, deductionInvoiceRepository, cargoInvoiceRepository, invoiceRepository, claimRepository);
         testStoreId = UUID.randomUUID();
 
         // Default mocks for platform fees calculation (DeductionInvoices)
@@ -80,12 +81,12 @@ class DashboardStatsServiceTest extends BaseUnitTest {
                 .thenReturn(BigDecimal.ZERO);
         lenient().when(deductionInvoiceRepository.sumOtherDeductionFees(any(), any(), any()))
                 .thenReturn(BigDecimal.ZERO);
-        lenient().when(stoppageRepository.sumStoppageOnly(any(), any(), any()))
-                .thenReturn(BigDecimal.ZERO);
-
         // Default mocks for invoiced deductions (TrendyolInvoice - kesilen faturalar)
         lenient().when(invoiceRepository.sumAmountByStoreIdAndCategory(any(), any(), any(), any()))
                 .thenReturn(BigDecimal.ZERO);
+        // Default mock for claims (no returns by default)
+        lenient().when(claimRepository.findByStoreIdAndDateRange(any(), any(), any()))
+                .thenReturn(List.of());
     }
 
     @Nested
@@ -113,6 +114,7 @@ class DashboardStatsServiceTest extends BaseUnitTest {
             TrendyolOrder order = TrendyolOrder.builder()
                     .tyOrderNumber("TY-001")
                     .grossAmount(new BigDecimal("200.00"))
+                    .totalPrice(new BigDecimal("200.00"))
                     .totalDiscount(BigDecimal.ZERO)
                     .stoppage(new BigDecimal("10.00"))
                     .estimatedCommission(new BigDecimal("30.00"))
@@ -122,18 +124,13 @@ class DashboardStatsServiceTest extends BaseUnitTest {
 
             when(orderRepository.findRevenueOrdersByStoreAndDateRange(any(), any(), any()))
                     .thenReturn(List.of(order));
-            when(orderRepository.findReturnedOrdersByStoreAndDateRange(any(), any(), any()))
-                    .thenReturn(List.of()); // No returns
+            // No returns (default mock from setUp handles claimRepository)
             when(storeExpenseRepository.findByStoreIdOrderByDateDesc(any()))
                     .thenReturn(List.of()); // No expenses
             when(returnRecordRepository.sumTotalLossByStoreAndDateRange(any(), any(), any()))
                     .thenReturn(null); // No return cost data
             when(productRepository.findByStoreIdAndBarcodeIn(any(), any()))
                     .thenReturn(List.of());
-            // Mock stoppage from stoppages table (tax withholding)
-            when(stoppageRepository.sumStoppageOnly(any(), any(), any()))
-                    .thenReturn(new BigDecimal("10.00"));
-
             // When
             DashboardStatsDto result = dashboardService.getStatsForDateRange(testStoreId, startDate, endDate, "test");
 
@@ -144,7 +141,7 @@ class DashboardStatsServiceTest extends BaseUnitTest {
             assertThat(result.getTotalProductCosts()).isEqualByComparingTo(new BigDecimal("100.00"));
             // Gross profit = 200 - 100 = 100
             assertThat(result.getGrossProfit()).isEqualByComparingTo(new BigDecimal("100.00"));
-            // Stoppage (from stoppages table, not from order)
+            // Stoppage from order (calculated 1%)
             assertThat(result.getTotalStoppage()).isEqualByComparingTo(new BigDecimal("10.00"));
         }
 
@@ -167,6 +164,7 @@ class DashboardStatsServiceTest extends BaseUnitTest {
             TrendyolOrder order = TrendyolOrder.builder()
                     .tyOrderNumber("TY-001")
                     .grossAmount(new BigDecimal("150.00"))
+                    .totalPrice(new BigDecimal("150.00"))
                     .totalDiscount(BigDecimal.ZERO)
                     .stoppage(BigDecimal.ZERO)
                     .estimatedCommission(BigDecimal.ZERO)
@@ -176,8 +174,6 @@ class DashboardStatsServiceTest extends BaseUnitTest {
 
             when(orderRepository.findRevenueOrdersByStoreAndDateRange(any(), any(), any()))
                     .thenReturn(List.of(order));
-            when(orderRepository.findReturnedOrdersByStoreAndDateRange(any(), any(), any()))
-                    .thenReturn(List.of());
             when(storeExpenseRepository.findByStoreIdOrderByDateDesc(any()))
                     .thenReturn(List.of());
             when(returnRecordRepository.sumTotalLossByStoreAndDateRange(any(), any(), any()))
@@ -213,6 +209,7 @@ class DashboardStatsServiceTest extends BaseUnitTest {
             TrendyolOrder revenueOrder = TrendyolOrder.builder()
                     .tyOrderNumber("TY-001")
                     .grossAmount(new BigDecimal("100.00"))
+                    .totalPrice(new BigDecimal("100.00"))
                     .totalDiscount(BigDecimal.ZERO)
                     .stoppage(BigDecimal.ZERO)
                     .orderItems(List.of(revenueItem))
@@ -232,12 +229,16 @@ class DashboardStatsServiceTest extends BaseUnitTest {
                     .estimatedShippingCost(new BigDecimal("15.00"))
                     .estimatedCommission(new BigDecimal("5.00"))
                     .orderItems(List.of(returnItem))
+                    .isResalable(false)
                     .build();
 
             when(orderRepository.findRevenueOrdersByStoreAndDateRange(any(), any(), any()))
                     .thenReturn(List.of(revenueOrder));
-            when(orderRepository.findReturnedOrdersByStoreAndDateRange(any(), any(), any()))
-                    .thenReturn(List.of(returnOrder)); // 1 return
+            // Mock claims-based return detection: claim for TY-002
+            when(claimRepository.findByStoreIdAndDateRange(any(), any(), any()))
+                    .thenReturn(List.of(TrendyolClaim.builder().orderNumber("TY-002").build()));
+            when(orderRepository.findByStoreIdAndTyOrderNumber(any(), eq("TY-002")))
+                    .thenReturn(List.of(returnOrder));
             when(storeExpenseRepository.findByStoreIdOrderByDateDesc(any()))
                     .thenReturn(List.of());
             when(returnRecordRepository.sumTotalLossByStoreAndDateRange(any(), any(), any()))
@@ -271,6 +272,7 @@ class DashboardStatsServiceTest extends BaseUnitTest {
             TrendyolOrder order = TrendyolOrder.builder()
                     .tyOrderNumber("TY-001")
                     .grossAmount(new BigDecimal("100.00"))
+                    .totalPrice(new BigDecimal("100.00"))
                     .totalDiscount(BigDecimal.ZERO)
                     .stoppage(BigDecimal.ZERO)
                     .orderItems(List.of(item))
@@ -278,8 +280,7 @@ class DashboardStatsServiceTest extends BaseUnitTest {
 
             when(orderRepository.findRevenueOrdersByStoreAndDateRange(any(), any(), any()))
                     .thenReturn(List.of(order));
-            when(orderRepository.findReturnedOrdersByStoreAndDateRange(any(), any(), any()))
-                    .thenReturn(List.of()); // No returns
+            // No returns (default mock from setUp)
             when(storeExpenseRepository.findByStoreIdOrderByDateDesc(any()))
                     .thenReturn(List.of());
             when(returnRecordRepository.sumTotalLossByStoreAndDateRange(any(), any(), any()))
@@ -312,6 +313,7 @@ class DashboardStatsServiceTest extends BaseUnitTest {
             TrendyolOrder order = TrendyolOrder.builder()
                     .tyOrderNumber("TY-001")
                     .grossAmount(new BigDecimal("100.00"))
+                    .totalPrice(new BigDecimal("100.00"))
                     .totalDiscount(BigDecimal.ZERO)
                     .orderItems(List.of(item))
                     .build();
@@ -323,7 +325,10 @@ class DashboardStatsServiceTest extends BaseUnitTest {
 
             when(orderRepository.findRevenueOrdersByStoreAndDateRange(any(), any(), any()))
                     .thenReturn(List.of(order));
-            when(orderRepository.findReturnedOrdersByStoreAndDateRange(any(), any(), any()))
+            // Mock claims-based return detection: claim for TY-002
+            when(claimRepository.findByStoreIdAndDateRange(any(), any(), any()))
+                    .thenReturn(List.of(TrendyolClaim.builder().orderNumber("TY-002").build()));
+            when(orderRepository.findByStoreIdAndTyOrderNumber(any(), eq("TY-002")))
                     .thenReturn(List.of(returnOrder));
             when(storeExpenseRepository.findByStoreIdOrderByDateDesc(any()))
                     .thenReturn(List.of());
@@ -364,6 +369,7 @@ class DashboardStatsServiceTest extends BaseUnitTest {
             TrendyolOrder order = TrendyolOrder.builder()
                     .tyOrderNumber("TY-001")
                     .grossAmount(new BigDecimal("1000.00"))
+                    .totalPrice(new BigDecimal("1000.00"))
                     .totalDiscount(BigDecimal.ZERO)
                     .stoppage(BigDecimal.ZERO)
                     .orderItems(List.of(item))
@@ -371,8 +377,6 @@ class DashboardStatsServiceTest extends BaseUnitTest {
 
             when(orderRepository.findRevenueOrdersByStoreAndDateRange(any(), any(), any()))
                     .thenReturn(List.of(order));
-            when(orderRepository.findReturnedOrdersByStoreAndDateRange(any(), any(), any()))
-                    .thenReturn(List.of());
             when(storeExpenseRepository.findByStoreIdOrderByDateDesc(any()))
                     .thenReturn(List.of());
             when(returnRecordRepository.sumTotalLossByStoreAndDateRange(any(), any(), any()))
@@ -399,8 +403,6 @@ class DashboardStatsServiceTest extends BaseUnitTest {
 
             when(orderRepository.findRevenueOrdersByStoreAndDateRange(any(), any(), any()))
                     .thenReturn(List.of()); // No orders
-            when(orderRepository.findReturnedOrdersByStoreAndDateRange(any(), any(), any()))
-                    .thenReturn(List.of());
             when(storeExpenseRepository.findByStoreIdOrderByDateDesc(any()))
                     .thenReturn(List.of());
             when(returnRecordRepository.sumTotalLossByStoreAndDateRange(any(), any(), any()))
@@ -441,14 +443,13 @@ class DashboardStatsServiceTest extends BaseUnitTest {
             TrendyolOrder order = TrendyolOrder.builder()
                     .tyOrderNumber("TY-001")
                     .grossAmount(new BigDecimal("120.00"))
+                    .totalPrice(new BigDecimal("120.00"))
                     .totalDiscount(BigDecimal.ZERO)
                     .orderItems(List.of(item))
                     .build();
 
             when(orderRepository.findRevenueOrdersByStoreAndDateRange(any(), any(), any()))
                     .thenReturn(List.of(order));
-            when(orderRepository.findReturnedOrdersByStoreAndDateRange(any(), any(), any()))
-                    .thenReturn(List.of());
             when(storeExpenseRepository.findByStoreIdOrderByDateDesc(any()))
                     .thenReturn(List.of());
             when(returnRecordRepository.sumTotalLossByStoreAndDateRange(any(), any(), any()))
@@ -484,14 +485,13 @@ class DashboardStatsServiceTest extends BaseUnitTest {
             TrendyolOrder order = TrendyolOrder.builder()
                     .tyOrderNumber("TY-001")
                     .grossAmount(new BigDecimal("120.00"))
+                    .totalPrice(new BigDecimal("120.00"))
                     .totalDiscount(BigDecimal.ZERO)
                     .orderItems(List.of(item))
                     .build();
 
             when(orderRepository.findRevenueOrdersByStoreAndDateRange(any(), any(), any()))
                     .thenReturn(List.of(order));
-            when(orderRepository.findReturnedOrdersByStoreAndDateRange(any(), any(), any()))
-                    .thenReturn(List.of());
             when(storeExpenseRepository.findByStoreIdOrderByDateDesc(any()))
                     .thenReturn(List.of());
             when(returnRecordRepository.sumTotalLossByStoreAndDateRange(any(), any(), any()))
@@ -521,6 +521,7 @@ class DashboardStatsServiceTest extends BaseUnitTest {
             TrendyolOrder order1 = TrendyolOrder.builder()
                     .tyOrderNumber("TY-001")
                     .grossAmount(new BigDecimal("100.00"))
+                    .totalPrice(new BigDecimal("100.00"))
                     .totalDiscount(BigDecimal.ZERO)
                     .stoppage(new BigDecimal("5.00"))
                     .orderItems(List.of(createSimpleOrderItem()))
@@ -529,6 +530,7 @@ class DashboardStatsServiceTest extends BaseUnitTest {
             TrendyolOrder order2 = TrendyolOrder.builder()
                     .tyOrderNumber("TY-002")
                     .grossAmount(new BigDecimal("200.00"))
+                    .totalPrice(new BigDecimal("200.00"))
                     .totalDiscount(BigDecimal.ZERO)
                     .stoppage(new BigDecimal("10.00"))
                     .orderItems(List.of(createSimpleOrderItem()))
@@ -537,6 +539,7 @@ class DashboardStatsServiceTest extends BaseUnitTest {
             TrendyolOrder order3 = TrendyolOrder.builder()
                     .tyOrderNumber("TY-003")
                     .grossAmount(new BigDecimal("150.00"))
+                    .totalPrice(new BigDecimal("150.00"))
                     .totalDiscount(BigDecimal.ZERO)
                     .stoppage(null) // Null stoppage
                     .orderItems(List.of(createSimpleOrderItem()))
@@ -544,22 +547,17 @@ class DashboardStatsServiceTest extends BaseUnitTest {
 
             when(orderRepository.findRevenueOrdersByStoreAndDateRange(any(), any(), any()))
                     .thenReturn(List.of(order1, order2, order3));
-            when(orderRepository.findReturnedOrdersByStoreAndDateRange(any(), any(), any()))
-                    .thenReturn(List.of());
             when(storeExpenseRepository.findByStoreIdOrderByDateDesc(any()))
                     .thenReturn(List.of());
             when(returnRecordRepository.sumTotalLossByStoreAndDateRange(any(), any(), any()))
                     .thenReturn(null);
             when(productRepository.findByStoreIdAndBarcodeIn(any(), any()))
                     .thenReturn(List.of());
-            // Mock stoppage from stoppages table (tax withholding)
-            when(stoppageRepository.sumStoppageOnly(any(), any(), any()))
-                    .thenReturn(new BigDecimal("15.00"));
 
             // When
             DashboardStatsDto result = dashboardService.getStatsForDateRange(testStoreId, startDate, endDate, "test");
 
-            // Then - Total stoppage from stoppages table
+            // Then - Total stoppage from orders (order1: 5 + order2: 10 + order3: null→0 = 15)
             assertThat(result.getTotalStoppage()).isEqualByComparingTo(new BigDecimal("15.00"));
         }
     }
@@ -585,6 +583,7 @@ class DashboardStatsServiceTest extends BaseUnitTest {
             TrendyolOrder order = TrendyolOrder.builder()
                     .tyOrderNumber("TY-001")
                     .grossAmount(new BigDecimal("100.00"))
+                    .totalPrice(new BigDecimal("100.00"))
                     .totalDiscount(BigDecimal.ZERO)
                     .transactionStatus("NOT_SETTLED")
                     .orderItems(List.of(item))
@@ -592,8 +591,6 @@ class DashboardStatsServiceTest extends BaseUnitTest {
 
             when(orderRepository.findRevenueOrdersByStoreAndDateRange(any(), any(), any()))
                     .thenReturn(List.of(order));
-            when(orderRepository.findReturnedOrdersByStoreAndDateRange(any(), any(), any()))
-                    .thenReturn(List.of());
             when(storeExpenseRepository.findByStoreIdOrderByDateDesc(any()))
                     .thenReturn(List.of());
             when(returnRecordRepository.sumTotalLossByStoreAndDateRange(any(), any(), any()))
@@ -627,6 +624,7 @@ class DashboardStatsServiceTest extends BaseUnitTest {
             TrendyolOrder order = TrendyolOrder.builder()
                     .tyOrderNumber("TY-001")
                     .grossAmount(new BigDecimal("100.00"))
+                    .totalPrice(new BigDecimal("100.00"))
                     .totalDiscount(BigDecimal.ZERO)
                     .transactionStatus("NOT_SETTLED")
                     .orderItems(List.of(item))
@@ -634,8 +632,6 @@ class DashboardStatsServiceTest extends BaseUnitTest {
 
             when(orderRepository.findRevenueOrdersByStoreAndDateRange(any(), any(), any()))
                     .thenReturn(List.of(order));
-            when(orderRepository.findReturnedOrdersByStoreAndDateRange(any(), any(), any()))
-                    .thenReturn(List.of());
             when(storeExpenseRepository.findByStoreIdOrderByDateDesc(any()))
                     .thenReturn(List.of());
             when(returnRecordRepository.sumTotalLossByStoreAndDateRange(any(), any(), any()))
@@ -674,8 +670,6 @@ class DashboardStatsServiceTest extends BaseUnitTest {
 
             when(orderRepository.findRevenueOrdersByStoreAndDateRange(any(), any(), any()))
                     .thenReturn(List.of());
-            when(orderRepository.findReturnedOrdersByStoreAndDateRange(any(), any(), any()))
-                    .thenReturn(List.of());
             when(storeExpenseRepository.findByStoreIdOrderByDateDesc(any()))
                     .thenReturn(List.of(expense));
             when(returnRecordRepository.sumTotalLossByStoreAndDateRange(any(), any(), any()))
@@ -705,8 +699,6 @@ class DashboardStatsServiceTest extends BaseUnitTest {
                     .build();
 
             when(orderRepository.findRevenueOrdersByStoreAndDateRange(any(), any(), any()))
-                    .thenReturn(List.of());
-            when(orderRepository.findReturnedOrdersByStoreAndDateRange(any(), any(), any()))
                     .thenReturn(List.of());
             when(storeExpenseRepository.findByStoreIdOrderByDateDesc(any()))
                     .thenReturn(List.of(expense));
@@ -738,8 +730,6 @@ class DashboardStatsServiceTest extends BaseUnitTest {
 
             when(orderRepository.findRevenueOrdersByStoreAndDateRange(any(), any(), any()))
                     .thenReturn(List.of());
-            when(orderRepository.findReturnedOrdersByStoreAndDateRange(any(), any(), any()))
-                    .thenReturn(List.of());
             when(storeExpenseRepository.findByStoreIdOrderByDateDesc(any()))
                     .thenReturn(List.of(expense));
             when(returnRecordRepository.sumTotalLossByStoreAndDateRange(any(), any(), any()))
@@ -767,8 +757,6 @@ class DashboardStatsServiceTest extends BaseUnitTest {
 
             // Mock order repository to return empty list (we're only testing invoiced deductions)
             when(orderRepository.findRevenueOrdersByStoreAndDateRange(any(), any(), any()))
-                    .thenReturn(List.of());
-            when(orderRepository.findReturnedOrdersByStoreAndDateRange(any(), any(), any()))
                     .thenReturn(List.of());
             when(storeExpenseRepository.findByStoreIdOrderByDateDesc(any()))
                     .thenReturn(List.of());
@@ -816,8 +804,6 @@ class DashboardStatsServiceTest extends BaseUnitTest {
             // Mock order repository to return empty list
             when(orderRepository.findRevenueOrdersByStoreAndDateRange(any(), any(), any()))
                     .thenReturn(List.of());
-            when(orderRepository.findReturnedOrdersByStoreAndDateRange(any(), any(), any()))
-                    .thenReturn(List.of());
             when(storeExpenseRepository.findByStoreIdOrderByDateDesc(any()))
                     .thenReturn(List.of());
             when(returnRecordRepository.sumTotalLossByStoreAndDateRange(any(), any(), any()))
@@ -854,8 +840,6 @@ class DashboardStatsServiceTest extends BaseUnitTest {
 
             // Mock order repository to return empty list
             when(orderRepository.findRevenueOrdersByStoreAndDateRange(any(), any(), any()))
-                    .thenReturn(List.of());
-            when(orderRepository.findReturnedOrdersByStoreAndDateRange(any(), any(), any()))
                     .thenReturn(List.of());
             when(storeExpenseRepository.findByStoreIdOrderByDateDesc(any()))
                     .thenReturn(List.of());
@@ -903,6 +887,7 @@ class DashboardStatsServiceTest extends BaseUnitTest {
             TrendyolOrder order1 = TrendyolOrder.builder()
                     .tyOrderNumber("TY-001")
                     .grossAmount(new BigDecimal("30.00"))
+                    .totalPrice(new BigDecimal("30.00"))
                     .totalDiscount(BigDecimal.ZERO)
                     .orderItems(List.of(item1))
                     .build();
@@ -910,14 +895,13 @@ class DashboardStatsServiceTest extends BaseUnitTest {
             TrendyolOrder order2 = TrendyolOrder.builder()
                     .tyOrderNumber("TY-002")
                     .grossAmount(new BigDecimal("50.00"))
+                    .totalPrice(new BigDecimal("50.00"))
                     .totalDiscount(BigDecimal.ZERO)
                     .orderItems(List.of(item2))
                     .build();
 
             when(orderRepository.findRevenueOrdersByStoreAndDateRange(any(), any(), any()))
                     .thenReturn(List.of(order1, order2));
-            when(orderRepository.findReturnedOrdersByStoreAndDateRange(any(), any(), any()))
-                    .thenReturn(List.of());
             when(storeExpenseRepository.findByStoreIdOrderByDateDesc(any()))
                     .thenReturn(List.of());
             when(returnRecordRepository.sumTotalLossByStoreAndDateRange(any(), any(), any()))

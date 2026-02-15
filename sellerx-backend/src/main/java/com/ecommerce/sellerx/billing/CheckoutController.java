@@ -7,6 +7,7 @@ import com.ecommerce.sellerx.users.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -119,12 +120,10 @@ public class CheckoutController {
     public ResponseEntity<CheckoutResponse> complete3ds(
             @RequestBody ThreeDsCompleteRequest request) {
 
-        log.info("Completing 3DS for conversation: {}", request.conversationId());
+        log.warn("3DS completion attempted but not yet implemented: {}", request.conversationId());
 
-        // TODO: Implement 3DS completion logic with iyzico
-        // This would verify the 3DS callback and complete the payment
-
-        return ResponseEntity.ok(new CheckoutResponse(true, null, null, null, null));
+        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED)
+                .body(new CheckoutResponse(false, null, "NOT_IMPLEMENTED", "3DS verification is not yet available", null));
     }
 
     private String getClientIp(HttpServletRequest request) {

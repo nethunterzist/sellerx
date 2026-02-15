@@ -10,6 +10,13 @@ const PUBLIC_ROUTES = new Set([
   "/sign-in",
   "/register",
   "/forgot-password",
+  "/reset-password",
+  "/verify-email",
+  "/verification-pending",
+  "/terms",
+  "/privacy",
+  "/pricing",
+  "/hesaplama",
   "/favicon.ico",
 ]);
 

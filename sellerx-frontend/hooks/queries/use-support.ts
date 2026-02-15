@@ -9,6 +9,7 @@ import type {
   AssignTicketRequest,
   TicketFilters,
   TicketMessage,
+  TicketAttachment,
 } from '@/types/support';
 
 // === Query Keys ===
@@ -16,9 +17,11 @@ export const supportKeys = {
   all: ['support'] as const,
   tickets: () => [...supportKeys.all, 'tickets'] as const,
   ticket: (id: number) => [...supportKeys.tickets(), id] as const,
+  attachments: (ticketId: number) => [...supportKeys.ticket(ticketId), 'attachments'] as const,
   admin: ['admin-support'] as const,
   adminTickets: () => [...supportKeys.admin, 'tickets'] as const,
   adminTicket: (id: number) => [...supportKeys.adminTickets(), id] as const,
+  adminAttachments: (ticketId: number) => [...supportKeys.adminTicket(ticketId), 'attachments'] as const,
   adminStats: () => [...supportKeys.admin, 'stats'] as const,
   adminActive: () => [...supportKeys.admin, 'active'] as const,
 };
@@ -262,6 +265,136 @@ export function useAssignTicket(ticketId: number) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: supportKeys.adminTicket(ticketId) });
       queryClient.invalidateQueries({ queryKey: supportKeys.adminTickets() });
+    },
+  });
+}
+
+// === Attachment Hooks ===
+
+/**
+ * Fetch ticket attachments (user)
+ */
+export function useTicketAttachments(ticketId: number) {
+  return useQuery<TicketAttachment[]>({
+    queryKey: supportKeys.attachments(ticketId),
+    queryFn: async () => {
+      const res = await fetch(`/api/support/tickets/${ticketId}/attachments`);
+      if (!res.ok) throw new Error('Dosyalar yüklenemedi');
+      return res.json();
+    },
+    enabled: !!ticketId,
+  });
+}
+
+/**
+ * Upload attachment mutation (user)
+ */
+export function useUploadTicketAttachment() {
+  const queryClient = useQueryClient();
+
+  return useMutation<TicketAttachment, Error, { ticketId: number; file: File }>({
+    mutationFn: async ({ ticketId, file }) => {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await fetch(`/api/support/tickets/${ticketId}/attachments`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({}));
+        throw new Error(error.message || 'Dosya yüklenemedi');
+      }
+      return res.json();
+    },
+    onSuccess: (_, { ticketId }) => {
+      queryClient.invalidateQueries({ queryKey: supportKeys.attachments(ticketId) });
+    },
+  });
+}
+
+/**
+ * Delete attachment mutation (user)
+ */
+export function useDeleteTicketAttachment(ticketId: number) {
+  const queryClient = useQueryClient();
+
+  return useMutation<void, Error, number>({
+    mutationFn: async (attachmentId) => {
+      const res = await fetch(`/api/support/tickets/${ticketId}/attachments/${attachmentId}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) {
+        throw new Error('Dosya silinemedi');
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: supportKeys.attachments(ticketId) });
+    },
+  });
+}
+
+/**
+ * Fetch ticket attachments (admin)
+ */
+export function useAdminTicketAttachments(ticketId: number) {
+  return useQuery<TicketAttachment[]>({
+    queryKey: supportKeys.adminAttachments(ticketId),
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/support/tickets/${ticketId}/attachments`);
+      if (!res.ok) throw new Error('Dosyalar yüklenemedi');
+      return res.json();
+    },
+    enabled: !!ticketId,
+  });
+}
+
+/**
+ * Upload attachment mutation (admin)
+ */
+export function useAdminUploadTicketAttachment() {
+  const queryClient = useQueryClient();
+
+  return useMutation<TicketAttachment, Error, { ticketId: number; file: File }>({
+    mutationFn: async ({ ticketId, file }) => {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await fetch(`/api/admin/support/tickets/${ticketId}/attachments`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({}));
+        throw new Error(error.message || 'Dosya yüklenemedi');
+      }
+      return res.json();
+    },
+    onSuccess: (_, { ticketId }) => {
+      queryClient.invalidateQueries({ queryKey: supportKeys.adminAttachments(ticketId) });
+    },
+  });
+}
+
+/**
+ * Delete attachment mutation (admin)
+ */
+export function useAdminDeleteTicketAttachment(ticketId: number) {
+  const queryClient = useQueryClient();
+
+  return useMutation<void, Error, number>({
+    mutationFn: async (attachmentId) => {
+      const res = await fetch(`/api/admin/support/tickets/${ticketId}/attachments/${attachmentId}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) {
+        throw new Error('Dosya silinemedi');
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: supportKeys.adminAttachments(ticketId) });
     },
   });
 }

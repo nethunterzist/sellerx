@@ -14,7 +14,10 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.UUID;
+
+import com.ecommerce.sellerx.dashboard.dto.DeductionBreakdownDto;
 
 @Slf4j
 @RestController
@@ -118,7 +121,8 @@ public class DashboardController {
                 return ResponseEntity.badRequest().build();
             }
 
-            DashboardStatsDto stats = dashboardStatsService.getStatsForDateRange(storeUuid, startDate, endDate, periodLabel);
+            DashboardStatsDto stats = dashboardStatsService.getStatsForDateRange(
+                    storeUuid, startDate, endDate, periodLabel);
             return ResponseEntity.ok(stats);
         } catch (IllegalArgumentException e) {
             log.warn("Invalid parameters for date range stats: storeId={}", storeId);
@@ -227,6 +231,47 @@ public class DashboardController {
             return ResponseEntity.badRequest().build();
         } catch (Exception e) {
             log.error("Error fetching multi-period stats for store {}", storeId, e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * Get deduction invoice breakdown by transaction type for a date range.
+     * Used for dashboard detail panel to show all invoice types individually.
+     *
+     * @param storeId Store UUID
+     * @param startDate Start date (ISO format: 2025-01-01)
+     * @param endDate End date (ISO format: 2025-01-15)
+     */
+    @GetMapping("/stores/{storeId}/deductions/breakdown")
+    public ResponseEntity<List<DeductionBreakdownDto>> getDeductionBreakdown(
+            @PathVariable String storeId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            Authentication authentication) {
+
+        try {
+            Long userId = (Long) authentication.getPrincipal();
+            UUID storeUuid = UUID.fromString(storeId);
+
+            // Authorization check
+            if (!storeService.isStoreOwnedByUser(storeUuid, userId)) {
+                log.warn("User {} attempted to access store {} deduction breakdown without authorization", userId, storeId);
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+
+            // Validation: startDate must be before or equal to endDate
+            if (startDate.isAfter(endDate)) {
+                return ResponseEntity.badRequest().build();
+            }
+
+            List<DeductionBreakdownDto> breakdown = dashboardStatsService.getDeductionBreakdown(storeUuid, startDate, endDate);
+            return ResponseEntity.ok(breakdown);
+        } catch (IllegalArgumentException e) {
+            log.warn("Invalid parameters for deduction breakdown: storeId={}", storeId);
+            return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            log.error("Error fetching deduction breakdown for store {}", storeId, e);
             return ResponseEntity.internalServerError().build();
         }
     }

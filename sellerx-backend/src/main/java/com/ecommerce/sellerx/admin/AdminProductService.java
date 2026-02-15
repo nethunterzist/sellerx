@@ -3,10 +3,7 @@ package com.ecommerce.sellerx.admin;
 import com.ecommerce.sellerx.admin.dto.AdminProductStatsDto;
 import com.ecommerce.sellerx.admin.dto.AdminTopProductDto;
 import com.ecommerce.sellerx.orders.TrendyolOrderRepository;
-import com.ecommerce.sellerx.products.TrendyolProduct;
 import com.ecommerce.sellerx.products.TrendyolProductRepository;
-import com.ecommerce.sellerx.stores.Store;
-import com.ecommerce.sellerx.stores.StoreRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -26,38 +23,28 @@ public class AdminProductService {
 
     private final TrendyolProductRepository productRepository;
     private final TrendyolOrderRepository orderRepository;
-    private final StoreRepository storeRepository;
 
     /**
      * Get platform-wide product statistics for the admin panel.
+     * Uses aggregation queries instead of loading all products into memory.
      */
     public AdminProductStatsDto getProductStats() {
-        log.info("Admin fetching product stats");
+        log.info("Admin fetching product stats using aggregation queries");
 
-        List<TrendyolProduct> allProducts = productRepository.findAll();
-        long totalProducts = allProducts.size();
+        // Use COUNT instead of loading all products
+        long totalProducts = productRepository.count();
 
-        // Products by store (storeName -> count)
+        // Get products with cost info using indexed query
+        long withCostCount = productRepository.countWithCostInfo();
+        long withoutCostCount = totalProducts - withCostCount;
+
+        // Get products by store using GROUP BY query
         Map<String, Long> productsByStore = new LinkedHashMap<>();
-        long withCostCount = 0;
-        long withoutCostCount = 0;
-
-        for (TrendyolProduct product : allProducts) {
-            // Count by store
-            String storeName = product.getStore() != null ? product.getStore().getStoreName() : "Unknown";
-            productsByStore.merge(storeName, 1L, Long::sum);
-
-            // Check if product has cost info (non-empty costAndStockInfo list with at least one entry having unitCost)
-            boolean hasCost = product.getCostAndStockInfo() != null
-                    && !product.getCostAndStockInfo().isEmpty()
-                    && product.getCostAndStockInfo().stream()
-                        .anyMatch(info -> info.getUnitCost() != null && info.getUnitCost() > 0);
-
-            if (hasCost) {
-                withCostCount++;
-            } else {
-                withoutCostCount++;
-            }
+        List<Object[]> storeStats = productRepository.countProductsByStore();
+        for (Object[] row : storeStats) {
+            String storeName = (String) row[0];
+            Long productCount = ((Number) row[1]).longValue();
+            productsByStore.put(storeName != null ? storeName : "Unknown", productCount);
         }
 
         return AdminProductStatsDto.builder()

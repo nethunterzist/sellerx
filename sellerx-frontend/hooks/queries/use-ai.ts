@@ -121,18 +121,6 @@ export function useQaStats(storeId: string | undefined) {
   });
 }
 
-export function useSyncQuestions() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (storeId: string) => qaApi.syncQuestions(storeId),
-    onSuccess: (_, storeId) => {
-      queryClient.invalidateQueries({ queryKey: qaKeys.questions(storeId) });
-      queryClient.invalidateQueries({ queryKey: qaKeys.stats(storeId) });
-    },
-  });
-}
-
 // AI Answer Generation Hooks
 export function useGenerateAiAnswer() {
   return useMutation({

@@ -150,12 +150,6 @@ const periodGroups = [
   },
 ];
 
-const comparisonOptions = [
-  { id: "none", label: "Karşılaştırma Yapma" },
-  { id: "previous_period", label: "Önceki Dönemle Karşılaştır" },
-  { id: "same_period_last_year", label: "Geçen Yılın Aynı Dönemiyle Karşılaştır" },
-];
-
 const currencyOptions = [
   { id: "TRY", label: "TL", symbol: "₺" },
   { id: "USD", label: "USD", symbol: "$" },
@@ -180,8 +174,6 @@ interface DashboardFiltersProps {
   onDateRangeChange?: (startDate: Date, endDate: Date, label: string) => void;
   /** Called when "default" preset is selected (4-card view) */
   onDefaultViewChange?: () => void;
-  selectedComparison?: string;
-  onComparisonChange?: (comparisonId: string) => void;
   selectedCurrency?: string;
   onCurrencyChange?: (currencyId: string) => void;
   /** Filter configuration - controls which filters are shown for current view */
@@ -193,7 +185,6 @@ const DEFAULT_FILTER_CONFIG: ViewFilterConfig = {
   usesProducts: true,
   usesDateRange: true,
   usesCurrency: true,
-  usesComparison: true,
 };
 
 export function DashboardFilters({
@@ -204,8 +195,6 @@ export function DashboardFilters({
   onPeriodGroupChange,
   onDateRangeChange,
   onDefaultViewChange,
-  selectedComparison = "none",
-  onComparisonChange,
   selectedCurrency = "TRY",
   onCurrencyChange,
   filterConfig = DEFAULT_FILTER_CONFIG,
@@ -500,35 +489,6 @@ export function DashboardFilters({
                 </DropdownMenuItem>
               ))}
             </div>
-            {/* Comparison options - only show if view uses comparison */}
-            {filterConfig.usesComparison && (
-              <>
-                <DropdownMenuSeparator />
-                <div className="p-1">
-                  {comparisonOptions.map((option) => (
-                    <DropdownMenuItem
-                      key={option.id}
-                      onClick={() => onComparisonChange?.(option.id)}
-                      className="flex items-center gap-2 py-2"
-                    >
-                      {selectedComparison === option.id ? (
-                        <Check className="h-4 w-4 text-teal-600" />
-                      ) : (
-                        <div className="w-4" />
-                      )}
-                      <span
-                        className={cn(
-                          "text-sm",
-                          selectedComparison === option.id && "text-teal-600"
-                        )}
-                      >
-                        {option.label}
-                      </span>
-                    </DropdownMenuItem>
-                  ))}
-                </div>
-              </>
-            )}
           </DropdownMenuContent>
         </DropdownMenu>
         )}

@@ -2,6 +2,14 @@ import { NextResponse } from "next/server";
 
 const API_BASE_URL = process.env.API_BASE_URL;
 
+// Fallback rates when backend is unavailable (approximate rates as of Feb 2026)
+const FALLBACK_RATES = {
+  USD_TRY: 43.65,
+  EUR_TRY: 47.0,
+  TRY_USD: 0.0229,
+  TRY_EUR: 0.0213,
+};
+
 /**
  * GET /api/currency/rates
  * Proxy to backend currency rates endpoint.
@@ -9,13 +17,7 @@ const API_BASE_URL = process.env.API_BASE_URL;
  */
 export async function GET() {
   if (!API_BASE_URL) {
-    // Return fallback rates if API is not configured
-    return NextResponse.json({
-      USD_TRY: 34.5,
-      EUR_TRY: 37.2,
-      TRY_USD: 0.029,
-      TRY_EUR: 0.027,
-    });
+    return NextResponse.json(FALLBACK_RATES);
   }
 
   try {
@@ -30,25 +32,13 @@ export async function GET() {
 
     if (!response.ok) {
       console.error("Failed to fetch currency rates from backend:", response.status);
-      // Return fallback rates on error
-      return NextResponse.json({
-        USD_TRY: 34.5,
-        EUR_TRY: 37.2,
-        TRY_USD: 0.029,
-        TRY_EUR: 0.027,
-      });
+      return NextResponse.json(FALLBACK_RATES);
     }
 
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
     console.error("Currency rates fetch error:", error);
-    // Return fallback rates on network error
-    return NextResponse.json({
-      USD_TRY: 34.5,
-      EUR_TRY: 37.2,
-      TRY_USD: 0.029,
-      TRY_EUR: 0.027,
-    });
+    return NextResponse.json(FALLBACK_RATES);
   }
 }

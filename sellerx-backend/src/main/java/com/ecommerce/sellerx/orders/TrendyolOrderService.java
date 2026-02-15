@@ -4,6 +4,9 @@ import com.ecommerce.sellerx.common.exception.InvalidStoreConfigurationException
 import com.ecommerce.sellerx.common.exception.ResourceNotFoundException;
 import com.ecommerce.sellerx.common.exception.TrendyolApiException;
 import com.ecommerce.sellerx.config.FinancialConstants;
+import com.ecommerce.sellerx.financial.TrendyolCargoInvoice;
+import com.ecommerce.sellerx.financial.TrendyolCargoInvoiceRepository;
+import com.ecommerce.sellerx.financial.TrendyolDeductionInvoiceRepository;
 import com.ecommerce.sellerx.products.TrendyolProduct;
 import com.ecommerce.sellerx.products.TrendyolProductRepository;
 import com.ecommerce.sellerx.stores.Store;
@@ -43,6 +46,92 @@ public class TrendyolOrderService {
     private final CommissionEstimationService commissionEstimationService;
     private final ShippingCostEstimationService shippingCostEstimationService;
     private final OrderGapAnalysisService gapAnalysisService;
+    private final TrendyolDeductionInvoiceRepository deductionInvoiceRepository;
+    private final TrendyolCargoInvoiceRepository cargoInvoiceRepository;
+
+    // Turkish locale for proper case conversion
+    private static final Locale TURKISH_LOCALE = new Locale("tr", "TR");
+
+    /**
+     * Normalize city name for consistent storage
+     * - Trims whitespace
+     * - Converts to uppercase using Turkish locale (handles İ/I properly)
+     */
+    private String normalizeCityName(String cityName) {
+        if (cityName == null || cityName.isBlank()) {
+            return null;
+        }
+        return cityName.trim().toUpperCase(TURKISH_LOCALE);
+    }
+
+    /**
+     * Enrich order DTO with platform service fee and real shipping cost from invoices.
+     * Platform fee comes from deduction invoices (transaction_type = 'Platform Hizmet Bedeli').
+     * Real shipping cost comes from cargo invoices (if available).
+     */
+    private TrendyolOrderDto enrichOrderDto(TrendyolOrderDto dto, UUID storeId) {
+        // Get platform service fee from deduction invoices
+        BigDecimal platformFee = deductionInvoiceRepository
+                .sumPlatformFeeByStoreIdAndOrderNumber(storeId, dto.tyOrderNumber());
+
+        // Get real shipping cost from cargo invoices (if available)
+        BigDecimal shippingCost = dto.estimatedShippingCost();
+        Boolean isShippingEstimated = dto.isShippingEstimated();
+        if (dto.packageNo() != null && Boolean.TRUE.equals(isShippingEstimated)) {
+            List<TrendyolCargoInvoice> cargoInvoices = cargoInvoiceRepository
+                    .findByStoreIdAndShipmentPackageId(storeId, dto.packageNo());
+            if (!cargoInvoices.isEmpty()) {
+                shippingCost = cargoInvoices.stream()
+                        .map(TrendyolCargoInvoice::getAmount)
+                        .filter(Objects::nonNull)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+                isShippingEstimated = false;
+            }
+        }
+
+        // Estimate return shipping cost: if no real return invoice, use outbound shipping as reference
+        BigDecimal returnShippingCost = dto.returnShippingCost();
+        Boolean isReturnShippingEstimated = dto.isReturnShippingEstimated();
+        if (returnShippingCost == null || returnShippingCost.compareTo(BigDecimal.ZERO) == 0) {
+            // No real return invoice yet - estimate from outbound shipping
+            if (shippingCost != null && shippingCost.compareTo(BigDecimal.ZERO) > 0) {
+                returnShippingCost = shippingCost;
+                isReturnShippingEstimated = true;
+            } else {
+                returnShippingCost = BigDecimal.ZERO;
+                isReturnShippingEstimated = true;
+            }
+        } else {
+            isReturnShippingEstimated = false;
+        }
+
+        return TrendyolOrderDto.builder()
+                .id(dto.id())
+                .storeId(dto.storeId())
+                .tyOrderNumber(dto.tyOrderNumber())
+                .packageNo(dto.packageNo())
+                .orderDate(dto.orderDate())
+                .grossAmount(dto.grossAmount())
+                .totalDiscount(dto.totalDiscount())
+                .totalTyDiscount(dto.totalTyDiscount())
+                .totalPrice(dto.totalPrice())
+                .stoppage(dto.stoppage())
+                .estimatedCommission(dto.estimatedCommission())
+                .estimatedShippingCost(shippingCost)
+                .orderItems(dto.orderItems())
+                .shipmentPackageStatus(dto.shipmentPackageStatus())
+                .status(dto.status())
+                .cargoDeci(dto.cargoDeci())
+                .createdAt(dto.createdAt())
+                .updatedAt(dto.updatedAt())
+                .platformServiceFee(platformFee)
+                .commissionSource(dto.commissionSource())
+                .isCommissionEstimated(dto.isCommissionEstimated())
+                .isShippingEstimated(isShippingEstimated)
+                .returnShippingCost(returnShippingCost)
+                .isReturnShippingEstimated(isReturnShippingEstimated)
+                .build();
+    }
 
     /**
      * Fetch and save orders for a specific store from Trendyol API
@@ -337,7 +426,9 @@ public class TrendyolOrderService {
                     List<TrendyolOrder> existingOrders = orderRepository.findByStoreIdAndPackageNoIn(storeId, packageNumbers);
                     for (TrendyolOrder order : existingOrders) {
                         if (order.getShipmentCity() == null || order.getDeliveryDate() == null
-                                || order.getCustomerEmail() == null || order.getCancelledBy() == null) {
+                                || order.getCustomerEmail() == null || order.getCancelledBy() == null
+                                || "Shipped".equals(order.getStatus()) || "Picking".equals(order.getStatus())
+                                || "Invoiced".equals(order.getStatus())) {
                             existingOrdersMap.put(order.getPackageNo(), order);
                         }
                     }
@@ -391,6 +482,21 @@ public class TrendyolOrderService {
                                 existingOrder.setCancelReason(orderContent.getCancelReason());
                                 existingOrder.setCancelReasonCode(orderContent.getCancelReasonCode());
                                 needsUpdate = true;
+                            }
+
+
+                            // Update status if changed (protect Returned status from Delivered overwrite)
+                            if (orderContent.getStatus() != null
+                                    && !orderContent.getStatus().equals(existingOrder.getStatus())) {
+                                boolean isReturnedInDb = "Returned".equals(existingOrder.getStatus());
+                                boolean apiSaysDelivered = "Delivered".equals(orderContent.getStatus());
+                                if (!(isReturnedInDb && apiSaysDelivered)) {
+                                    existingOrder.setStatus(orderContent.getStatus());
+                                    if (orderContent.getShipmentPackageStatus() != null) {
+                                        existingOrder.setShipmentPackageStatus(orderContent.getShipmentPackageStatus());
+                                    }
+                                    needsUpdate = true;
+                                }
                             }
 
                             if (needsUpdate) {
@@ -468,30 +574,33 @@ public class TrendyolOrderService {
     }
     
     /**
-     * Get orders for a store with pagination
+     * Get orders for a store with pagination.
+     * Enriches each order with platform service fee and real shipping cost from invoices.
      */
     public Page<TrendyolOrderDto> getOrdersForStore(UUID storeId, Pageable pageable) {
         Page<TrendyolOrder> orders = orderRepository.findByStoreIdOrderByOrderDateDesc(storeId, pageable);
-        return orders.map(orderMapper::toDto);
+        return orders.map(order -> enrichOrderDto(orderMapper.toDto(order), storeId));
     }
-    
+
     /**
-     * Get orders for store by date range
+     * Get orders for store by date range.
+     * Enriches each order with platform service fee and real shipping cost from invoices.
      */
-    public Page<TrendyolOrderDto> getOrdersForStoreByDateRange(UUID storeId, 
-                                                              LocalDateTime startDate, 
-                                                              LocalDateTime endDate, 
+    public Page<TrendyolOrderDto> getOrdersForStoreByDateRange(UUID storeId,
+                                                              LocalDateTime startDate,
+                                                              LocalDateTime endDate,
                                                               Pageable pageable) {
         Page<TrendyolOrder> orders = orderRepository.findByStoreAndDateRange(storeId, startDate, endDate, pageable);
-        return orders.map(orderMapper::toDto);
+        return orders.map(order -> enrichOrderDto(orderMapper.toDto(order), storeId));
     }
-    
+
     /**
-     * Get orders by status
+     * Get orders by status.
+     * Enriches each order with platform service fee and real shipping cost from invoices.
      */
     public Page<TrendyolOrderDto> getOrdersByStatus(UUID storeId, String status, Pageable pageable) {
         Page<TrendyolOrder> orders = orderRepository.findByStoreAndStatus(storeId, status, pageable);
-        return orders.map(orderMapper::toDto);
+        return orders.map(order -> enrichOrderDto(orderMapper.toDto(order), storeId));
     }
     
     /**
@@ -865,12 +974,20 @@ public class TrendyolOrderService {
         }
         
         // Status güncelle (eğer daha güncelse)
-        if (apiOrderContent.getStatus() != null && 
-            (historicalOrder.getStatus() == null || 
+        // KORUMA: Kargo faturasından "Returned" olarak işaretlenen siparişlerin
+        // statüsünü Orders API'nin "Delivered" yanıtı ile üzerine yazma
+        if (apiOrderContent.getStatus() != null &&
+            (historicalOrder.getStatus() == null ||
              !historicalOrder.getStatus().equals(apiOrderContent.getStatus()))) {
-            historicalOrder.setStatus(apiOrderContent.getStatus());
-            if (apiOrderContent.getShipmentPackageStatus() != null) {
-                historicalOrder.setShipmentPackageStatus(apiOrderContent.getShipmentPackageStatus());
+
+            boolean isReturnedInDb = "Returned".equals(historicalOrder.getStatus());
+            boolean apiSaysDelivered = "Delivered".equals(apiOrderContent.getStatus());
+
+            if (!(isReturnedInDb && apiSaysDelivered)) {
+                historicalOrder.setStatus(apiOrderContent.getStatus());
+                if (apiOrderContent.getShipmentPackageStatus() != null) {
+                    historicalOrder.setShipmentPackageStatus(apiOrderContent.getShipmentPackageStatus());
+                }
             }
         }
         
@@ -929,7 +1046,43 @@ public class TrendyolOrderService {
                 .averageOrderValue(avgOrderValue)
                 .build();
     }
-    
+
+    /**
+     * Get order statistics for a store within a specific date range.
+     * Used for orders page to show statistics filtered by selected date range.
+     */
+    public OrderStatistics getOrderStatisticsByDateRange(UUID storeId, LocalDateTime startDate, LocalDateTime endDate) {
+        long totalOrders = orderRepository.countByStoreIdAndOrderDateBetween(storeId, startDate, endDate);
+        long pendingOrders = orderRepository.countByStoreIdAndStatusInAndOrderDateBetween(storeId,
+                List.of("Created", "Picking", "Invoiced"), startDate, endDate);
+        long shippedOrders = orderRepository.countByStoreIdAndStatusAndOrderDateBetween(storeId, "Shipped", startDate, endDate);
+        long deliveredOrders = orderRepository.countByStoreIdAndStatusAndOrderDateBetween(storeId, "Delivered", startDate, endDate);
+        long cancelledOrders = orderRepository.countByStoreIdAndStatusAndOrderDateBetween(storeId, "Cancelled", startDate, endDate);
+        long returnedOrders = orderRepository.countByStoreIdAndStatusAndOrderDateBetween(storeId, "Returned", startDate, endDate);
+
+        // Calculate total revenue (excluding cancelled and returned orders)
+        BigDecimal totalRevenue = orderRepository.sumTotalPriceByStoreIdAndOrderDateBetweenAndStatusNotIn(
+                storeId, startDate, endDate, List.of("Cancelled", "Returned"));
+        if (totalRevenue == null) totalRevenue = BigDecimal.ZERO;
+
+        // Calculate average order value
+        long validOrders = totalOrders - cancelledOrders - returnedOrders;
+        BigDecimal avgOrderValue = validOrders > 0
+                ? totalRevenue.divide(BigDecimal.valueOf(validOrders), 2, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
+
+        return OrderStatistics.builder()
+                .totalOrders(totalOrders)
+                .pendingOrders(pendingOrders)
+                .shippedOrders(shippedOrders)
+                .deliveredOrders(deliveredOrders)
+                .cancelledOrders(cancelledOrders)
+                .returnedOrders(returnedOrders)
+                .totalRevenue(totalRevenue)
+                .averageOrderValue(avgOrderValue)
+                .build();
+    }
+
     private TrendyolOrderApiResponse fetchOrdersFromTrendyol(TrendyolCredentials credentials, int page, int size,
                                                            Long startDate, Long endDate) {
         return fetchOrdersFromTrendyol(credentials, page, size, startDate, endDate, null);
@@ -996,8 +1149,9 @@ public class TrendyolOrderService {
         BigDecimal totalPrice = orderContent.getTotalPrice() != null ? 
                                 orderContent.getTotalPrice() : BigDecimal.ZERO;
         
-        // Calculate stoppage (withholding tax) as totalPrice * stoppage rate
-        BigDecimal stoppage = totalPrice.multiply(FinancialConstants.STOPPAGE_RATE_DECIMAL);
+        // Calculate stoppage (withholding tax) from VAT-excluded amount
+        // Stoppage = KDV Hariç Tutar × %1 (NOT totalPrice which includes VAT)
+        BigDecimal stoppage = calculateStoppage(orderItems, totalPrice);
 
         // Extract shipment address city information
         String shipmentCity = null;
@@ -1006,7 +1160,7 @@ public class TrendyolOrderService {
         Integer shipmentDistrictId = null;
         if (orderContent.getShipmentAddress() != null) {
             TrendyolOrderApiResponse.ShipmentAddress address = orderContent.getShipmentAddress();
-            shipmentCity = address.getCity();
+            shipmentCity = normalizeCityName(address.getCity()); // Normalize for consistency
             shipmentCityCode = address.getCityCode();
             shipmentDistrict = address.getDistrict();
             shipmentDistrictId = address.getDistrictId();
@@ -1139,5 +1293,52 @@ public class TrendyolOrderService {
             return (TrendyolCredentials) store.getCredentials();
         }
         return null;
+    }
+
+    /**
+     * Calculates stoppage (withholding tax / tevkifat) from VAT-excluded amount.
+     *
+     * Legal basis: Presidential Decree 9284 (22/12/2024), effective January 1, 2025
+     * Rate: 1% fixed on VAT-excluded (KDV hariç) amount
+     *
+     * Formula per item: (price × quantity) / (1 + vatRate/100) × 0.01
+     *
+     * @param orderItems List of order items with price, quantity, and VAT rate
+     * @param totalPrice Total price (used as fallback if items don't have VAT rates)
+     * @return Stoppage amount
+     */
+    private BigDecimal calculateStoppage(List<OrderItem> orderItems, BigDecimal totalPrice) {
+        if (orderItems == null || orderItems.isEmpty()) {
+            // Fallback: use totalPrice with default 20% VAT assumption
+            return totalPrice
+                    .divide(BigDecimal.valueOf(1.20), 6, java.math.RoundingMode.HALF_UP)
+                    .multiply(FinancialConstants.STOPPAGE_RATE_DECIMAL)
+                    .setScale(2, java.math.RoundingMode.HALF_UP);
+        }
+
+        BigDecimal totalVatExcluded = BigDecimal.ZERO;
+
+        for (OrderItem item : orderItems) {
+            // Get VAT rate (default 20% if not specified)
+            BigDecimal vatRate = item.getSaleVatRate() != null
+                    ? BigDecimal.valueOf(item.getSaleVatRate())
+                    : BigDecimal.valueOf(20);
+
+            // Calculate item price (price × quantity)
+            BigDecimal itemPrice = item.getPrice() != null ? item.getPrice() : BigDecimal.ZERO;
+            int quantity = item.getQuantity() != null ? item.getQuantity() : 1;
+            BigDecimal totalItemPrice = itemPrice.multiply(BigDecimal.valueOf(quantity));
+
+            // Calculate VAT-excluded price: itemPrice / (1 + vatRate/100)
+            BigDecimal divisor = BigDecimal.ONE.add(vatRate.divide(BigDecimal.valueOf(100), 6, java.math.RoundingMode.HALF_UP));
+            BigDecimal vatExcludedPrice = totalItemPrice.divide(divisor, 2, java.math.RoundingMode.HALF_UP);
+
+            totalVatExcluded = totalVatExcluded.add(vatExcludedPrice);
+        }
+
+        // Stoppage = VAT-excluded amount × 1%
+        return totalVatExcluded
+                .multiply(FinancialConstants.STOPPAGE_RATE_DECIMAL)
+                .setScale(2, java.math.RoundingMode.HALF_UP);
     }
 }

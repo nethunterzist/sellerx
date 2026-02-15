@@ -8,9 +8,16 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import java.util.List;
 
 /**
  * Controller for user support ticket operations.
@@ -78,5 +85,65 @@ public class SupportTicketController {
         Long userId = getCurrentUserId();
         TicketMessageDto message = ticketService.addUserMessage(id, userId, request);
         return ResponseEntity.ok(message);
+    }
+
+    // === Attachments ===
+
+    /**
+     * Get ticket attachments.
+     * GET /api/support/tickets/{id}/attachments
+     */
+    @GetMapping("/{id}/attachments")
+    public ResponseEntity<List<TicketAttachmentDto>> getAttachments(@PathVariable Long id) {
+        Long userId = getCurrentUserId();
+        List<TicketAttachmentDto> attachments = ticketService.getAttachments(id, userId, false);
+        return ResponseEntity.ok(attachments);
+    }
+
+    /**
+     * Upload attachment to ticket.
+     * POST /api/support/tickets/{id}/attachments
+     */
+    @PostMapping(value = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<TicketAttachmentDto> uploadAttachment(
+            @PathVariable Long id,
+            @RequestParam("file") MultipartFile file) throws IOException {
+        Long userId = getCurrentUserId();
+        TicketAttachmentDto dto = ticketService.addAttachment(
+                id, userId, false,
+                file.getOriginalFilename(),
+                file.getContentType(),
+                file.getSize(),
+                file.getBytes());
+        return ResponseEntity.status(HttpStatus.CREATED).body(dto);
+    }
+
+    /**
+     * Download ticket attachment.
+     * GET /api/support/tickets/{id}/attachments/{attachmentId}/download
+     */
+    @GetMapping("/{id}/attachments/{attachmentId}/download")
+    public ResponseEntity<byte[]> downloadAttachment(
+            @PathVariable Long id,
+            @PathVariable Long attachmentId) {
+        Long userId = getCurrentUserId();
+        TicketAttachment attachment = ticketService.getAttachmentWithData(id, attachmentId, userId, false);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + attachment.getFileName() + "\"")
+                .contentType(MediaType.parseMediaType(attachment.getFileType() != null ? attachment.getFileType() : "application/octet-stream"))
+                .body(attachment.getFileData());
+    }
+
+    /**
+     * Delete ticket attachment.
+     * DELETE /api/support/tickets/{id}/attachments/{attachmentId}
+     */
+    @DeleteMapping("/{id}/attachments/{attachmentId}")
+    public ResponseEntity<Void> deleteAttachment(
+            @PathVariable Long id,
+            @PathVariable Long attachmentId) {
+        Long userId = getCurrentUserId();
+        ticketService.deleteAttachment(id, attachmentId, userId, false);
+        return ResponseEntity.noContent().build();
     }
 }

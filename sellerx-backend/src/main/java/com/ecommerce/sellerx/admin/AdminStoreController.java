@@ -12,7 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @RestController
@@ -38,7 +38,9 @@ public class AdminStoreController {
         String[] sortParams = sort.split(",");
         Sort.Direction direction = sortParams.length > 1 && sortParams[1].equalsIgnoreCase("asc")
                 ? Sort.Direction.ASC : Sort.Direction.DESC;
-        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortParams[0]));
+        Set<String> allowedSortFields = Set.of("createdAt", "storeName", "marketplace", "initialSyncCompleted");
+        String sortField = allowedSortFields.contains(sortParams[0]) ? sortParams[0] : "createdAt";
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortField));
 
         log.info("Admin fetching stores - page: {}, size: {}, sort: {}", page, size, sort);
         Page<AdminStoreListDto> stores = adminStoreService.getAllStores(pageable);
@@ -68,13 +70,20 @@ public class AdminStoreController {
     }
 
     /**
-     * Search stores by store name or user email
-     * GET /api/admin/stores/search?q=query
+     * Search stores by store name or user email with pagination
+     * GET /api/admin/stores/search?q=query&page=0&size=20
      */
     @GetMapping("/search")
-    public ResponseEntity<List<AdminStoreListDto>> searchStores(@RequestParam String q) {
-        log.info("Admin searching stores with query: {}", q);
-        List<AdminStoreListDto> stores = adminStoreService.searchStores(q);
+    public ResponseEntity<Page<AdminStoreListDto>> searchStores(
+            @RequestParam String q,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+
+        size = Math.min(size, 100);
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+
+        log.info("Admin searching stores with query: {}, page: {}, size: {}", q, page, size);
+        Page<AdminStoreListDto> stores = adminStoreService.searchStores(q, pageable);
         return ResponseEntity.ok(stores);
     }
 }

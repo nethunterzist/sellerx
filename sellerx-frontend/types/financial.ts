@@ -1,7 +1,15 @@
 // Financial types matching backend DTOs
 
 // Transaction status from backend
-export type TransactionStatus = "SOLD" | "RETURNED" | "DISCOUNT" | "COUPON" | "CANCELLED";
+export type TransactionStatus =
+  | "SOLD" | "RETURNED" | "DISCOUNT" | "COUPON" | "CANCELLED"
+  | "EARLY_PAYMENT"
+  | "DISCOUNT_CANCEL" | "COUPON_CANCEL"
+  | "MANUAL_REFUND" | "MANUAL_REFUND_CANCEL"
+  | "TY_DISCOUNT" | "TY_DISCOUNT_CANCEL"
+  | "TY_COUPON" | "TY_COUPON_CANCEL"
+  | "PROVISION_POSITIVE" | "PROVISION_NEGATIVE"
+  | "COMMISSION_POSITIVE" | "COMMISSION_NEGATIVE";
 
 // Financial settlement item from Trendyol API
 export interface FinancialSettlementItem {
@@ -204,6 +212,11 @@ export interface OtherFinancialsSyncResult {
   stoppageCount: number;
   paymentOrderCount: number;
   cargoInvoiceCount: number;
+  cashAdvanceCount: number;
+  wireTransferCount: number;
+  incomingTransferCount: number;
+  commissionAgreementCount: number;
+  financialItemCount: number;
   startDate: string;
   endDate: string;
 }

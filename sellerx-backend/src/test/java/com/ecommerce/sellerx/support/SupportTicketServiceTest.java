@@ -39,6 +39,9 @@ class SupportTicketServiceTest extends BaseUnitTest {
     private TicketMessageRepository messageRepository;
 
     @Mock
+    private TicketAttachmentRepository attachmentRepository;
+
+    @Mock
     private StoreRepository storeRepository;
 
     @Mock
@@ -57,7 +60,7 @@ class SupportTicketServiceTest extends BaseUnitTest {
     @BeforeEach
     void setUp() {
         supportTicketService = new SupportTicketService(
-                ticketRepository, messageRepository, storeRepository, userService, emailService
+                ticketRepository, messageRepository, attachmentRepository, storeRepository, userService, emailService
         );
 
         testUser = User.builder()

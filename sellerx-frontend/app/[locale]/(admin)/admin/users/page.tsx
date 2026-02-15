@@ -30,11 +30,10 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
-import ExcelJS from "exceljs";
-import { saveAs } from "file-saver";
 import { useTranslations } from "next-intl";
 import type { AdminUserListItem } from "@/types/admin";
 import type { ImpersonationMeta } from "@/hooks/use-impersonation";
+import { FadeIn } from "@/components/motion";
 
 export default function AdminUsersPage() {
   const [page, setPage] = useState(0);
@@ -82,6 +81,12 @@ export default function AdminUsersPage() {
         setIsExporting(false);
         return;
       }
+
+      // Dynamic import for Excel libraries (reduces initial bundle size)
+      const [ExcelJS, { saveAs }] = await Promise.all([
+        import("exceljs").then((m) => m.default),
+        import("file-saver"),
+      ]);
 
       const todayStr = new Date().toISOString().split("T")[0];
       const exportData = allUsers.map((user) => ({
@@ -151,6 +156,7 @@ export default function AdminUsersPage() {
   };
 
   return (
+    <FadeIn>
     <div className="space-y-6">
       {/* Page Header */}
       <div className="flex items-center justify-between">
@@ -321,5 +327,6 @@ export default function AdminUsersPage() {
         </CardContent>
       </Card>
     </div>
+    </FadeIn>
   );
 }

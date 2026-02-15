@@ -16,6 +16,7 @@ import com.ecommerce.sellerx.financial.dto.InvoiceTypeStatsDto;
 import com.ecommerce.sellerx.financial.dto.OrderInvoiceItemsDto;
 import com.ecommerce.sellerx.financial.dto.ProductCargoBreakdownDto;
 import com.ecommerce.sellerx.financial.dto.ProductCommissionBreakdownDto;
+import com.ecommerce.sellerx.financial.dto.ProductExpenseBreakdownDto;
 import com.ecommerce.sellerx.financial.dto.TransactionTypeBreakdownDto;
 import com.ecommerce.sellerx.financial.dto.StoppageDto;
 import com.ecommerce.sellerx.financial.dto.StoppageSummaryDto;
@@ -33,6 +34,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -66,8 +68,11 @@ public class TrendyolInvoiceService {
 
     // Invoice type to category mapping
     private static final Map<String, String> TYPE_TO_CATEGORY = Map.ofEntries(
+            // Platform Ücretleri (Platform Hizmet Bedelleri)
+            Map.entry("Platform Hizmet Bedeli", "PLATFORM_UCRETLERI"),
+            Map.entry("AZ-Platform Hizmet Bedeli", "PLATFORM_UCRETLERI"),
+
             // Komisyon
-            Map.entry("Platform Hizmet Bedeli", "KOMISYON"),
             Map.entry("AZ - Komisyon Faturası", "KOMISYON"),
             Map.entry("AZ-Komisyon Geliri", "KOMISYON"),
             Map.entry("Komisyon Faturası", "KOMISYON"),
@@ -80,13 +85,14 @@ public class TrendyolInvoiceService {
 
             // Uluslararasi (kesinti olarak faturalandırılan uluslararası hizmetler)
             Map.entry("Uluslararası Hizmet Bedeli", "ULUSLARARASI"),
-            Map.entry("AZ-Platform Hizmet Bedeli", "DIGER"),
             Map.entry("AZ-Uluslararası Hizmet Bedeli", "ULUSLARARASI"),
             Map.entry("Yurt Dışı Operasyon Bedeli", "ULUSLARARASI"),
 
-            // Iade - AZ-Yurtdışı Operasyon (Trendyol UI'da negatif görünüyor - seller'a geri ödeme)
-            Map.entry("AZ-Yurtdışı Operasyon Bedeli", "IADE"),
-            Map.entry("AZ-YURTDÕ_Õ OPERASYON BEDELI %18", "IADE"),
+            // Uluslararasi - AZ-Yurtdışı Operasyon (kesinti olarak faturalandırılan)
+            Map.entry("AZ-Yurtdışı Operasyon Bedeli", "ULUSLARARASI"),
+            Map.entry("AZ-YURTDÕ_Õ OPERASYON BEDELI %18", "ULUSLARARASI"),
+
+            // Iade - Geri yatan ödemeler (refund/compensation to seller)
             Map.entry("Yurtdışı Operasyon Iade Bedeli", "IADE"),
 
             // Ceza
@@ -97,11 +103,13 @@ public class TrendyolInvoiceService {
             Map.entry("Yanlış Ürün Faturası", "CEZA"),
             Map.entry("YANLIS URUN FATURASI", "CEZA"),
             Map.entry("Kusurlu Ürün Faturası", "CEZA"),
+            Map.entry("Teslim Kontrol Faturası", "CEZA"),
 
             // Reklam
             Map.entry("Reklam Bedeli", "REKLAM"),
             Map.entry("Sabit Bütçeli Influencer Reklam Bedeli", "REKLAM"),
             Map.entry("Komisyonlu İnfluencer Reklam Bedeli", "REKLAM"),
+            Map.entry("Komisyonlu Influencer Reklam Bedeli", "REKLAM"),  // ASCII 'I' variant
 
             // Iade (Geri yatan ödeme - refund/compensation)
             Map.entry("Tazmin Faturası", "IADE"),
@@ -117,8 +125,10 @@ public class TrendyolInvoiceService {
             Map.entry("Paketleme Hizmeti Bedeli", "HIZMET_BEDELI"),
             Map.entry("Depo Hizmeti Bedeli", "HIZMET_BEDELI"),
 
+            // Reklam/Kampanya
+            Map.entry("Kurumsal Kampanya Yansıtma Bedeli", "REKLAM"),
+
             // Diger
-            Map.entry("Kurumsal Kampanya Yansıtma Bedeli", "DIGER"),
             Map.entry("Erken Ödeme Kesinti Faturası", "DIGER"),
             Map.entry("Fatura Kontör Satış Bedeli", "DIGER"),
             Map.entry("Müşteri Duyuruları Faturası", "DIGER"),
@@ -152,6 +162,8 @@ public class TrendyolInvoiceService {
             Map.entry("Reklam Bedeli", "REKLAM_BEDELI"),
             Map.entry("Sabit Bütçeli Influencer Reklam Bedeli", "INFLUENCER_SABIT"),
             Map.entry("Komisyonlu İnfluencer Reklam Bedeli", "INFLUENCER_KOMISYON"),
+            Map.entry("Komisyonlu Influencer Reklam Bedeli", "INFLUENCER_KOMISYON"),  // ASCII 'I' variant
+            Map.entry("Teslim Kontrol Faturası", "TESLIM_KONTROL"),
             Map.entry("Kurumsal Kampanya Yansıtma Bedeli", "KURUMSAL_KAMPANYA"),
             Map.entry("Erken Ödeme Kesinti Faturası", "ERKEN_ODEME_KESINTI"),
             Map.entry("Fatura Kontör Satış Bedeli", "KONTOR_SATIS"),
@@ -355,10 +367,10 @@ public class TrendyolInvoiceService {
                         storeId, startDateTime, endDateTime,
                         List.of("Delivered"));
 
-        // Build barcode -> vatRate map from products (order items don't have saleVatRate populated)
-        Map<String, Integer> barcodeToVatRate = productRepository.findByStoreId(storeId).stream()
-                .filter(p -> p.getBarcode() != null && p.getVatRate() != null)
-                .collect(Collectors.toMap(TrendyolProduct::getBarcode, TrendyolProduct::getVatRate, (a, b) -> a));
+        // Build barcode -> product map (full object instead of just VAT rate)
+        Map<String, TrendyolProduct> barcodeToProduct = productRepository.findByStoreId(storeId).stream()
+                .filter(p -> p.getBarcode() != null)
+                .collect(Collectors.toMap(TrendyolProduct::getBarcode, p -> p, (a, b) -> a));
 
         Map<Integer, BigDecimal[]> salesVatByRateMap = new LinkedHashMap<>(); // vatRate -> [salesAmount, vatAmount, itemCount]
         BigDecimal totalSalesAmount = BigDecimal.ZERO;
@@ -372,24 +384,26 @@ public class TrendyolInvoiceService {
                 int qty = item.getQuantity() != null ? item.getQuantity() : 1;
 
                 // Look up VAT rate from product catalog by barcode
-                Integer vatRate = (item.getBarcode() != null) ? barcodeToVatRate.get(item.getBarcode()) : null;
+                TrendyolProduct product = (item.getBarcode() != null) ? barcodeToProduct.get(item.getBarcode()) : null;
+                Integer vatRate = (product != null && product.getVatRate() != null) ? product.getVatRate() : null;
                 if (vatRate == null || vatRate <= 0) {
                     salesItemsWithoutVatRate += qty;
                     continue;
                 }
 
-                // Calculate sales amount (price * qty) and VAT from vatBaseAmount
-                BigDecimal itemSalesAmount = (item.getPrice() != null)
-                        ? item.getPrice().multiply(BigDecimal.valueOf(qty))
+                // Calculate sales amount from vatBaseAmount (already includes qty, no need to multiply)
+                // Note: vatBaseAmount is always the TOTAL amount for all items in the line
+                BigDecimal itemSalesAmount = (item.getVatBaseAmount() != null)
+                        ? item.getVatBaseAmount()
                         : BigDecimal.ZERO;
 
                 // VAT = vatBaseAmount * vatRate / 100
+                // Note: DO NOT multiply by qty - vatBaseAmount already contains the total
                 BigDecimal itemVatAmount = BigDecimal.ZERO;
-                if (item.getVatBaseAmount() != null) {
+                if (item.getVatBaseAmount() != null && vatRate > 0) {
                     itemVatAmount = item.getVatBaseAmount()
                             .multiply(BigDecimal.valueOf(vatRate))
-                            .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP)
-                            .multiply(BigDecimal.valueOf(qty));
+                            .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
                 }
 
                 totalSalesAmount = totalSalesAmount.add(itemSalesAmount);
@@ -404,6 +418,69 @@ public class TrendyolInvoiceService {
                         });
             }
         }
+
+        // Product-based grouping for detailed breakdown - UPDATED to include image, brand, productUrl
+        Map<String, Object[]> productSalesVatMap = new LinkedHashMap<>();
+        // barcode -> [productName, quantity, salesAmount, vatAmount, vatRate, image, brand, productUrl]
+
+        for (TrendyolOrder order : deliveredOrders) {
+            if (order.getOrderItems() == null) continue;
+            for (OrderItem item : order.getOrderItems()) {
+                String barcode = item.getBarcode();
+                if (barcode == null) continue;
+
+                int qty = item.getQuantity() != null ? item.getQuantity() : 1;
+                TrendyolProduct product = barcodeToProduct.get(barcode);  // CHANGED: get full product
+                Integer vatRate = (product != null && product.getVatRate() != null) ? product.getVatRate() : null;
+                if (vatRate == null || vatRate <= 0) continue;
+
+                BigDecimal itemSalesAmount = (item.getVatBaseAmount() != null)
+                        ? item.getVatBaseAmount()
+                        : BigDecimal.ZERO;
+
+                BigDecimal itemVatAmount = BigDecimal.ZERO;
+                if (item.getVatBaseAmount() != null && vatRate > 0) {
+                    itemVatAmount = item.getVatBaseAmount()
+                            .multiply(BigDecimal.valueOf(vatRate))
+                            .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+                }
+
+                String productName = item.getProductName() != null ? item.getProductName() : barcode;
+                // NEW: Extract image, brand, productUrl from product
+                String image = (product != null) ? product.getImage() : null;
+                String brand = (product != null) ? product.getBrand() : null;
+                String productUrl = (product != null) ? product.getProductUrl() : null;
+
+                productSalesVatMap.merge(barcode,
+                        new Object[]{productName, qty, itemSalesAmount, itemVatAmount, vatRate, image, brand, productUrl},
+                        (existing, newVal) -> new Object[]{
+                                existing[0], // keep first productName
+                                (int)existing[1] + (int)newVal[1], // sum qty
+                                ((BigDecimal)existing[2]).add((BigDecimal)newVal[2]), // sum salesAmount
+                                ((BigDecimal)existing[3]).add((BigDecimal)newVal[3]), // sum vatAmount
+                                existing[4], // keep vatRate
+                                existing[5], // keep image
+                                existing[6], // keep brand
+                                existing[7]  // keep productUrl
+                        });
+            }
+        }
+
+        // Convert to DTO list, sorted by salesAmount descending - UPDATED with new fields
+        List<SalesVatDto.ProductSalesVatDto> productSalesVatList = productSalesVatMap.entrySet().stream()
+                .sorted((a, b) -> ((BigDecimal)b.getValue()[2]).compareTo((BigDecimal)a.getValue()[2]))
+                .map(entry -> SalesVatDto.ProductSalesVatDto.builder()
+                        .barcode(entry.getKey())
+                        .productName((String)entry.getValue()[0])
+                        .quantity((Integer)entry.getValue()[1])
+                        .salesAmount((BigDecimal)entry.getValue()[2])
+                        .vatAmount((BigDecimal)entry.getValue()[3])
+                        .vatRate((Integer)entry.getValue()[4])
+                        .image((String)entry.getValue()[5])        // NEW
+                        .brand((String)entry.getValue()[6])        // NEW
+                        .productUrl((String)entry.getValue()[7])   // NEW
+                        .build())
+                .collect(Collectors.toList());
 
         List<SalesVatDto.SalesVatByRateDto> salesVatByRateList = salesVatByRateMap.entrySet().stream()
                 .sorted(Map.Entry.comparingByKey())
@@ -421,11 +498,12 @@ public class TrendyolInvoiceService {
                 .totalItemsSold(totalSalesItemCount)
                 .itemsWithoutVatRate(salesItemsWithoutVatRate)
                 .byRate(salesVatByRateList)
+                .byProduct(productSalesVatList)
                 .build();
 
-        // Calculate Stoppage (Stopaj/Tevkifat) summary
-        BigDecimal totalStoppageAmount = stoppageRepository.sumStoppageOnly(storeId, startDateTime, endDateTime);
-        int stoppageCount = stoppageRepository.countStoppageOnly(storeId, startDateTime, endDateTime);
+        // Calculate Stoppage (Stopaj/Tevkifat) summary - siparişlerden hesaplanan %1 değer
+        BigDecimal totalStoppageAmount = orderRepository.sumStoppageByStoreAndDateRange(storeId, startDateTime, endDateTime);
+        int stoppageCount = orderRepository.countOrdersWithStoppage(storeId, startDateTime, endDateTime);
 
         return InvoiceSummaryDto.builder()
                 .storeId(storeId.toString())
@@ -1079,18 +1157,10 @@ public class TrendyolInvoiceService {
         String upper = transactionType.toUpperCase(Locale.ENGLISH);
 
         // Check for "IADE" keyword (case-insensitive with English locale)
-        if (upper.contains("IADE")) {
-            return true;
-        }
-
-        // Check for AZ-Yurtdışı Operasyon Bedeli pattern (overseas operation refunds)
-        // These show as negative amounts in Trendyol UI but come as debt in API
-        // Pattern: starts with "AZ-" and contains "YURT" and "OPERASYON"
-        if (upper.startsWith("AZ-") && upper.contains("YURT") && upper.contains("OPERASYON")) {
-            return true;
-        }
-
-        return false;
+        // Only actual refunds with "IADE" in the name should be treated as refunds
+        // "AZ-Yurtdışı Operasyon Bedeli" is an international operation FEE (deduction),
+        // NOT a refund - only "Yurtdışı Operasyon Iade Bedeli" is a refund
+        return upper.contains("IADE");
     }
 
     // ================================================================================
@@ -1471,47 +1541,36 @@ public class TrendyolInvoiceService {
      * - Total cargo cost, VAT, desi
      * - Shipment count and order count
      * - Average desi and cost per shipment
-     * - List of recent shipments (last 50)
+     * - Paginated list of shipments (default 50 per page)
      */
     @Transactional(readOnly = true)
     public ProductCargoBreakdownDto getProductCargoBreakdown(UUID storeId, String barcode,
-                                                              LocalDate startDate, LocalDate endDate) {
-        log.info("Getting cargo breakdown for product {} in store: {} from {} to {}",
-                barcode, storeId, startDate, endDate);
+                                                              LocalDate startDate, LocalDate endDate,
+                                                              int page, int size) {
+        log.info("Getting cargo breakdown for product {} in store: {} from {} to {} (page: {}, size: {})",
+                barcode, storeId, startDate, endDate, page, size);
 
         // Verify store exists
         storeRepository.findById(storeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Store", storeId.toString()));
 
-        // Fetch cargo invoices for this barcode
-        List<TrendyolCargoInvoice> cargoInvoices = cargoInvoiceRepository
-                .findByStoreIdAndBarcodeAndDateRange(storeId, barcode, startDate, endDate);
+        // Get summary totals from dedicated query (complete data, no pagination)
+        CargoSummaryProjection summary = cargoInvoiceRepository
+                .getCargoSummaryByStoreIdAndBarcodeAndDateRange(storeId, barcode, startDate, endDate);
 
-        log.info("Found {} cargo invoices for product {}", cargoInvoices.size(), barcode);
+        BigDecimal totalAmount = summary != null && summary.getTotalAmount() != null
+                ? summary.getTotalAmount() : BigDecimal.ZERO;
+        BigDecimal totalVatAmount = summary != null && summary.getTotalVatAmount() != null
+                ? summary.getTotalVatAmount() : BigDecimal.ZERO;
+        BigDecimal totalDesi = summary != null && summary.getTotalDesi() != null
+                ? summary.getTotalDesi() : BigDecimal.ZERO;
+        long totalShipmentCount = summary != null && summary.getShipmentCount() != null
+                ? summary.getShipmentCount() : 0L;
+        long orderCount = summary != null && summary.getOrderCount() != null
+                ? summary.getOrderCount() : 0L;
 
-        // Calculate totals
-        BigDecimal totalAmount = BigDecimal.ZERO;
-        BigDecimal totalVatAmount = BigDecimal.ZERO;
-        BigDecimal totalDesi = BigDecimal.ZERO;
-        Set<String> uniqueOrders = new HashSet<>();
-
-        for (TrendyolCargoInvoice invoice : cargoInvoices) {
-            if (invoice.getAmount() != null) {
-                totalAmount = totalAmount.add(invoice.getAmount());
-            }
-            if (invoice.getVatAmount() != null) {
-                totalVatAmount = totalVatAmount.add(invoice.getVatAmount());
-            }
-            if (invoice.getDesi() != null) {
-                totalDesi = totalDesi.add(BigDecimal.valueOf(invoice.getDesi()));
-            }
-            if (invoice.getOrderNumber() != null) {
-                uniqueOrders.add(invoice.getOrderNumber());
-            }
-        }
-
-        int totalShipmentCount = cargoInvoices.size();
-        int orderCount = uniqueOrders.size();
+        log.info("Cargo summary for product {}: {} shipments, {} orders, total cost: {}",
+                barcode, totalShipmentCount, orderCount, totalAmount);
 
         // Calculate averages
         BigDecimal averageDesi = BigDecimal.ZERO;
@@ -1521,8 +1580,13 @@ public class TrendyolInvoiceService {
             averageCostPerShipment = totalAmount.divide(BigDecimal.valueOf(totalShipmentCount), 2, RoundingMode.HALF_UP);
         }
 
-        // Build shipment list (already limited to 50 by query)
-        List<ProductCargoBreakdownDto.CargoShipmentDetailDto> shipments = cargoInvoices.stream()
+        // Fetch paginated cargo invoices for shipment list
+        Pageable pageable = PageRequest.of(page, size);
+        Page<TrendyolCargoInvoice> cargoPage = cargoInvoiceRepository
+                .findByStoreIdAndBarcodeAndDateRangePaginated(storeId, barcode, startDate, endDate, pageable);
+
+        // Build shipment list from current page
+        List<ProductCargoBreakdownDto.CargoShipmentDetailDto> shipments = cargoPage.getContent().stream()
                 .map(invoice -> ProductCargoBreakdownDto.CargoShipmentDetailDto.builder()
                         .orderNumber(invoice.getOrderNumber())
                         .shipmentPackageId(invoice.getShipmentPackageId())
@@ -1547,8 +1611,8 @@ public class TrendyolInvoiceService {
             productUrl = product.getProductUrl();
         }
 
-        log.info("Cargo breakdown for product {}: {} shipments, {} orders, total cost: {}",
-                barcode, totalShipmentCount, orderCount, totalAmount);
+        log.info("Returning cargo breakdown for product {}: page {} of {}, {} shipments on this page",
+                barcode, page, cargoPage.getTotalPages(), shipments.size());
 
         return ProductCargoBreakdownDto.builder()
                 .barcode(barcode)
@@ -1558,12 +1622,26 @@ public class TrendyolInvoiceService {
                 .totalAmount(totalAmount)
                 .totalVatAmount(totalVatAmount)
                 .totalDesi(totalDesi)
-                .totalShipmentCount(totalShipmentCount)
-                .orderCount(orderCount)
+                .totalShipmentCount((int) totalShipmentCount)
+                .orderCount((int) orderCount)
                 .averageDesi(averageDesi)
                 .averageCostPerShipment(averageCostPerShipment)
                 .shipments(shipments)
+                // Pagination info
+                .currentPage(page)
+                .totalPages(cargoPage.getTotalPages())
+                .hasMore(cargoPage.hasNext())
                 .build();
+    }
+
+    /**
+     * Backward compatible method for cargo breakdown without pagination.
+     * Uses default page 0 and size 50.
+     */
+    @Transactional(readOnly = true)
+    public ProductCargoBreakdownDto getProductCargoBreakdown(UUID storeId, String barcode,
+                                                              LocalDate startDate, LocalDate endDate) {
+        return getProductCargoBreakdown(storeId, barcode, startDate, endDate, 0, 50);
     }
 
     /**
@@ -1860,6 +1938,183 @@ public class TrendyolInvoiceService {
                 .totalElements(filteredStoppages.size())
                 .totalPages(totalPages)
                 .hasNext(hasNext)
+                .build();
+    }
+
+    // ================================================================================
+    // ÜRÜN BAZLI GİDER DAĞILIMI (Product Expense Breakdown)
+    // ================================================================================
+
+    /**
+     * Get expense breakdown for a specific product (barcode) in a date range.
+     * Categorizes expenses into: platform service fee, international shipping, penalties, other.
+     * Used for "Detay" panel in Product Detail view.
+     *
+     * @param storeId   The store ID
+     * @param barcode   The product barcode (SKU)
+     * @param startDate Start date of the period
+     * @param endDate   End date of the period
+     * @return ProductExpenseBreakdownDto containing categorized expenses
+     */
+    @Transactional(readOnly = true)
+    public ProductExpenseBreakdownDto getProductExpenseBreakdown(UUID storeId, String barcode,
+                                                                  LocalDate startDate, LocalDate endDate) {
+        log.info("Getting expense breakdown for product {} in store: {} from {} to {}",
+                barcode, storeId, startDate, endDate);
+
+        // Verify store exists
+        storeRepository.findById(storeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Store", storeId.toString()));
+
+        // Convert dates to LocalDateTime for query
+        LocalDateTime startDateTime = startDate.atStartOfDay();
+        LocalDateTime endDateTime = endDate.plusDays(1).atStartOfDay();
+
+        // Get all deduction invoices for this barcode
+        List<TrendyolDeductionInvoice> deductions = deductionInvoiceRepository
+                .findByStoreIdAndBarcodeAndDateRange(storeId, barcode, startDateTime, endDateTime);
+
+        log.info("Found {} deduction invoices for product {} in date range", deductions.size(), barcode);
+
+        // Categorize expenses
+        BigDecimal platformServiceFee = BigDecimal.ZERO;
+        int platformServiceFeeCount = 0;
+
+        BigDecimal internationalShippingFee = BigDecimal.ZERO;
+        int internationalShippingCount = 0;
+
+        BigDecimal penaltyFee = BigDecimal.ZERO;
+        int penaltyCount = 0;
+        List<ProductExpenseBreakdownDto.ExpenseItemDto> penaltyItems = new ArrayList<>();
+
+        BigDecimal otherExpenses = BigDecimal.ZERO;
+        int otherExpenseCount = 0;
+        List<ProductExpenseBreakdownDto.ExpenseItemDto> otherExpenseItems = new ArrayList<>();
+
+        for (TrendyolDeductionInvoice deduction : deductions) {
+            String transactionType = deduction.getTransactionType();
+            BigDecimal amount = deduction.getDebt() != null ? deduction.getDebt() : BigDecimal.ZERO;
+
+            if (isPlatformServiceFee(transactionType)) {
+                platformServiceFee = platformServiceFee.add(amount);
+                platformServiceFeeCount++;
+            } else if (isInternationalFee(transactionType)) {
+                internationalShippingFee = internationalShippingFee.add(amount);
+                internationalShippingCount++;
+            } else if (isPenaltyFee(transactionType)) {
+                penaltyFee = penaltyFee.add(amount);
+                penaltyCount++;
+                penaltyItems.add(createExpenseItem(deduction));
+            } else {
+                // Other expenses (excluding commission - it's already shown separately)
+                if (!isCommissionFee(transactionType)) {
+                    otherExpenses = otherExpenses.add(amount);
+                    otherExpenseCount++;
+                    otherExpenseItems.add(createExpenseItem(deduction));
+                }
+            }
+        }
+
+        // Calculate totals
+        BigDecimal totalExpenses = platformServiceFee
+                .add(internationalShippingFee)
+                .add(penaltyFee)
+                .add(otherExpenses);
+        int totalTransactionCount = platformServiceFeeCount + internationalShippingCount
+                + penaltyCount + otherExpenseCount;
+
+        // VAT is typically 20% for these services (already included in debt amount)
+        // Calculate VAT from gross: vatAmount = gross * (20/120)
+        BigDecimal totalVatAmount = totalExpenses.multiply(new BigDecimal("0.20"))
+                .divide(new BigDecimal("1.20"), 2, RoundingMode.HALF_UP);
+
+        // Get product info
+        String productName = null;
+        String productImageUrl = null;
+        Optional<TrendyolProduct> productOpt = productRepository.findByStoreIdAndBarcode(storeId, barcode);
+        if (productOpt.isPresent()) {
+            TrendyolProduct product = productOpt.get();
+            productName = product.getTitle();
+            productImageUrl = product.getImage();
+        }
+
+        log.info("Expense breakdown for product {}: platform={}, international={}, penalty={}, other={}, total={}",
+                barcode, platformServiceFee, internationalShippingFee, penaltyFee, otherExpenses, totalExpenses);
+
+        return ProductExpenseBreakdownDto.builder()
+                .barcode(barcode)
+                .productName(productName)
+                .productImageUrl(productImageUrl)
+                .platformServiceFee(platformServiceFee)
+                .platformServiceFeeCount(platformServiceFeeCount)
+                .internationalShippingFee(internationalShippingFee)
+                .internationalShippingCount(internationalShippingCount)
+                .penaltyFee(penaltyFee)
+                .penaltyCount(penaltyCount)
+                .penaltyItems(penaltyItems)
+                .otherExpenses(otherExpenses)
+                .otherExpenseCount(otherExpenseCount)
+                .otherExpenseItems(otherExpenseItems)
+                .totalExpenses(totalExpenses)
+                .totalVatAmount(totalVatAmount)
+                .totalTransactionCount(totalTransactionCount)
+                .hasExpenseData(!deductions.isEmpty())
+                .build();
+    }
+
+    /**
+     * Check if transaction type is a platform service fee
+     */
+    private boolean isPlatformServiceFee(String transactionType) {
+        if (transactionType == null) return false;
+        String lower = transactionType.toLowerCase();
+        return lower.contains("platform") && lower.contains("hizmet");
+    }
+
+    /**
+     * Check if transaction type is an international fee
+     */
+    private boolean isInternationalFee(String transactionType) {
+        if (transactionType == null) return false;
+        String lower = transactionType.toLowerCase();
+        return lower.contains("uluslararası") || lower.contains("yurt dışı") || lower.contains("yurtdışı");
+    }
+
+    /**
+     * Check if transaction type is a penalty fee
+     */
+    private boolean isPenaltyFee(String transactionType) {
+        if (transactionType == null) return false;
+        String lower = transactionType.toLowerCase();
+        return lower.contains("tedarik edememe") || lower.contains("termin gecikme")
+                || lower.contains("eksik ürün") || lower.contains("yanlış ürün")
+                || lower.contains("kusurlu ürün") || lower.contains("ceza");
+    }
+
+    /**
+     * Check if transaction type is a commission fee
+     */
+    private boolean isCommissionFee(String transactionType) {
+        if (transactionType == null) return false;
+        String lower = transactionType.toLowerCase();
+        return lower.contains("komisyon");
+    }
+
+    /**
+     * Create expense item DTO from deduction invoice
+     */
+    private ProductExpenseBreakdownDto.ExpenseItemDto createExpenseItem(TrendyolDeductionInvoice deduction) {
+        BigDecimal amount = deduction.getDebt() != null ? deduction.getDebt() : BigDecimal.ZERO;
+        BigDecimal vatAmount = amount.multiply(new BigDecimal("0.20"))
+                .divide(new BigDecimal("1.20"), 2, RoundingMode.HALF_UP);
+
+        return ProductExpenseBreakdownDto.ExpenseItemDto.builder()
+                .transactionType(deduction.getTransactionType())
+                .description(deduction.getDescription())
+                .amount(amount)
+                .vatAmount(vatAmount)
+                .orderNumber(deduction.getOrderNumber())
+                .invoiceSerialNumber(deduction.getInvoiceSerialNumber())
                 .build();
     }
 }

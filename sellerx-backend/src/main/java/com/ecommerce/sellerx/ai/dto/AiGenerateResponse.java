@@ -1,5 +1,6 @@
 package com.ecommerce.sellerx.ai.dto;
 
+import com.ecommerce.sellerx.crosssell.dto.CrossSellRecommendationDto;
 import lombok.*;
 
 import java.math.BigDecimal;
@@ -16,6 +17,7 @@ public class AiGenerateResponse {
     private String generatedAnswer;
     private BigDecimal confidenceScore;
     private List<ContextSource> contextSources;
+    private List<CrossSellRecommendationDto> crossSellRecommendations;
     private String modelVersion;
     private Integer tokensUsed;
     private Integer generationTimeMs;

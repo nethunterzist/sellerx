@@ -33,7 +33,8 @@ docs klasörünün yapısı, navigasyon ve güncelleme kuralları.
 docs/
 ├── README.md                    # Tek giriş noktası
 ├── CHANGELOG.md                 # Geliştirme günlüğü
-├── DOC_VERIFICATION_REPORT.md   # Doc–kod doğrulama raporu
+├── AGENT_TEAM.md                # Agent takım yapılandırması
+├── TECHSTACK_TODO_DEBT.md       # Teknik borç ve teknoloji takibi
 ├── sprint-1-api-inventory/      # API envanteri (backend + BFF)
 ├── sprint-2-db-schema/          # DB şeması, migration listesi
 ├── sprint-3-backend-domains/    # Domain listesi, scheduled job'lar
@@ -53,4 +54,4 @@ docs/
 | Sprint = proje sprint’i mi? | Hayır. Buradaki “sprint” = doc grupları (envanter/harita). Proje sprint’i değil. |
 | Aynı konu iki yerde (örn. webhook)? | Olabilir: **architecture/** = teknik akış (WEBHOOK_SYSTEM.md), **features/** = özellik detayı (WEBHOOKS.md). İkisi birbirini tamamlar. |
 | DB şeması nerede? | **Liste/harita:** sprint-2-db-schema. **Detaylı şema açıklaması:** architecture/DATABASE_SCHEMA.md. |
-| Hangi doc güncel? | DOC_VERIFICATION_REPORT.md’de architecture/ ve features/ doğrulama özeti var. archive/ güncel değil. |
+| Hangi doc güncel? | archive/DOC_VERIFICATION_REPORT.md'de eski doğrulama özeti var (arşivlendi). Güncel bilgi için sprint doc'larına bakın. archive/ klasörü güncel değil. |

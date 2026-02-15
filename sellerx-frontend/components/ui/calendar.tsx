@@ -52,20 +52,39 @@ function Calendar({
         weekday:
           "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem] text-center",
         row: "flex w-full mt-2",
-        cell: "h-9 w-9 text-center text-sm p-0 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
+        cell: cn(
+          "h-9 w-9 text-center text-sm p-0 relative focus-within:relative focus-within:z-20",
+          // Range start: pill left rounded with gradient background
+          "[&:has(.rdp-range-start)]:rounded-l-full [&:has(.rdp-range-start)]:bg-gradient-to-r [&:has(.rdp-range-start)]:from-transparent [&:has(.rdp-range-start)]:to-primary/10",
+          // Range end: pill right rounded with gradient background
+          "[&:has(.rdp-range-end)]:rounded-r-full [&:has(.rdp-range-end)]:bg-gradient-to-l [&:has(.rdp-range-end)]:from-transparent [&:has(.rdp-range-end)]:to-primary/10",
+          // Range middle: light primary background
+          "[&:has(.rdp-range-middle)]:bg-primary/10"
+        ),
         day: cn(
           buttonVariants({ variant: "ghost" }),
-          "h-9 w-9 p-0 font-normal aria-selected:opacity-100"
+          "h-9 w-9 p-0 font-normal aria-selected:opacity-100 transition-all duration-150",
+          "hover:bg-primary/15 hover:text-primary"
         ),
-        day_range_end: "day-range-end",
-        day_selected:
-          "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
-        day_today: "bg-accent text-accent-foreground",
-        day_outside:
-          "day-outside text-muted-foreground aria-selected:bg-accent/50 aria-selected:text-muted-foreground",
+        range_start: cn(
+          "rdp-range-start bg-primary text-primary-foreground rounded-full font-semibold",
+          "hover:bg-primary hover:text-primary-foreground",
+          "focus:bg-primary focus:text-primary-foreground"
+        ),
+        range_end: cn(
+          "rdp-range-end bg-primary text-primary-foreground rounded-full font-semibold",
+          "hover:bg-primary hover:text-primary-foreground",
+          "focus:bg-primary focus:text-primary-foreground"
+        ),
+        range_middle: "rdp-range-middle bg-primary/10 text-foreground",
+        selected: cn(
+          "bg-primary text-primary-foreground rounded-full font-semibold",
+          "hover:bg-primary hover:text-primary-foreground",
+          "focus:bg-primary focus:text-primary-foreground"
+        ),
+        day_today: "bg-accent text-accent-foreground font-semibold",
+        day_outside: "day-outside text-muted-foreground/50 aria-selected:bg-primary/5 aria-selected:text-muted-foreground/70",
         day_disabled: "text-muted-foreground opacity-50",
-        day_range_middle:
-          "aria-selected:bg-accent aria-selected:text-accent-foreground",
         day_hidden: "invisible",
         ...(classNames || {}),
       }}

@@ -4,6 +4,7 @@ import com.ecommerce.sellerx.common.BaseUnitTest;
 import com.ecommerce.sellerx.common.TestDataBuilder;
 import com.ecommerce.sellerx.email.EmailService;
 import com.ecommerce.sellerx.products.TrendyolProduct;
+import com.ecommerce.sellerx.returns.ReturnRecordRepository;
 import com.ecommerce.sellerx.stores.Store;
 import com.ecommerce.sellerx.users.User;
 import org.junit.jupiter.api.BeforeEach;
@@ -12,6 +13,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -32,7 +34,13 @@ class AlertEngineTest extends BaseUnitTest {
     private AlertHistoryRepository alertHistoryRepository;
 
     @Mock
+    private ReturnRecordRepository returnRecordRepository;
+
+    @Mock
     private EmailService emailService;
+
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     private AlertEngine alertEngine;
 
@@ -42,7 +50,7 @@ class AlertEngineTest extends BaseUnitTest {
     @BeforeEach
     void setUp() {
         TestDataBuilder.resetSequence();
-        alertEngine = new AlertEngine(alertRuleRepository, alertHistoryRepository, emailService);
+        alertEngine = new AlertEngine(alertRuleRepository, alertHistoryRepository, returnRecordRepository, emailService, eventPublisher);
 
         testUser = TestDataBuilder.user().build();
         testUser.setId(1L);

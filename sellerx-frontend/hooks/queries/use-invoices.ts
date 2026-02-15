@@ -1,9 +1,8 @@
-import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
+import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/api/client";
 import type {
   InvoiceSummary,
   InvoicePage,
-  InvoiceSyncResponse,
   InvoiceFilters,
   CargoInvoiceItemsResponse,
   InvoiceItemsResponse,
@@ -13,6 +12,7 @@ import type {
   AggregatedProductsResponse,
   ProductCommissionBreakdown,
   ProductCargoBreakdown,
+  ProductExpenseBreakdown,
   CargoInvoiceItemsPage,
   InvoiceItemsPage,
   CommissionInvoiceItemsPage,
@@ -30,6 +30,7 @@ export type {
   AggregatedProductsResponse,
   ProductCommissionBreakdown,
   ProductCargoBreakdown,
+  ProductExpenseBreakdown,
 };
 
 // Invoice Query Keys
@@ -130,6 +131,15 @@ export const invoiceKeys = {
     endDate: string
   ) =>
     [...invoiceKeys.productCargoBreakdown(), storeId, barcode, startDate, endDate] as const,
+  // Product expense breakdown (platform fees, penalties, international, other)
+  productExpenseBreakdown: () => [...invoiceKeys.all, "product-expense-breakdown"] as const,
+  storeProductExpenseBreakdown: (
+    storeId: string,
+    barcode: string,
+    startDate: string,
+    endDate: string
+  ) =>
+    [...invoiceKeys.productExpenseBreakdown(), storeId, barcode, startDate, endDate] as const,
   // Order-level invoice items (all invoices for a specific order)
   orderInvoiceItems: () => [...invoiceKeys.all, "order-invoice-items"] as const,
   storeOrderInvoiceItems: (storeId: string, orderNumber: string) =>
@@ -253,32 +263,6 @@ export function useAllInvoices(
     enabled: enabled && !!storeId && !!startDate && !!endDate,
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,
-  });
-}
-
-/**
- * Sync invoices from Trendyol API
- */
-export function useSyncInvoices() {
-  const queryClient = useQueryClient();
-
-  return useMutation<
-    InvoiceSyncResponse,
-    Error,
-    { storeId: string; startDate?: string; endDate?: string }
-  >({
-    mutationFn: ({ storeId, startDate, endDate }) => {
-      const params = new URLSearchParams();
-      if (startDate) params.append("startDate", startDate);
-      if (endDate) params.append("endDate", endDate);
-      const queryString = params.toString();
-      const url = `/invoices/stores/${storeId}/sync${queryString ? `?${queryString}` : ""}`;
-      return apiRequest<InvoiceSyncResponse>(url, { method: "POST" });
-    },
-    onSuccess: (data, { storeId }) => {
-      // Invalidate all invoice-related queries for this store
-      queryClient.invalidateQueries({ queryKey: invoiceKeys.all });
-    },
   });
 }
 
@@ -584,6 +568,35 @@ export function useProductCargoBreakdown(
     queryFn: () =>
       apiRequest<ProductCargoBreakdown>(
         `/invoices/stores/${storeId}/products/${encodeURIComponent(barcode || "")}/cargo-breakdown?startDate=${startDate}&endDate=${endDate}`
+      ),
+    enabled: enabled && !!storeId && !!barcode && !!startDate && !!endDate,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: false,
+  });
+}
+
+/**
+ * Get expense breakdown for a specific product
+ * Shows platform fees, penalties, international shipping, and other expenses
+ * Used for "Detay" panel - Giderler section
+ */
+export function useProductExpenseBreakdown(
+  storeId: string | undefined,
+  barcode: string | undefined,
+  startDate: string,
+  endDate: string,
+  enabled = true
+) {
+  return useQuery<ProductExpenseBreakdown>({
+    queryKey: invoiceKeys.storeProductExpenseBreakdown(
+      storeId || "",
+      barcode || "",
+      startDate,
+      endDate
+    ),
+    queryFn: () =>
+      apiRequest<ProductExpenseBreakdown>(
+        `/invoices/stores/${storeId}/products/${encodeURIComponent(barcode || "")}/expense-breakdown?startDate=${startDate}&endDate=${endDate}`
       ),
     enabled: enabled && !!storeId && !!barcode && !!startDate && !!endDate,
     staleTime: 5 * 60 * 1000, // 5 minutes

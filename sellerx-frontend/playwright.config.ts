@@ -22,6 +22,28 @@ export default defineConfig({
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
     },
+    {
+      name: "verification",
+      testDir: "./e2e/verification",
+      use: {
+        ...devices["Desktop Chrome"],
+        video: "on-first-retry",
+        screenshot: "on",
+      },
+      retries: 0,
+      workers: 1, // Sequential execution required
+    },
+    {
+      name: "trendyol-setup",
+      testDir: "./e2e/verification",
+      testMatch: "trendyol-setup.spec.ts",
+      use: {
+        ...devices["Desktop Chrome"],
+        headless: false, // Headed mode for manual login
+      },
+      retries: 0,
+      workers: 1,
+    },
   ],
 
   // Start the dev server before running tests (optional)

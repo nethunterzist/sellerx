@@ -36,7 +36,7 @@ public record TrendyolOrderDto(
     
     @JsonProperty("stoppage")
     BigDecimal stoppage,
-    
+
     @JsonProperty("estimatedCommission")
     BigDecimal estimatedCommission,
 
@@ -59,5 +59,23 @@ public record TrendyolOrderDto(
     LocalDateTime createdAt,
     
     @JsonProperty("updatedAt")
-    LocalDateTime updatedAt
+    LocalDateTime updatedAt,
+
+    @JsonProperty("platformServiceFee")
+    BigDecimal platformServiceFee,
+
+    @JsonProperty("commissionSource")
+    String commissionSource,
+
+    @JsonProperty("isCommissionEstimated")
+    Boolean isCommissionEstimated,
+
+    @JsonProperty("isShippingEstimated")
+    Boolean isShippingEstimated,
+
+    @JsonProperty("returnShippingCost")
+    BigDecimal returnShippingCost,
+
+    @JsonProperty("isReturnShippingEstimated")
+    Boolean isReturnShippingEstimated
 ) {}

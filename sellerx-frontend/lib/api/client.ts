@@ -1,5 +1,5 @@
 // Type imports
-import type { DashboardStats, DashboardStatsResponse, MultiPeriodStatsResponse, PLPeriodType } from "@/types/dashboard";
+import type { DashboardStats, DashboardStatsResponse, DeductionBreakdown, MultiPeriodStatsResponse, PLPeriodType } from "@/types/dashboard";
 import type {
   ProductListResponse,
   SyncProductsResponse,
@@ -9,6 +9,7 @@ import type { TrendyolOrder, SyncOrdersResponse } from "@/types/order";
 import type { PagedResponse } from "@/types/api";
 import type {
   ReturnAnalyticsResponse,
+  ReturnedOrderDecision,
   TrendyolClaim,
   ClaimsPage,
   ClaimsSyncResponse,
@@ -16,6 +17,7 @@ import type {
   ClaimIssueReason,
   ClaimsStats,
   BulkActionResponse,
+  ClaimItemAudit,
 } from "@/types/returns";
 
 import { logger } from "@/lib/logger";
@@ -386,6 +388,21 @@ export const dashboardApi = {
       `/dashboard/stats/${storeId}/multi-period?${params.toString()}`,
     );
   },
+
+  /**
+   * Get deduction invoice breakdown by transaction type for a date range.
+   * Used for dashboard detail panel to show all invoice types individually.
+   */
+  getDeductionBreakdown: (
+    storeId: string,
+    startDate: string,
+    endDate: string,
+  ) => {
+    const params = new URLSearchParams({ startDate, endDate });
+    return apiRequest<DeductionBreakdown[]>(
+      `/stores/${storeId}/deductions/breakdown?${params.toString()}`,
+    );
+  },
 };
 
 // Products API - extended with sync
@@ -611,6 +628,20 @@ export const returnsApi = {
     apiRequest<ReturnAnalyticsResponse>(
       `/returns/stores/${storeId}/analytics/last-30-days`
     ),
+
+  getReturnedOrders: (storeId: string, startDate: string, endDate: string) =>
+    apiRequest<ReturnedOrderDecision[]>(
+      `/returns/stores/${storeId}/returned-orders?startDate=${startDate}&endDate=${endDate}`
+    ),
+
+  updateResalable: (storeId: string, orderNumber: string, isResalable: boolean) =>
+    apiRequest<void>(
+      `/returns/stores/${storeId}/orders/${orderNumber}/resalable`,
+      {
+        method: "PUT",
+        body: JSON.stringify({ isResalable }),
+      }
+    ),
 };
 
 // Claims API (Trendyol Returns Management)
@@ -680,6 +711,10 @@ export const claimsApi = {
   // Get claim issue reasons
   getIssueReasons: () =>
     apiRequest<ClaimIssueReason[]>(`/returns/claim-issue-reasons`),
+
+  // Get claim item audit trail
+  getClaimItemAudit: (storeId: string, itemId: string) =>
+    apiRequest<ClaimItemAudit[]>(`/returns/stores/${storeId}/claims/items/${itemId}/audit`),
 };
 
 // AI Types

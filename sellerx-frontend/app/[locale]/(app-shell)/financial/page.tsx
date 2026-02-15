@@ -1,13 +1,13 @@
 "use client";
 
 import { useSelectedStore } from "@/hooks/queries/use-stores";
-import { useFinancialStats, useSyncFinancial } from "@/hooks/queries/use-financial";
-import { Button } from "@/components/ui/button";
+import { useFinancialStats } from "@/hooks/queries/use-financial";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { RefreshCw, TrendingUp, TrendingDown, DollarSign, Percent, Package, RotateCcw, CheckCircle, Clock } from "lucide-react";
+import { TrendingUp, TrendingDown, DollarSign, Percent, Package, RotateCcw, CheckCircle, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCurrency } from "@/lib/contexts/currency-context";
+import { StaggerChildren } from "@/components/motion";
 
 function formatPercent(value: number): string {
   return new Intl.NumberFormat("tr-TR", {
@@ -106,13 +106,6 @@ export default function FinancialPage() {
   const storeId = selectedStore?.selectedStoreId;
 
   const { data: stats, isLoading: statsLoading, error } = useFinancialStats(storeId || undefined);
-  const syncMutation = useSyncFinancial();
-
-  const handleSync = () => {
-    if (storeId) {
-      syncMutation.mutate(storeId);
-    }
-  };
 
   const isLoading = storeLoading || statsLoading;
 
@@ -127,43 +120,11 @@ export default function FinancialPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <p className="text-sm text-muted-foreground">
-            Trendyol'dan gelen uzlaşma ve komisyon verileri
-          </p>
-        </div>
-
-        <Button
-          onClick={handleSync}
-          disabled={syncMutation.isPending || !storeId}
-          variant="outline"
-          className="gap-2"
-        >
-          <RefreshCw
-            className={cn("h-4 w-4", syncMutation.isPending && "animate-spin")}
-          />
-          {syncMutation.isPending ? "Senkronize ediliyor..." : "Finansal Verileri Senkronize Et"}
-        </Button>
+      <div>
+        <p className="text-sm text-muted-foreground">
+          Trendyol'dan gelen uzlaşma ve komisyon verileri
+        </p>
       </div>
-
-      {/* Sync Result */}
-      {syncMutation.isSuccess && (
-        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
-          <p className="text-green-800 dark:text-green-200 text-sm flex items-center gap-2">
-            <CheckCircle className="h-4 w-4" />
-            Finansal veriler başarıyla senkronize edildi!
-          </p>
-        </div>
-      )}
-
-      {syncMutation.isError && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-          <p className="text-red-800 dark:text-red-200 text-sm">
-            Senkronizasyon başarısız: {syncMutation.error.message}
-          </p>
-        </div>
-      )}
 
       {/* Error State */}
       {error && (
@@ -178,7 +139,7 @@ export default function FinancialPage() {
       {isLoading ? (
         <StatsGridSkeleton />
       ) : stats ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <StaggerChildren className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {/* Order Stats */}
           <SummaryCard
             title="Toplam Sipariş"
@@ -237,18 +198,14 @@ export default function FinancialPage() {
               : undefined
             }
           />
-        </div>
+        </StaggerChildren>
       ) : (
         <div className="bg-muted border border-border rounded-lg p-8 text-center">
           <DollarSign className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
           <h3 className="text-lg font-medium text-foreground mb-2">Henüz finansal veri yok</h3>
-          <p className="text-muted-foreground mb-4">
-            Trendyol'dan finansal verileri senkronize etmek için yukarıdaki butonu kullanın.
+          <p className="text-muted-foreground">
+            Finansal veriler otomatik olarak senkronize edilecektir.
           </p>
-          <Button onClick={handleSync} disabled={syncMutation.isPending || !storeId}>
-            <RefreshCw className={cn("h-4 w-4 mr-2", syncMutation.isPending && "animate-spin")} />
-            Finansal Verileri Senkronize Et
-          </Button>
         </div>
       )}
 

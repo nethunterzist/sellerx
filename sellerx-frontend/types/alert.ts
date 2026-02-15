@@ -1,6 +1,6 @@
 // Alert Types
 
-export type AlertType = 'STOCK' | 'PROFIT' | 'PRICE' | 'ORDER' | 'SYSTEM';
+export type AlertType = 'STOCK' | 'PROFIT' | 'PRICE' | 'ORDER' | 'RETURN' | 'SYSTEM';
 
 export type AlertConditionType = 'BELOW' | 'ABOVE' | 'EQUALS' | 'CHANGED' | 'ZERO';
 
@@ -109,6 +109,7 @@ export const ALERT_TYPE_LABELS: Record<AlertType, string> = {
   PROFIT: 'Kar Uyarısı',
   PRICE: 'Fiyat Uyarısı',
   ORDER: 'Sipariş Uyarısı',
+  RETURN: 'İade Uyarısı',
   SYSTEM: 'Sistem Uyarısı',
 };
 
@@ -139,5 +140,6 @@ export const ALERT_TYPE_ICONS: Record<AlertType, string> = {
   PROFIT: '💰',
   PRICE: '🏷️',
   ORDER: '🛒',
+  RETURN: '↩️',
   SYSTEM: '⚙️',
 };

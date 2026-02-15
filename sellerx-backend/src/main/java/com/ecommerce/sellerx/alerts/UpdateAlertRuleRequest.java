@@ -31,8 +31,7 @@ public class UpdateAlertRuleRequest {
 
     private BigDecimal threshold;
 
-    @Size(max = 100, message = "Product barcode must be at most 100 characters")
-    private String productBarcode;
+    private String productBarcode; // Comma-separated for multiple products
 
     @Size(max = 200, message = "Category name must be at most 200 characters")
     private String categoryName;

@@ -17,6 +17,13 @@ export interface OrderItem {
   unitEstimatedCommission: number;
 }
 
+// Commission source type
+// INVOICE: From Financial/Settlement API (lastCommissionRate) - most accurate
+// REFERENCE: From Product API (commissionRate) - category default
+// NONE: No commission data available
+// MANUAL: Manually entered (legacy)
+export type CommissionSource = "INVOICE" | "REFERENCE" | "NONE" | "MANUAL";
+
 // Backend: TrendyolOrderDto
 export interface TrendyolOrder {
   id: string; // UUID
@@ -31,6 +38,13 @@ export interface TrendyolOrder {
   stoppage: number;
   estimatedCommission: number;
   estimatedShippingCost: number;
+  isCommissionEstimated: boolean; // true = tahmini, false = gerçek (settlement geldi)
+  isShippingEstimated?: boolean;
+  returnShippingCost?: number; // İade kargo maliyeti (gerçek veya tahmini)
+  isReturnShippingEstimated?: boolean; // true = gönderi kargosundan tahmin, false = gerçek iade faturası
+  transactionStatus?: string; // "SETTLED" when settled
+  platformServiceFee?: number; // Platform hizmet bedeli from deduction invoices
+  commissionSource?: CommissionSource; // Where commission data comes from
   orderItems: OrderItem[];
   shipmentPackageStatus: string;
   status: string;

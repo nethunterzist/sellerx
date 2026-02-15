@@ -5,6 +5,9 @@ SecurityRules implementasyonları: permitAll, authenticated, hasRole. Kaynak: [s
 | Sınıf | Path / kural | Erişim |
 |-------|----------------|--------|
 | AuthSecurityRules | POST /auth/login, /auth/refresh, /auth/logout | permitAll |
+| AuthSecurityRules | POST /auth/forgot-password, POST /auth/reset-password | permitAll (şifre sıfırlama) |
+| AuthSecurityRules | GET /auth/verify-reset-token | permitAll (token doğrulama) |
+| AuthSecurityRules | GET /auth/verify-email | permitAll (email doğrulama) |
 | UserSecurityRules | POST /users | permitAll (kayıt). Diğer store-scoped erişim @PreAuthorize canAccessStore. |
 | WebhookSecurityRules | POST /api/webhook/trendyol/**, POST /api/webhook/iyzico/**, POST /api/webhook/parasut/**, GET /api/webhook/health | permitAll |
 | HealthSecurityRules | GET /health, /, /actuator/health/**, /actuator/info | permitAll. /actuator/metrics/**, /actuator/loggers/** authenticated |
@@ -19,3 +22,5 @@ SecurityRules implementasyonları: permitAll, authenticated, hasRole. Kaynak: [s
 **Method-level:** @PreAuthorize("hasRole('ADMIN')") Admin controller'larda; @PreAuthorize("@userSecurityRules.canAccessStore(authentication, #storeId)") store-scoped endpoint'lerde (purchasing, qa, webhook management vb.).
 
 **SupportSecurityRules:** SecurityRules implemente etmez; sadece javadoc ile support/admin endpoint güvenliği açıklanır (JWT + Admin controller'da hasRole).
+
+**Not:** Email verification'da resend ve verification-status endpoint'leri authenticated (JWT gerektirir); sadece verify-email (token ile) public'tir. WebSocket endpoint'leri (`/ws/**`) Spring Security tarafından yönetilir (JWT handshake ile). Admin impersonation endpoint'leri (`/api/admin/users/{id}/impersonate`) AdminSecurityRules kapsamında `hasRole("ADMIN")` ile korunur.

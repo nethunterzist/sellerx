@@ -8,6 +8,8 @@ import { SidebarProvider, useSidebar } from "@/lib/contexts/sidebar-context";
 import { useGlobalSync } from "@/hooks/useGlobalSync";
 import { cn } from "@/lib/utils";
 import { useImpersonation } from "@/hooks/use-impersonation";
+import { motion } from "motion/react";
+import { usePathname } from "next/navigation";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -18,6 +20,7 @@ function AppLayoutContent({ children }: AppLayoutProps) {
   useGlobalSync();
   const { collapsed } = useSidebar();
   const { isImpersonating } = useImpersonation();
+  const pathname = usePathname();
 
   return (
     <KeyboardShortcutsProvider>
@@ -31,9 +34,15 @@ function AppLayoutContent({ children }: AppLayoutProps) {
             isImpersonating ? "pt-24" : "pt-14"
           )}
         >
-          <div className="p-4">
+          <motion.div
+            key={pathname}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.15, ease: [0.25, 0.1, 0.25, 1] as const }}
+            className="p-4"
+          >
             {children}
-          </div>
+          </motion.div>
         </main>
       </div>
     </KeyboardShortcutsProvider>

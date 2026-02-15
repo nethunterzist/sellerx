@@ -1,0 +1,707 @@
+{
+  "cookies": [
+    {
+      "name": "_GRECAPTCHA",
+      "value": "09AKhCRwiBDL4IJ-tV_3pvXswtEB6K1FwuyQNUyWQfj-Tq9EUrKQ8Xvqq-Ha4h9P8OfRabtgLM17u_Sgkrvf_0JQg",
+      "domain": "www.google.com",
+      "path": "/recaptcha",
+      "expires": 1786650838.000547,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "sc-dev",
+      "value": "NjJiNWFiYzctOGYzYS00ZDEyLTlhZWQtNzQwMDIxOTRkZWEyOjMxNTM2MDAwMDAw",
+      "domain": ".trendyol.com",
+      "path": "/",
+      "expires": 1802634851.387234,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "__cf_bm",
+      "value": "oDfGFC1ZXOuq5R_X7uTMkkzKkTmfi6Y7pBSjZD8RKrE-1771098808-1.0.1.1-vHXcHGsVudbUoeTvRr.hM0_rsOQnQKH.FgzcLJrSACfXcXmZGajFuWZTL0wPaz_5vD.xYcFUuGgu9mO0LLV0uvjf8x7Xq7X7TZSzNq4.crU",
+      "domain": ".trendyol.com",
+      "path": "/",
+      "expires": 1771100608.213359,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "__cflb",
+      "value": "0H28v6ZLZVsgqBDEDj8xQusD1WP7kVw2QjwWBPGh8hK",
+      "domain": "partner.trendyol.com",
+      "path": "/",
+      "expires": 1771100608.213917,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "_cfuvid",
+      "value": "o_a_PE6glWckzfdX66fT5.noDHtPD1V0j1IBqmcmRSI-1771098808383-0.0.1.1-604800000",
+      "domain": ".trendyol.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "sc-country",
+      "value": "TR",
+      "domain": "partner.trendyol.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "sc-language",
+      "value": "tr-TR",
+      "domain": "partner.trendyol.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "sc-platform",
+      "value": "WEB",
+      "domain": "partner.trendyol.com",
+      "path": "/",
+      "expires": 1786650851,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "__cflb",
+      "value": "0H28vPoczvmqGz9kmeTk1kY2YPH1oSWtTaHo18bPCaR",
+      "domain": "trendyolassistant.trendyol.com",
+      "path": "/",
+      "expires": 1771100609.58094,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "_gid",
+      "value": "GA1.2.1162523194.1771098810",
+      "domain": ".trendyol.com",
+      "path": "/",
+      "expires": 1771185255,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "_dc_gtm_UA-13174585-40",
+      "value": "1",
+      "domain": ".trendyol.com",
+      "path": "/",
+      "expires": 1771098869,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "_hjSessionUser_1128546",
+      "value": "eyJpZCI6Ijg3NGY3ZDc2LWY1YjctNTBlYy1hODc5LTlkZjMwZTFmMzg2YSIsImNyZWF0ZWQiOjE3NzEwOTg4MDk2NTYsImV4aXN0aW5nIjp0cnVlfQ==",
+      "domain": ".trendyol.com",
+      "path": "/",
+      "expires": 1802634851,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "_hjHasCachedUserAttributes",
+      "value": "true",
+      "domain": "partner.trendyol.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "ki_r",
+      "value": "",
+      "domain": "partner.trendyol.com",
+      "path": "/",
+      "expires": 1805658852.113371,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "deviceId",
+      "value": "ad6ec08eba5497e8cedd5b7c61f4622b",
+      "domain": "partner.trendyol.com",
+      "path": "/",
+      "expires": 1786650809,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "__cflb",
+      "value": "04dToYCH9RsdhPpttQ38L6weyLKJVju2jfRtqzCWuj",
+      "domain": "apigw.trendyol.com",
+      "path": "/",
+      "expires": 1771100637.944291,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "OptanonAlertBoxClosed",
+      "value": "2026-02-14T19:54:00.726Z",
+      "domain": ".partner.trendyol.com",
+      "path": "/",
+      "expires": 1802634840,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "supplier_channels",
+      "value": "[{\"supplierId\":1080066,\"name\":\"MP\"}]",
+      "domain": "partner.trendyol.com",
+      "path": "/",
+      "expires": 1778874849,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "isRememberMeFlow",
+      "value": "true",
+      "domain": "partner.trendyol.com",
+      "path": "/",
+      "expires": 1778874849,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "selectedChannel",
+      "value": "MP",
+      "domain": "partner.trendyol.com",
+      "path": "/",
+      "expires": 1771185249.753335,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "notRememberMe",
+      "value": "true",
+      "domain": "partner.trendyol.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "partner_auth_token",
+      "value": "eyJraWQiOiIyOWUyNjNiOS04MDZmLTRjMmItOTdlNy0xNDQ5YWZhMGE4MjQiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJqdGkiOiIyMzdhZGZiYy1lNjE4LTQxMmEtODcyZi03NTdhMDZlZjFmNGYiLCJhdWQiOiJzZWxsZXItY2VudGVyLWFjY291bnQtYmZmIiwic3ViIjoiZnVya2FuLXlpZ2l0QG1zbi5jb20iLCJpc3MiOiJ1c2VyLWF1dGgtYXBpIiwiZXhwIjoxNzcxMDk5MTQ5LCJjb3VudHJ5IjoiVFIiLCJzdXBwbGllcklkIjoxMDgwMDY2LCJwaG9uZVZlcmlmaWVkIjp0cnVlLCJyZWZyZXNoU2Vzc2lvbklkIjoiODlhOWIzMTgtMGY0ZS00ZDBlLTk1ZjctNjVkYmVlYmVhNDRiIiwiY2hhbm5lbCI6Ik1QIiwic2Vzc2lvbklkIjoiODlhOWIzMTgtMGY0ZS00ZDBlLTk1ZjctNjVkYmVlYmVhNDRiIiwidXNlcklkIjoxOTU1NDA3LCJhdXRob3JpdGllcyI6WyJTRUxMRVJfQUNDT1VOVF9CQU5LX0lORk9fVklFVyIsIlJFUE9SVElORyIsIlpPTkUiLCJQQVlNRU5UX09SREVSIiwiT1JERVIiLCJTVVBQT1JUIiwiRVhQT1JUX1NVUFBPUlQiLCJTRUxMRVJfQ0FSR09fSU5GT19WSUVXIiwiUFJPRFVDVCIsIkRBU0hCT0FSRCIsIlJPTEVfVVNFUiIsIlNFTExFUl9BQ0NPVU5UX0ZJUk1fSU5GT19WSUVXIiwiUEFZTUVOVF9TVEFURU1FTlQiLCJDQVJHT19PUEVSQVRJT04iLCJJTlZPSUNFIiwiU0VMTEVSX0FERFJFU1NfSU5GT19WSUVXIiwiQ09VUE9OIiwiVFJFTkRZT0xfQUNBREVNWSIsIkNVU1RPTUVSX1FVRVNUSU9OUyIsIlBST01PVElPTiIsIlNUT1JFIiwiVEFSR0VUUyIsIlJPTEVfQURNSU4iLCJOT1RJRklDQVRJT05fQ0VOVEVSIiwiQURWRVJUSVNFTUVOVCJdLCJtYXN0ZXIiOmZhbHNlLCJjaGFubmVscyI6WyJNUCJdLCJwcm9maWxlSWQiOjIyODExNTksIm5hbWUiOiJGVVJLQU4gWcSwxJ7EsFQiLCJtdWx0aVByb2ZpbGUiOmZhbHNlLCJtYWlsVmVyaWZpZWQiOnRydWUsImludGVybmF0aW9uYWwiOmZhbHNlLCJlbWFpbCI6ImZ1cmthbi15aWdpdEBtc24uY29tIn0.bK2O-QIRYcTWN_VT9QWM8WTxmGDWcsXkReXLcyXZjsPekFVe1k82dJ7bnndQeZrhbF2nctzWCL2Ngh3J5ZrZ4A",
+      "domain": ".trendyol.com",
+      "path": "/",
+      "expires": 1771099104.753526,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "auth_token",
+      "value": "eyJraWQiOiIyOWUyNjNiOS04MDZmLTRjMmItOTdlNy0xNDQ5YWZhMGE4MjQiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJqdGkiOiIyMzdhZGZiYy1lNjE4LTQxMmEtODcyZi03NTdhMDZlZjFmNGYiLCJhdWQiOiJzZWxsZXItY2VudGVyLWFjY291bnQtYmZmIiwic3ViIjoiZnVya2FuLXlpZ2l0QG1zbi5jb20iLCJpc3MiOiJ1c2VyLWF1dGgtYXBpIiwiZXhwIjoxNzcxMDk5MTQ5LCJjb3VudHJ5IjoiVFIiLCJzdXBwbGllcklkIjoxMDgwMDY2LCJwaG9uZVZlcmlmaWVkIjp0cnVlLCJyZWZyZXNoU2Vzc2lvbklkIjoiODlhOWIzMTgtMGY0ZS00ZDBlLTk1ZjctNjVkYmVlYmVhNDRiIiwiY2hhbm5lbCI6Ik1QIiwic2Vzc2lvbklkIjoiODlhOWIzMTgtMGY0ZS00ZDBlLTk1ZjctNjVkYmVlYmVhNDRiIiwidXNlcklkIjoxOTU1NDA3LCJhdXRob3JpdGllcyI6WyJTRUxMRVJfQUNDT1VOVF9CQU5LX0lORk9fVklFVyIsIlJFUE9SVElORyIsIlpPTkUiLCJQQVlNRU5UX09SREVSIiwiT1JERVIiLCJTVVBQT1JUIiwiRVhQT1JUX1NVUFBPUlQiLCJTRUxMRVJfQ0FSR09fSU5GT19WSUVXIiwiUFJPRFVDVCIsIkRBU0hCT0FSRCIsIlJPTEVfVVNFUiIsIlNFTExFUl9BQ0NPVU5UX0ZJUk1fSU5GT19WSUVXIiwiUEFZTUVOVF9TVEFURU1FTlQiLCJDQVJHT19PUEVSQVRJT04iLCJJTlZPSUNFIiwiU0VMTEVSX0FERFJFU1NfSU5GT19WSUVXIiwiQ09VUE9OIiwiVFJFTkRZT0xfQUNBREVNWSIsIkNVU1RPTUVSX1FVRVNUSU9OUyIsIlBST01PVElPTiIsIlNUT1JFIiwiVEFSR0VUUyIsIlJPTEVfQURNSU4iLCJOT1RJRklDQVRJT05fQ0VOVEVSIiwiQURWRVJUSVNFTUVOVCJdLCJtYXN0ZXIiOmZhbHNlLCJjaGFubmVscyI6WyJNUCJdLCJwcm9maWxlSWQiOjIyODExNTksIm5hbWUiOiJGVVJLQU4gWcSwxJ7EsFQiLCJtdWx0aVByb2ZpbGUiOmZhbHNlLCJtYWlsVmVyaWZpZWQiOnRydWUsImludGVybmF0aW9uYWwiOmZhbHNlLCJlbWFpbCI6ImZ1cmthbi15aWdpdEBtc24uY29tIn0.bK2O-QIRYcTWN_VT9QWM8WTxmGDWcsXkReXLcyXZjsPekFVe1k82dJ7bnndQeZrhbF2nctzWCL2Ngh3J5ZrZ4A",
+      "domain": "partner.trendyol.com",
+      "path": "/",
+      "expires": 1771099104.753807,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "partner_refresh_token",
+      "value": "eyJraWQiOiI2YjEyNjM1MC05N2Q5LTQ2NTYtYjBhMS04NWRjNTRlZjkxMWEiLCJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJqdGkiOiI4OWE5YjMxOC0wZjRlLTRkMGUtOTVmNy02NWRiZWViZWE0NGIiLCJzdWIiOiJmdXJrYW4teWlnaXRAbXNuLmNvbSIsImF1ZCI6IlJFRlJFU0hfVE9LRU4iLCJpc3MiOiJ1c2VyLWF1dGgtYXBpIiwiZXhwIjoxNzcxMTg1MjQ5LCJzdXBwbGllcklkIjoxMDgwMDY2LCJpbnRlcm5hbFJlZGlyZWN0aW9uIjpmYWxzZSwicHJvZmlsZUlkIjoyMjgxMTU5LCJzZXNzaW9uSWQiOiI4OWE5YjMxOC0wZjRlLTRkMGUtOTVmNy02NWRiZWViZWE0NGIiLCJ1c2VySWQiOjE5NTU0MDd9.DiYFPDxO-dJS7AzGVT6UL6xgrAehA7nhLR8JX1pUZNRiiZfZ6Fu0LQkffi8R9rVQgJ6qNHlXtJ5n1iDXqclHQQ",
+      "domain": ".trendyol.com",
+      "path": "/",
+      "expires": 1771185249.753852,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "refresh_token",
+      "value": "eyJraWQiOiI2YjEyNjM1MC05N2Q5LTQ2NTYtYjBhMS04NWRjNTRlZjkxMWEiLCJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJqdGkiOiI4OWE5YjMxOC0wZjRlLTRkMGUtOTVmNy02NWRiZWViZWE0NGIiLCJzdWIiOiJmdXJrYW4teWlnaXRAbXNuLmNvbSIsImF1ZCI6IlJFRlJFU0hfVE9LRU4iLCJpc3MiOiJ1c2VyLWF1dGgtYXBpIiwiZXhwIjoxNzcxMTg1MjQ5LCJzdXBwbGllcklkIjoxMDgwMDY2LCJpbnRlcm5hbFJlZGlyZWN0aW9uIjpmYWxzZSwicHJvZmlsZUlkIjoyMjgxMTU5LCJzZXNzaW9uSWQiOiI4OWE5YjMxOC0wZjRlLTRkMGUtOTVmNy02NWRiZWViZWE0NGIiLCJ1c2VySWQiOjE5NTU0MDd9.DiYFPDxO-dJS7AzGVT6UL6xgrAehA7nhLR8JX1pUZNRiiZfZ6Fu0LQkffi8R9rVQgJ6qNHlXtJ5n1iDXqclHQQ",
+      "domain": "partner.trendyol.com",
+      "path": "/",
+      "expires": 1771185249.753909,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "ty-lb-vid",
+      "value": "L2Rhc2hib2FyZDphYzgxYzdkMjBhNmFkNTM3NDI5ZGM5YTRmZWYwZjc0MToxNzcxMDk4ODUxOjE6VFBOdHdZK3RVMUExZ3pDd2xrSFMvLzVoQmVuY0trRGZGTTdENXlta0ZFVT0=",
+      "domain": ".trendyol.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "sellerID",
+      "value": "1080066",
+      "domain": "partner.trendyol.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "_ga_N1DYMXS48V",
+      "value": "GS2.1.s1771098809$o1$g1$t1771098851$j18$l0$h0",
+      "domain": ".trendyol.com",
+      "path": "/",
+      "expires": 1805658851.655454,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "_ga",
+      "value": "GA1.2.666875436.1771098809",
+      "domain": ".trendyol.com",
+      "path": "/",
+      "expires": 1805658855.054784,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "OptanonConsent",
+      "value": "isGpcEnabled=0&datestamp=Sat+Feb+14+2026+22%3A54%3A11+GMT%2B0300+(GMT%2B03%3A00)&version=202411.2.0&browserGpcFlag=0&isIABGlobal=false&hosts=&genVendors=&consentId=c5515f60-9fee-4849-97ae-340d2ad8b81f&interactionCount=1&isAnonUser=1&landingPath=NotLandingPage&groups=C0002%3A0%2CC0004%3A0%2CC0001%3A1&intType=2&geolocation=TR%3B34&AwaitingReconsent=false",
+      "domain": ".partner.trendyol.com",
+      "path": "/",
+      "expires": 1802634851,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "_hjSession_1128546",
+      "value": "eyJpZCI6ImQ3OGU1NGRmLTVlZTEtNDMwZS1hMWEwLTQ1OTdlNTQ5NjFmMCIsImMiOjE3NzEwOTg4MDk2NTYsInMiOjEsInIiOjEsInNiIjowLCJzciI6MCwic2UiOjAsImZzIjoxLCJzcCI6MX0=",
+      "domain": ".trendyol.com",
+      "path": "/",
+      "expires": 1771100651,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "tag_survey739",
+      "value": "739",
+      "domain": "partner.trendyol.com",
+      "path": "/",
+      "expires": 1771703652,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "tag_survey2323",
+      "value": "2323",
+      "domain": "partner.trendyol.com",
+      "path": "/",
+      "expires": 1771703652,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "ki_t",
+      "value": "1771098809674%3B1771098809674%3B1771098852113%3B1%3B6",
+      "domain": "partner.trendyol.com",
+      "path": "/",
+      "expires": 1805658852.113093,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "_hjUserAttributesHash",
+      "value": "22a71e6a8a677c9bc0d90ee9e530b5be",
+      "domain": "partner.trendyol.com",
+      "path": "/",
+      "expires": 1771098972,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "ki_s",
+      "value": "240315%3A1.0.0.0.2",
+      "domain": "partner.trendyol.com",
+      "path": "/",
+      "expires": 1805658855.123766,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "ki_u",
+      "value": "16c1c0e2-77bb-4de3-dfad-b290",
+      "domain": "partner.trendyol.com",
+      "path": "/",
+      "expires": 1805658855.052652,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "ki_rec_saw",
+      "value": "%7B%22240315%22%3A1771098855%7D",
+      "domain": "partner.trendyol.com",
+      "path": "/",
+      "expires": 1805658855.124282,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "_gat_gtm1_qual",
+      "value": "1",
+      "domain": ".trendyol.com",
+      "path": "/",
+      "expires": 1771098915,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    }
+  ],
+  "origins": [
+    {
+      "origin": "https://partner.trendyol.com",
+      "localStorage": [
+        {
+          "name": "sp-camp-14494",
+          "value": "{\"data\":{\"step1-displayed\":true,\"viDa\":1771098853,\"salesLogDuration\":1771185253,\"closed\":true,\"clDa\":1771098855},\"_expires\":1771185255000}"
+        },
+        {
+          "name": "predictiveData",
+          "value": "{\"data\":{\"239e8facde7b5f967559546e7a8b6226\":\"0829730d8d3359e1def2be1282a66143\",\"d044e59738a29b684e0201004da899ab\":{},\"bb5abb09ed2a010715f90d1471fefa8f\":\"unknown\",\"24bc4d7e882d70a7230bd5d4bfec59fa\":\"0829730d8d3359e1def2be1282a66143\",\"eab96bed5ffe7616367b1cf73177df61\":{},\"bb0e9389f4b5f3e0a6d64476a11d8e46\":\"0829730d8d3359e1def2be1282a66143\",\"3e30c1160b1fc322e1cb6b140328c9bf\":\"0829730d8d3359e1def2be1282a66143\",\"eac1f6a7d41d7788270083894c6bc311\":\"0829730d8d3359e1def2be1282a66143\",\"400e1f11f54030aa956f09d9f5a9f5e8\":{},\"8c5790807e18afbe2f90e6c7233c5668\":\"0829730d8d3359e1def2be1282a66143\",\"a437ecf119dca2112117fdb8a4430d58\":\"acb1014443cc38c56080e72f284baf6f\",\"7973c824d5d9703d3dc667c5627cdb55\":\"unknown\",\"da0e25b2b5e0c05d7c24946bd9b97706\":{},\"a96afc2c6a3e5bd37b4513e0ab245859\":{},\"c954718c959cc0bd8feb842688b88a4b\":\"0829730d8d3359e1def2be1282a66143\",\"632c40979127bbd314dee6dadf614a09\":\"unknown\",\"d1f19677e1559f24b9b33c57f3278de9\":60000},\"_expires\":1771098871109}"
+        },
+        {
+          "name": "menu_is_new_PERSISTENT",
+          "value": "{\"payments.myPayments\":true,\"payments.paymentOrders\":true,\"payments.smeRiskReport\":true,\"payments.mpCredit\":false,\"payments.creditCards\":false,\"reports.liveMonitor\":true,\"reports.salesDistribution\":true,\"reports.pos\":true,\"reports.tyPlusTariff\":true,\"reports.strikePoint\":true,\"products.autoPricing\":false,\"products.badge\":true,\"products.videoCenter\":true,\"packages.texAgreement\":true,\"packages.texReport\":true,\"payments.myInvoice\":true,\"growth.growthCenter\":false,\"growth.challengesLevel\":false,\"growth.sellerBadges\":true,\"profile.traderTerms\":true,\"profile.sellerOpenClosePermission\":true,\"profile.sellerReference\":true,\"packages.fastDelivery\":true,\"packages.customerRequests\":true,\"promotions.dashboard\":true,\"promotions.coupons\":true,\"pricing.badge\":false,\"pricing.rateCard\":false,\"pricing.tyPlus\":true,\"pricing.flash\":true,\"pricing.home\":true,\"gp.exportCenter\":true,\"packages.reviewsAndRatings\":true,\"products.combination\":true,\"products.contentQuality\":true,\"products.microExport\":true,\"micro.export\":true,\"packages.operationalSettings\":true,\"payments.eximBankCredit\":true,\"payments.businessPartnerCredit\":false,\"packages.deliveryAreas\":true}"
+        },
+        {
+          "name": "cus53",
+          "value": "{\"data\":1,\"_expires\":1875009600000}"
+        },
+        {
+          "name": "hjActiveViewportIds",
+          "value": "[{\"id\":\"11ada001-f1a8-46eb-a5c1-aa3a20592c2e\",\"expireTimestamp\":1771120452061}]"
+        },
+        {
+          "name": "ins-wp-active-tab",
+          "value": "{\"data\":\"0.h6hs0pzuq96\",\"_expires\":1771185253000}"
+        },
+        {
+          "name": "ins-user-segments",
+          "value": "{\"data\":{\"696\":1443,\"1851\":3823,\"1864\":3847,\"1908\":3930,\"2005\":4121,\"2021\":4147,\"2112\":\"c176\",\"2354\":\"c193\",\"3555\":7191,\"3795\":7626,\"4874\":\"c523\",\"4976\":\"c528\",\"5199\":10357,\"5200\":10359,\"5404\":10768,\"5405\":\"c557\",\"5476\":10910,\"5670\":\"c588\",\"5830\":\"c596\",\"5853\":\"c600\",\"6104\":12144,\"6206\":\"c604\",\"6207\":12348,\"6562\":13048,\"6564\":13052,\"6565\":13054,\"6566\":13056,\"6567\":14471,\"6568\":13060,\"6569\":13062,\"6666\":13254,\"6756\":13436,\"6772\":13468,\"6778\":13479,\"7099\":14125,\"7277\":14494,\"7278\":14497,\"7343\":14630,\"7353\":14650,\"7355\":14654,\"7375\":14696,\"7390\":14387,\"7406\":14758,\"7408\":14762,\"7433\":14814,\"7442\":14832,\"7499\":14949,\"7500\":14951,\"7501\":14953,\"7502\":14955,\"7572\":15101,\"7587\":15131,\"7684\":15328,\"7689\":15338,\"7750\":\"c624\",\"7758\":15479,\"7985\":15946,\"8174\":16345,\"8175\":16347,\"8478\":\"c632\",\"8479\":\"c634\",\"8481\":16972,\"8483\":\"c638\",\"8484\":\"c639\",\"8485\":16974,\"8548\":17103,\"8549\":17105,\"8632\":17260,\"8650\":17292,\"8659\":\"c657\",\"8670\":17329,\"8684\":17357,\"8685\":17359,\"8706\":17401,\"8750\":17488,\"8751\":17490,\"8752\":17492,\"8753\":17494,\"8754\":17496,\"8755\":17498,\"8756\":17500,\"8759\":17506,\"8760\":17508,\"8801\":\"c668\",\"8809\":17604,\"8810\":\"c670\",\"8829\":17642,\"8860\":\"c672\",\"8873\":17730,\"8912\":17811,\"8913\":17813,\"8919\":17825,\"8922\":17831,\"8942\":\"c677\",\"8953\":17887,\"8961\":17904,\"8964\":17910,\"8968\":17916,\"8995\":17970,\"9010\":18000,\"9023\":18027,\"9024\":18029,\"9025\":18030,\"9026\":18033,\"9027\":18035,\"9028\":18037,\"9029\":18039,\"9030\":18041,\"9044\":18069,\"9082\":18147,\"9096\":18175,\"9099\":18182,\"9100\":18184,\"9101\":18186,\"9102\":18188,\"9103\":18190,\"9104\":18192,\"9105\":18194,\"9106\":18196,\"9107\":18198,\"9108\":20744,\"9109\":20746,\"9110\":18204,\"9111\":18206,\"9112\":18208,\"9113\":18210,\"9142\":18271,\"9143\":18273,\"9168\":\"c684\",\"9178\":18343,\"9184\":18355,\"9185\":18357,\"9186\":18359,\"9187\":18361,\"9221\":\"c686\",\"9240\":18468,\"9241\":18470,\"9242\":18472,\"9243\":18474,\"9244\":18476,\"9246\":18480,\"9275\":18538,\"9276\":18540,\"9365\":18715,\"9405\":18797,\"9433\":18854,\"9435\":18858,\"9436\":18860,\"9465\":18924,\"9469\":18932,\"9485\":18965,\"9486\":18967,\"9487\":18969,\"9497\":18991,\"9498\":18993,\"9521\":19039,\"9536\":19069,\"9545\":19087,\"9546\":19089,\"9547\":19091,\"9548\":19093,\"9549\":19095,\"9550\":19097,\"9552\":19101,\"9553\":19103,\"9554\":19105,\"9556\":19109,\"9558\":19113,\"9559\":19115,\"9587\":19171,\"9588\":19173,\"9597\":19191,\"9672\":19342,\"9675\":19348,\"9676\":19350,\"9688\":19374,\"9689\":19376,\"9699\":19396,\"9706\":19410,\"9707\":19412,\"9708\":19414,\"9709\":19416,\"9715\":19428,\"9716\":19430,\"9717\":19432,\"9718\":19434,\"9719\":19436,\"9720\":19438,\"9721\":19440,\"9722\":19442,\"9723\":19444,\"9726\":19450,\"9774\":19547,\"9811\":19621,\"9835\":19669,\"9836\":19671,\"9837\":19673,\"9838\":19675,\"9839\":19677,\"9840\":19679,\"9866\":19731,\"9884\":19767,\"9885\":19769,\"9886\":19771,\"9887\":19773,\"9888\":19775,\"9889\":19777,\"9904\":19807,\"9954\":19907,\"10007\":20013,\"10010\":20019,\"10011\":20021,\"10024\":20047,\"10025\":20049,\"10041\":20084,\"10042\":20086,\"10043\":20088,\"10044\":20090,\"10053\":20108,\"10054\":20110,\"10082\":20171,\"10083\":20173,\"10110\":20230,\"10111\":20232,\"10112\":20234,\"10113\":20236,\"10117\":20245,\"10118\":20247,\"10120\":20251,\"10133\":20277,\"10134\":20279,\"10135\":20281,\"10142\":20295,\"10158\":20327,\"10159\":20329,\"10176\":20363,\"10199\":20410,\"10225\":20462,\"10226\":20464,\"10231\":20474,\"10246\":20504,\"10292\":20599,\"10294\":20603,\"10295\":20605,\"10296\":20607,\"10298\":20611,\"10299\":20613,\"10300\":20615,\"10301\":20617,\"10302\":20619,\"10303\":20621,\"10304\":20623,\"10305\":20625,\"10306\":20627,\"10307\":20629,\"10308\":20631,\"10309\":20633,\"10310\":20635,\"10347\":20711,\"10385\":20795,\"10386\":20799,\"10388\":20803,\"10389\":20805,\"10390\":20807,\"10391\":20809,\"10394\":20815,\"10395\":20817,\"10398\":20823,\"10401\":20829,\"10402\":20831,\"10415\":20857,\"10416\":20859,\"10417\":20861,\"10418\":20863,\"10419\":20865,\"10435\":20898,\"10436\":20900,\"10437\":20902,\"10473\":20974,\"10484\":20998,\"10490\":21010,\"10491\":21012,\"10505\":21041,\"10514\":21059,\"10515\":21061,\"10528\":21087,\"10529\":21089,\"10530\":21091,\"10534\":21099,\"10535\":21101,\"10536\":21103,\"10553\":21138,\"10554\":21140,\"10555\":21142,\"10616\":21264,\"10633\":21301,\"10635\":21305,\"10636\":21307,\"10684\":21403,\"10686\":21407,\"10687\":21409,\"10690\":21415,\"10691\":21417,\"10751\":21538,\"10752\":21540,\"10753\":21542,\"10784\":21604,\"10869\":21774,\"10870\":21776,\"10873\":21782,\"10875\":21786,\"10876\":21788,\"10877\":21790,\"10881\":21798,\"10896\":21828,\"10897\":21830,\"10913\":21862,\"10917\":21870,\"10935\":21906,\"10936\":21908,\"10937\":21910,\"10938\":21912,\"10939\":21914,\"10940\":21916,\"11021\":22080,\"11025\":22088,\"11026\":22090,\"11029\":22096,\"11030\":22098,\"11032\":22102,\"11063\":22164,\"11067\":22173,\"11068\":22175,\"11105\":22249,\"11106\":22251,\"11107\":22253,\"11108\":22255,\"11109\":22257,\"11149\":22337,\"11150\":22339,\"11151\":22341,\"11152\":22343,\"11153\":22345,\"11154\":22347,\"11155\":22349,\"11166\":22371,\"11167\":22373,\"11170\":22379,\"11171\":22381,\"11174\":22387,\"11178\":22395,\"11179\":22397,\"11180\":22399,\"11191\":22421,\"11192\":22423,\"11193\":22425,\"11194\":22427,\"11195\":22429,\"11197\":22433,\"11206\":22451,\"11212\":22463,\"11216\":22471,\"11217\":22473,\"11218\":22475,\"11219\":22477,\"11234\":22508,\"11243\":22524,\"11244\":22526,\"11245\":22528,\"11247\":22532,\"11248\":22534,\"11249\":22536,\"11250\":22538,\"11251\":22540,\"11252\":22542,\"11253\":22544,\"11254\":22546,\"11255\":22548,\"11256\":22550,\"11257\":22552,\"11260\":22558,\"11261\":22560,\"11262\":22562,\"11267\":22572,\"11272\":22582,\"11273\":22584,\"11274\":22586,\"11275\":22588,\"11276\":22590,\"11277\":22592,\"11278\":22594,\"11281\":22600,\"11282\":22602,\"11284\":22606,\"11285\":22608,\"11287\":22612,\"11288\":22614,\"11290\":22618,\"11291\":22620,\"11292\":22622,\"11293\":22624},\"_expires\":1771102453000}"
+        },
+        {
+          "name": "banner:seller_permission_processed",
+          "value": "true"
+        },
+        {
+          "name": "customDataSet-dcpc-camp-02261453",
+          "value": "{\"data\":{\"status\":false,\"cookie\":\"1080066\"},\"_expires\":1773690853000}"
+        },
+        {
+          "name": "cus45",
+          "value": "{\"data\":1,\"_expires\":2027419920000}"
+        },
+        {
+          "name": "customDataSet-topspenders-camp02261454",
+          "value": "{\"data\":{\"status\":false,\"cookie\":\"1080066\"},\"_expires\":1773690853000}"
+        },
+        {
+          "name": "_grecaptcha",
+          "value": "09AKhCRwgap4VKKHyv-9xWnktipCrDW1AxMjqmFjXsYdBNK_H6Gb4K-kRX3Z3vX9pdsEi1st2LYdQ5Mhgs_zEQFW89eKdmxayiocBJyAzHu-JHNJzZUaExYhIxUxaWGv05"
+        },
+        {
+          "name": "insUserPermissionGranted",
+          "value": "{\"data\":{\"state\":null},\"_expires\":1802634853000}"
+        },
+        {
+          "name": "spUID",
+          "value": "{\"data\":\"177109881092792d43a5b39.acd54880\",\"_expires\":1802634853000}"
+        },
+        {
+          "name": "customDataSet-autokw-videoads-camp02261452",
+          "value": "{\"data\":{\"status\":false,\"cookie\":\"1080066\"},\"_expires\":1773690853000}"
+        },
+        {
+          "name": "ins-contact-field",
+          "value": "{\"data\":true,\"_expires\":1802634853000}"
+        },
+        {
+          "name": "cus48",
+          "value": "{\"data\":1,\"_expires\":1998311640000}"
+        },
+        {
+          "name": "ins-gaSSId",
+          "value": "{\"data\":{\"id\":\"uif9k5bv-cqsb-qxvv-19br-9m34jeqsaxgy_1771098811\"},\"_expires\":1771100655000}"
+        },
+        {
+          "name": "breadcrumbs",
+          "value": "[{\"type\":\"network\",\"message\":\"XmlHttpRequest completed\",\"timestamp\":\"1771098852994\",\"data\":{\"type\":\"XMLHttpRequest\",\"url\":\"https://apigw.trendyol.com/partner/seller-onboarding-scw-dashboard-bff-service/badge-scout/summary-reports\",\"method\":\"GET\",\"status\":200}},{\"type\":\"network\",\"message\":\"XmlHttpRequest completed\",\"timestamp\":\"1771098852994\",\"data\":{\"type\":\"XMLHttpRequest\",\"url\":\"https://apigw.trendyol.com/partner/seller-onboarding-seller-center-onboarding-bff-service/supplier/product-status\",\"method\":\"GET\",\"status\":200}},{\"type\":\"network\",\"message\":\"XmlHttpRequest completed\",\"timestamp\":\"1771098852995\",\"data\":{\"type\":\"XMLHttpRequest\",\"url\":\"https://apigw.trendyol.com/partner/seller-onboarding-seller-center-seller-bff-service/seller/permissions\",\"method\":\"GET\",\"status\":200}},{\"type\":\"network\",\"message\":\"XmlHttpRequest completed\",\"timestamp\":\"1771098852995\",\"data\":{\"type\":\"XMLHttpRequest\",\"url\":\"https://apigw.trendyol.com/partner/seller-onboarding-scw-dashboard-bff-service/cem/active-discount\",\"method\":\"GET\",\"status\":200}},{\"type\":\"network\",\"message\":\"XmlHttpRequest completed\",\"timestamp\":\"1771098852995\",\"data\":{\"type\":\"XMLHttpRequest\",\"url\":\"https://apigw.trendyol.com/partner/sellereng-growth-scw-growth-bff/seller-challenges/dashboard/v2?size=6\",\"method\":\"GET\",\"status\":200}},{\"type\":\"network\",\"message\":\"XmlHttpRequest completed\",\"timestamp\":\"1771098852995\",\"data\":{\"type\":\"XMLHttpRequest\",\"url\":\"https://apigw.trendyol.com/partner/seller-onboarding-scw-dashboard-bff-service/prc/products?page=0&size=3\",\"method\":\"GET\",\"status\":200}},{\"type\":\"network\",\"message\":\"XmlHttpRequest completed\",\"timestamp\":\"1771098853026\",\"data\":{\"type\":\"XMLHttpRequest\",\"url\":\"https://apigw.trendyol.com/partner/sellereng-growth-scw-calendar-bff/events/nearest?limit=1\",\"method\":\"GET\",\"status\":200}},{\"type\":\"network\",\"message\":\"XmlHttpRequest completed\",\"timestamp\":\"1771098853026\",\"data\":{\"type\":\"XMLHttpRequest\",\"url\":\"https://apigw.trendyol.com/partner/seller-onboarding-scw-dashboard-bff-service/sales-performance/reports/summary\",\"method\":\"GET\",\"status\":200}},{\"type\":\"network\",\"message\":\"XmlHttpRequest completed\",\"timestamp\":\"1771098853036\",\"data\":{\"type\":\"XMLHttpRequest\",\"url\":\"https://apigw.trendyol.com/partner/seller-onboarding-scw-dashboard-bff-service/diagnosis/summary/v2\",\"method\":\"GET\",\"status\":200}},{\"type\":\"network\",\"message\":\"XmlHttpRequest completed\",\"timestamp\":\"1771098853050\",\"data\":{\"type\":\"XMLHttpRequest\",\"url\":\"https://apigw.trendyol.com/partner/seller-onboarding-scw-dashboard-bff-service/seller-document-demand-rules/document-status-count\",\"method\":\"GET\",\"status\":200}},{\"type\":\"network\",\"message\":\"XmlHttpRequest completed\",\"timestamp\":\"1771098853078\",\"data\":{\"type\":\"XMLHttpRequest\",\"url\":\"https://apigw.trendyol.com/partner/seller-onboarding-scw-dashboard-bff-service/flex-payments/calculate/limit\",\"method\":\"GET\",\"status\":200}},{\"type\":\"network\",\"message\":\"XmlHttpRequest completed\",\"timestamp\":\"1771098853122\",\"data\":{\"type\":\"XMLHttpRequest\",\"url\":\"https://apigw.trendyol.com/partner/seller-onboarding-scw-dashboard-bff-service/notification-center/dashboard/unread\",\"method\":\"GET\",\"status\":200}},{\"type\":\"network\",\"message\":\"XmlHttpRequest completed\",\"timestamp\":\"1771098853175\",\"data\":{\"type\":\"XMLHttpRequest\",\"url\":\"https://apigw.trendyol.com/partner/seller-onboarding-scw-dashboard-bff-service/business-advisor/invoice/summary\",\"method\":\"GET\",\"status\":200}},{\"type\":\"network\",\"message\":\"XmlHttpRequest completed\",\"timestamp\":\"1771098853176\",\"data\":{\"type\":\"XMLHttpRequest\",\"url\":\"https://apigw.trendyol.com/partner/seller-onboarding-scw-dashboard-bff-service/promotion-suggestions\",\"method\":\"GET\",\"status\":200}},{\"type\":\"network\",\"message\":\"XmlHttpRequest completed\",\"timestamp\":\"1771098853179\",\"data\":{\"type\":\"XMLHttpRequest\",\"url\":\"https://apigw.trendyol.com/partner/sellereng-campaign-scw-campaign-bff/campaigns/available-dashboard?size=9\",\"method\":\"GET\",\"status\":200}},{\"type\":\"network\",\"message\":\"Fetch request completed\",\"timestamp\":\"1771098853179\",\"data\":{\"type\":\"Fetch\",\"url\":\"https://cdn.jsdelivr.net/npm/@trendyol/baklava-icons@latest/icons/star_fill.svg\",\"method\":\"GET\",\"status\":200}},{\"type\":\"network\",\"message\":\"XmlHttpRequest completed\",\"timestamp\":\"1771098853245\",\"data\":{\"type\":\"XMLHttpRequest\",\"url\":\"https://apigw.trendyol.com/partner/seller-onboarding-scw-dashboard-bff-service/follower/count\",\"method\":\"GET\",\"status\":200}},{\"type\":\"network\",\"message\":\"Fetch request completed\",\"timestamp\":\"1771098853256\",\"data\":{\"type\":\"Fetch\",\"url\":\"https://cdn.jsdelivr.net/npm/@trendyol/baklava-icons@latest/icons/close_fill.svg\",\"method\":\"GET\",\"status\":200}},{\"type\":\"network\",\"message\":\"Fetch request completed\",\"timestamp\":\"1771098853256\",\"data\":{\"type\":\"Fetch\",\"url\":\"https://cdn.jsdelivr.net/npm/@trendyol/baklava-icons@latest/icons/order_boxes.svg\",\"method\":\"GET\",\"status\":200}},{\"type\":\"network\",\"message\":\"Fetch request completed\",\"timestamp\":\"1771098853256\",\"data\":{\"type\":\"Fetch\",\"url\":\"https://cdn.jsdelivr.net/npm/@trendyol/baklava-icons@latest/icons/campaign.svg\",\"method\":\"GET\",\"status\":200}},{\"type\":\"network\",\"message\":\"Fetch request completed\",\"timestamp\":\"1771098853256\",\"data\":{\"type\":\"Fetch\",\"url\":\"https://cdn.jsdelivr.net/npm/@trendyol/baklava-icons@latest/icons/shopping_bag_discount.svg\",\"method\":\"GET\",\"status\":200}},{\"type\":\"network\",\"message\":\"XmlHttpRequest completed\",\"timestamp\":\"1771098853257\",\"data\":{\"type\":\"XMLHttpRequest\",\"url\":\"https://apigw.trendyol.com/partner/sellereng-campaign-scw-campaign-bff/campaigns/available-dashboard\",\"method\":\"GET\",\"status\":200}},{\"type\":\"network\",\"message\":\"Fetch request completed\",\"timestamp\":\"1771098853296\",\"data\":{\"type\":\"Fetch\",\"url\":\"https://cdn.jsdelivr.net/npm/@trendyol/baklava-icons@latest/icons/arrow_left.svg\",\"method\":\"GET\",\"status\":200}},{\"type\":\"network\",\"message\":\"XmlHttpRequest completed\",\"timestamp\":\"1771098853301\",\"data\":{\"type\":\"XMLHttpRequest\",\"url\":\"https://apigw.trendyol.com/partner/sellereng-growth-scw-calendar-bff/dashboard/events/getEventsByCategory?start=1767214800000&end=1774990800000\",\"method\":\"GET\",\"status\":200}},{\"type\":\"network\",\"message\":\"Fetch request completed\",\"timestamp\":\"1771098853396\",\"data\":{\"type\":\"Fetch\",\"url\":\"https://cdn.jsdelivr.net/npm/@trendyol/baklava-icons@latest/icons/flash.svg\",\"method\":\"GET\",\"status\":200}},{\"type\":\"network\",\"message\":\"Fetch request completed\",\"timestamp\":\"1771098853396\",\"data\":{\"type\":\"Fetch\",\"url\":\"https://cdn.jsdelivr.net/npm/@trendyol/baklava-icons@latest/icons/star.svg\",\"method\":\"GET\",\"status\":200}},{\"type\":\"network\",\"message\":\"Fetch request completed\",\"timestamp\":\"1771098853396\",\"data\":{\"type\":\"Fetch\",\"url\":\"https://cdn.dsmcdn.com/seller-center/sc-ui-kit/assets/flag-icons/turkey.svg\",\"method\":\"GET\",\"status\":200}},{\"type\":\"network\",\"message\":\"Fetch request completed\",\"timestamp\":\"1771098853396\",\"data\":{\"type\":\"Fetch\",\"url\":\"https://cdn.dsmcdn.com/seller-center/sc-ui-kit/assets/flag-icons/bulgaria.svg\",\"method\":\"GET\",\"status\":200}},{\"type\":\"network\",\"message\":\"Fetch request completed\",\"timestamp\":\"1771098853396\",\"data\":{\"type\":\"Fetch\",\"url\":\"https://cdn.dsmcdn.com/seller-center/sc-ui-kit/assets/flag-icons/greece.svg\",\"method\":\"GET\",\"status\":200}},{\"type\":\"network\",\"message\":\"Fetch request completed\",\"timestamp\":\"1771098853396\",\"data\":{\"type\":\"Fetch\",\"url\":\"https://cdn.dsmcdn.com/seller-center/sc-ui-kit/assets/flag-icons/romania.svg\",\"method\":\"GET\",\"status\":200}},{\"type\":\"network\",\"message\":\"Fetch request completed\",\"timestamp\":\"1771098853396\",\"data\":{\"type\":\"Fetch\",\"url\":\"https://cdn.dsmcdn.com/seller-center/sc-ui-kit/assets/flag-icons/saudi_arabia.svg\",\"method\":\"GET\",\"status\":200}},{\"type\":\"network\",\"message\":\"Fetch request completed\",\"timestamp\":\"1771098853396\",\"data\":{\"type\":\"Fetch\",\"url\":\"https://cdn.dsmcdn.com/seller-center/sc-ui-kit/assets/flag-icons/united_arab_emirates.svg\",\"method\":\"GET\",\"status\":200}},{\"type\":\"network\",\"message\":\"Fetch request completed\",\"timestamp\":\"1771098853397\",\"data\":{\"type\":\"Fetch\",\"url\":\"https://cdn.dsmcdn.com/seller-center/sc-ui-kit/assets/flag-icons/qatar.svg\",\"method\":\"GET\",\"status\":200}},{\"type\":\"network\",\"message\":\"Fetch request completed\",\"timestamp\":\"1771098853397\",\"data\":{\"type\":\"Fetch\",\"url\":\"https://cdn.dsmcdn.com/seller-center/sc-ui-kit/assets/flag-icons/kuwait.svg\",\"method\":\"GET\",\"status\":200}},{\"type\":\"network\",\"message\":\"Fetch request completed\",\"timestamp\":\"1771098853397\",\"data\":{\"type\":\"Fetch\",\"url\":\"https://cdn.dsmcdn.com/seller-center/sc-ui-kit/assets/flag-icons/oman.svg\",\"method\":\"GET\",\"status\":200}},{\"type\":\"network\",\"message\":\"Fetch request completed\",\"timestamp\":\"1771098853397\",\"data\":{\"type\":\"Fetch\",\"url\":\"https://cdn.dsmcdn.com/seller-center/sc-ui-kit/assets/flag-icons/bahrain.svg\",\"method\":\"GET\",\"status\":200}},{\"type\":\"network\",\"message\":\"Fetch request completed\",\"timestamp\":\"1771098853397\",\"data\":{\"type\":\"Fetch\",\"url\":\"https://cdn.dsmcdn.com/seller-center/sc-ui-kit/assets/flag-icons/azerbaijan.svg\",\"method\":\"GET\",\"status\":200}},{\"type\":\"network\",\"message\":\"Fetch request completed\",\"timestamp\":\"1771098853397\",\"data\":{\"type\":\"Fetch\",\"url\":\"https://cdn.dsmcdn.com/seller-center/sc-ui-kit/assets/flag-icons/moldova.svg\",\"method\":\"GET\",\"status\":200}},{\"type\":\"network\",\"message\":\"Fetch request completed\",\"timestamp\":\"1771098853397\",\"data\":{\"type\":\"Fetch\",\"url\":\"https://cdn.jsdelivr.net/npm/@trendyol/baklava-icons@latest/icons/people.svg\",\"method\":\"GET\",\"status\":200}},{\"type\":\"network\",\"message\":\"XmlHttpRequest completed\",\"timestamp\":\"1771098853401\",\"data\":{\"type\":\"XMLHttpRequest\",\"url\":\"https://carrier.useinsider.com/v2/cache/segment/first-party/partnertrendyol?segmentList=%5B%7B%22cv%22%3A%221080066%22%2C%22sn%22%3A%22microads-camp-0902261451%22%7D%2C%7B%22cv%22%3A%221080066%22%2C%22sn%22%3A%22autokw-videoads-camp02261452%22%7D%2C%7B%22cv%22%3A%221080066%22%2C%22sn%22%3A%22dcpc-camp-02261453%22%7D%2C%7B%22cv%22%3A%221080066%22%2C%22sn%22%3A%22topspenders-camp02261454%22%7D%2C%7B%22cv%22%3A%221080066%22%2C%22sn%22%3A%22targetspentchurn02261455%22%7D%2C%7B%22cv%22%3A%221080066%22%2C%22sn%22%3A%22gd-haric-all-1102261456%22%7D%5D&counter=0&v=1&\",\"method\":\"GET\",\"status\":200}},{\"type\":\"network\",\"message\":\"XmlHttpRequest completed\",\"timestamp\":\"1771098853427\",\"data\":{\"type\":\"XMLHttpRequest\",\"url\":\"https://partnertrendyol.api.useinsider.com/api/info/14494.24?pa=shopping-trigger&\",\"method\":\"GET\",\"status\":200}},{\"type\":\"network\",\"message\":\"XmlHttpRequest completed\",\"timestamp\":\"1771098853478\",\"data\":{\"type\":\"XMLHttpRequest\",\"url\":\"https://unification.useinsider.com/api/identity/v1/get\",\"method\":\"POST\",\"status\":400}},{\"type\":\"network\",\"message\":\"Fetch request completed\",\"timestamp\":\"1771098853514\",\"data\":{\"type\":\"Fetch\",\"url\":\"https://www.google-analytics.com/g/collect?v=2&tid=G-N1DYMXS48V&gtm=45je62b1v9126802080z879514851za20gzb79514851zd79514851&_p=1771098851507&gcs=G100&gcd=13m3m3m3m5l1&npa=1&dma_cps=-&dma=0&gdid=dYWJhMj&cid=1193779330.1771098852&ul=en-us&sr=1280x800&ir=1&uaa=x86&uab=64&uafvl=Chromium%3B145.0.7632.6%7CNot%253AA-Brand%3B99.0.0.0&uamb=0&uam=&uap=Windows&uapv=10.0&uaw=0&are=1&frm=0&pscdl=denied&_eu=EAAAAGA&tag_exp=103116026~103200004~104527907~104528500~104684208~104684211~115938466~115938469~116988315&uid=1080066&sid=1771098852&sct=1&seg=0&dl=https%3A%2F%2Fpartner.trendyol.com%2Fdashboard&dr=https%3A%2F%2Fpartner.trendyol.com%2Fauth%2Flogin%3Fredirect%3D%252F&dt=Trendyol%20Pazaryeri&_s=4&tfd=2120\",\"method\":\"POST\",\"status\":\"unknown\"}},{\"type\":\"network\",\"message\":\"XmlHttpRequest completed\",\"timestamp\":\"1771098853568\",\"data\":{\"type\":\"XMLHttpRequest\",\"url\":\"https://hit.api.useinsider.com/hit\",\"method\":\"POST\",\"status\":200}},{\"type\":\"network\",\"message\":\"XmlHttpRequest completed\",\"timestamp\":\"1771098853571\",\"data\":{\"type\":\"XMLHttpRequest\",\"url\":\"https://hit.api.useinsider.com/hit\",\"method\":\"POST\",\"status\":200}},{\"type\":\"network\",\"message\":\"XmlHttpRequest completed\",\"timestamp\":\"1771098853619\",\"data\":{\"type\":\"XMLHttpRequest\",\"url\":\"https://unification.useinsider.com/api/event/v1/insert\",\"method\":\"POST\",\"status\":200}},{\"type\":\"network\",\"message\":\"Fetch request completed\",\"timestamp\":\"1771098855471\",\"data\":{\"type\":\"Fetch\",\"url\":\"https://www.google-analytics.com/g/collect?v=2&tid=G-N1DYMXS48V&gtm=45je62b1v9126802080z879514851za20gzb79514851zd79514851&_p=1771098851507&gcs=G100&gcd=13m3m3m3m5l1&npa=1&dma_cps=-&dma=0&gdid=dYWJhMj&cid=1193779330.1771098852&ul=en-us&sr=1280x800&ir=1&uaa=x86&uab=64&uafvl=Chromium%3B145.0.7632.6%7CNot%253AA-Brand%3B99.0.0.0&uamb=0&uam=&uap=Windows&uapv=10.0&uaw=0&are=1&frm=0&pscdl=denied&_eu=EAAAAGA&_s=5&tag_exp=103116026~103200004~104527907~104528500~104684208~104684211~115938466~115938469~116988315&uid=1080066&sid=1771098852&sct=1&seg=0&dl=https%3A%2F%2Fpartner.trendyol.com%2Fdashboard&dr=https%3A%2F%2Fpartner.trendyol.com%2Fauth%2Flogin%3Fredirect%3D%252F&dt=Trendyol%20Pazaryeri&en=INSIDER&epn.storefront_id=1&ep.ab_test_1=C-Error&ep.ab_test_2=C-Error&ep.ab_test_3=C-Error&ep.ab_test_7=C-Error&ep.ab_test_8=C-Error&ep.ab_test_9=C-Error&ep.ab_test_10=C-Error&ep.ab_test_11=C-Error&ep.ab_test_12=C-Error&ep.ab_test_13=C-Error&ep.ab_test_14=C-Error&ep.storefront_code=TR&ep.channel=MP&ep.event_action=pp_crm_prc_informative_trcore_tuesdayweekly-impressions-shoppingtrigger&ep.event_label=(builder%20ID%3A%207277)%20-%20Variation%20Ratio%3A%20100%25&_et=282&tfd=4057\",\"method\":\"POST\",\"status\":\"unknown\"}},{\"type\":\"network\",\"message\":\"Fetch request completed\",\"timestamp\":\"1771098855480\",\"data\":{\"type\":\"Fetch\",\"url\":\"https://www.google-analytics.com/g/collect?v=2&tid=G-N1DYMXS48V&gtm=45je62b1v9126802080za20gzb79514851zd79514851&_p=1771098851507&gcs=G100&gcd=13m3m3m3m5l1&npa=1&dma_cps=-&dma=0&gdid=dYWJhMj&cid=1193779330.1771098852&ul=en-us&sr=1280x800&ir=1&uaa=x86&uab=64&uafvl=Chromium%3B145.0.7632.6%7CNot%253AA-Brand%3B99.0.0.0&uamb=0&uam=&uap=Windows&uapv=10.0&uaw=0&are=1&frm=0&pscdl=denied&_eu=kAAAAGA&_s=6&tag_exp=103116026~103200004~104527907~104528500~104684208~104684211~115938466~115938469~116988315&uid=1080066&sid=1771098852&sct=1&seg=0&dl=https%3A%2F%2Fpartner.trendyol.com%2Fdashboard&dr=https%3A%2F%2Fpartner.trendyol.com%2Fauth%2Flogin%3Fredirect%3D%252F&dt=Trendyol%20Pazaryeri&en=Saw%20nudge&epn.storefront_id=1&ep.ab_test_1=C-Error&ep.ab_test_2=C-Error&ep.ab_test_3=C-Error&ep.ab_test_7=C-Error&ep.ab_test_8=C-Error&ep.ab_test_9=C-Error&ep.ab_test_10=C-Error&ep.ab_test_11=C-Error&ep.ab_test_12=C-Error&ep.ab_test_13=C-Error&ep.ab_test_14=C-Error&ep.event_category=Qualaroo&ep.event_label=Web%20Sat%C4%B1c%C4%B1%20Paneli%20Ekran%20Anketi&_et=1936&tfd=4090\",\"method\":\"POST\",\"status\":\"unknown\"}},{\"type\":\"network\",\"message\":\"Fetch request completed\",\"timestamp\":\"1771098855507\",\"data\":{\"type\":\"Fetch\",\"url\":\"https://www.google-analytics.com/g/collect?v=2&tid=G-N1DYMXS48V&gtm=45je62b1v9126802080z879514851za20gzb79514851zd79514851&_p=1771098851507&gcs=G100&gcd=13m3m3m3m5l1&npa=1&dma_cps=-&dma=0&gdid=dYWJhMj&cid=1193779330.1771098852&ul=en-us&sr=1280x800&ir=1&uaa=x86&uab=64&uafvl=Chromium%3B145.0.7632.6%7CNot%253AA-Brand%3B99.0.0.0&uamb=0&uam=&uap=Windows&uapv=10.0&uaw=0&are=1&frm=0&pscdl=denied&_eu=EAAAAGA&_s=7&tag_exp=103116026~103200004~104527907~104528500~104684208~104684211~115938466~115938469~116988315&uid=1080066&sid=1771098852&sct=1&seg=0&dl=https%3A%2F%2Fpartner.trendyol.com%2Fdashboard&dr=https%3A%2F%2Fpartner.trendyol.com%2Fauth%2Flogin%3Fredirect%3D%252F&dt=Trendyol%20Pazaryeri&en=INSIDER&epn.storefront_id=1&ep.ab_test_1=C-Error&ep.ab_test_2=C-Error&ep.ab_test_3=C-Error&ep.ab_test_7=C-Error&ep.ab_test_8=C-Error&ep.ab_test_9=C-Error&ep.ab_test_10=C-Error&ep.ab_test_11=C-Error&ep.ab_test_12=C-Error&ep.ab_test_13=C-Error&ep.ab_test_14=C-Error&ep.storefront_code=TR&ep.channel=MP&ep.event_action=pp_crm_prc_informative_trcore_tuesdayweekly-close-shoppingtrigger&ep.event_label=(builder%20ID%3A%207277)%20-%20Variation%20Ratio%3A%20100%25&_et=33&tfd=4113\",\"method\":\"POST\",\"status\":\"unknown\"}},{\"type\":\"network\",\"message\":\"Fetch request completed\",\"timestamp\":\"1771098856229\",\"data\":{\"type\":\"Fetch\",\"url\":\"https://www.google-analytics.com/g/collect?v=2&tid=G-N1DYMXS48V&gtm=45je62b1v9126802080za20gzb79514851zd79514851&_p=1771098851507&gcs=G100&gcd=13m3m3m3m5l1&npa=1&dma_cps=-&dma=0&gdid=dYWJhMj&cid=1193779330.1771098852&ul=en-us&sr=1280x800&ir=1&uaa=x86&uab=64&uafvl=Chromium%3B145.0.7632.6%7CNot%253AA-Brand%3B99.0.0.0&uamb=0&uam=&uap=Windows&uapv=10.0&uaw=0&are=1&frm=0&pscdl=denied&_eu=kAAAAGA&_s=8&tag_exp=103116026~103200004~104527907~104528500~104684208~104684211~115938466~115938469~116988315&uid=1080066&sid=1771098852&sct=1&seg=0&dl=https%3A%2F%2Fpartner.trendyol.com%2Fdashboard&dr=https%3A%2F%2Fpartner.trendyol.com%2Fauth%2Flogin%3Fredirect%3D%252F&dt=Trendyol%20Pazaryeri&en=Saw%20nudge&epn.storefront_id=1&ep.ab_test_1=C-Error&ep.ab_test_2=C-Error&ep.ab_test_3=C-Error&ep.ab_test_7=C-Error&ep.ab_test_8=C-Error&ep.ab_test_9=C-Error&ep.ab_test_10=C-Error&ep.ab_test_11=C-Error&ep.ab_test_12=C-Error&ep.ab_test_13=C-Error&ep.ab_test_14=C-Error&ep.event_category=Qualaroo&ep.event_label=Web%20Sat%C4%B1c%C4%B1%20Paneli%20Ekran%20Anketi&_et=23&tfd=4834\",\"method\":\"POST\",\"status\":\"unknown\"}}]"
+        },
+        {
+          "name": "_hjUserAttributes",
+          "value": "eyJhdHRyaWJ1dGVzIjp7InNlbGxlcl90YWdfaWQiOiI0MjksIDQ3MjAsIDQ3NzUsIDMyMTQsIDI1MDgsIDM1NDYsIDI2NjgsIDQ3NzYsIDM1NDcsIDMzNCwgMjgzNiwgMzA1MiwgMzU0OSwgMzg2OSwgMzU1MCwgNDYwMSwgNDAyMCwgNDc3OSwgNDYwMiwgMzQ4MywgMzExNiwgMzU1MSwgMjk3NSwgMzQ4NCwgMzU0OCwgMjU2NCwgNDAyMywgNDU3NCwgNDg3MSwgMjU5NywgNDU3NSwgMzQ4NiwgMjU5NiwgNDg3MywgMzYyMCwgMzc0OCwgMzQ4OCwgMjYxMSwgNDc4NSwgNDYwNCwgMjY0MSwgMjYzNCwgMzQ4NywgMjY0MiwgMjkwMywgNDYwLCAzODA0LCAyOTg2LCAyOTg1LCAzMjA4LCA3NTUsIDMyMDksIDQzNDEsIDQzNjIsIDEzMTMsIDMzNzgsIDMwNjcsIDQyMDIsIDQ4MCwgNDIwMywgMzE0NCwgMzg5MCwgNDgwOSwgMzg5MSwgMzY5NSwgMzc2MSwgNDUxMywgMjAwMCwgNDg4MSwgNDYxMywgNDY3OSwgMzMwOSwgMzE1MCwgMzYzNiwgNDExNCwgMTU2OCwgMzQ1NywgNDY4MSwgMzcwMSwgMzQ1OCwgNDA0NSwgNDI4LCA0NjgyLCAzNzAyLCAzOTcyLCA0NDUxLCAzOTc0LCA4MzgsIDQ4ODYsIDE4MDMsIDMzOTYsIDQ4ODcsIDQwNTAsIDQxMjAsIDMzOTIsIDM5NzcsIDMzOTMsIDQ4MjEsIDM3MDksIDMzOTQsIDUwOCwgMjc5NywgMzM5NSwgMzM5OCwgNjMyLCA3ODQsIDMzOTcsIDQzODEsIDQ2OTEsIDQ1MjgsIDgzMSwgMzAxNSwgMTIyNSwgNDgyMCwgMjcxNiwgMzAxNiwgMjcxNywgMzI1NSwgMjcxOSwgMzI1NywgMzU4OCwgMzcxNywgMjkzNCwgMzY1NSwgMjAzMCwgMTg3OSwgMjA0NSwgMzMyOSwgMzQwNywgNDgyOCwgNDg5NiwgMzg0NywgMzY2MCwgMzcyMiwgNDc1MSwgNDgyNSwgMzcyMywgMzkyMSwgMjI1MywgMzQxMiwgMzcyNSwgNDE4MCwgMzcyNiwgNDc1NSwgMzcyNywgMTgzNCwgNDMyMCwgMzAyOSwgMzEwMSwgMjIwNSwgMzkyNiwgMzg1NywgMzI3MiwgMzY2OCwgMzg2MCwgMzM0MiwgMzY2OSwgMzkyOSwgNDc2MiwgNDg0MSwgMTM5LCA0NjQsIDM2MywgMzQ5LCA3MzksIDMyNiwgMzA1LCA0ODUyLCAyNTUsIDE3MDgsIDE1NDgsIDE3MDksIDE0OTUsIDE1NDUsIDE3MDUsIDE4MDgsIDQ4NTYsIDQxMywgMjM3OCwgNDA3OSwgMzYwNSwgMTc3MywgMTcyMiwgMjM3NywgMTc3OCwgMTE2MSwgNDQwOCwgMTcwMCwgMjc0NywgMjE2MCwgMTY5OSwgMjIzNywgMTU0MiwgMTg3OCwgMTU0NiwgMTQzNywgMTU2MSwgMTcwMSwgMTY0OSwgMzkzNCwgMTk2MiwgMjMyMywgMjE2MSwgMjAyNCwgMTg4MSwgMTYyNSwgMjE0MSwgMjI0MywgMjAyNywgMTUyNCwgMjAyOCwgMTcyNiwgMTY0MCwgMTU5NSwgMTczOCwgMTU0MywgMTgxMCwgMjEwNiwgMTgzMCwgMTQ5MSwgMTgwOSwgMTc3MCwgMTcwMiwgMjMyNCwgMjMzNiwgMjQ1MSwgMjc1NCwgNDY1NSwgMjk1MywgNDU1NiwgMTc0NCwgMjMzOCwgMzYwNywgMzE5MSwgMjM3NiwgMjE1NCwgMjA0OCwgNDMyNiwgMjAzMiwgMjE4MywgMjc1NywgMzExOSIsInN0b3JlZnJvbnRfaWQiOiIxIiwic3VwcGxpZXJfaWQiOiIxMDgwMDY2In0sInVzZXJJZCI6IjEwODAwNjYifQ=="
+        },
+        {
+          "name": "mergen_anonymous_user_id",
+          "value": "31a169e2-4998-4de2-9c22-aaeef8965598"
+        },
+        {
+          "name": "insCustomAttributes",
+          "value": "{\"data\":{\"seller_id\":\"1080066\",\"mealseller\":false,\"storebaseenabled\":false,\"ismeal\":false,\"is_user_android\":false,\"is_user_iphone\":false,\"filled_surveys\":\"[]\",\"testromanya180925\":false,\"c_regionnamecee\":false,\"c_languageroesittir\":false,\"c_languageroicerir\":false,\"c_regionnamegulf\":false,\"c_regionnametr\":true},\"_expires\":1802634853000}"
+        },
+        {
+          "name": "customDataSet-targetspentchurn02261455",
+          "value": "{\"data\":{\"status\":false,\"cookie\":\"1080066\"},\"_expires\":1773690853000}"
+        },
+        {
+          "name": "ins-default-attributes",
+          "value": "{\"data\":{\"last_abandoned_cart_amount\":0,\"last_visited_category_url\":\"https://partner.trendyol.com/account/login\",\"last_visited_product_img\":\"https://image.useinsider.com/partnertrendyol/webPushDefaultImage/uaKB64ZV05nkgeQW0LJq1675324061.jpeg\",\"last_visited_product_url\":\"https://partner.trendyol.com/account/login\",\"last_abandoned_product_img\":\"https://image.useinsider.com/partnertrendyol/webPushDefaultImage/uaKB64ZV05nkgeQW0LJq1675324061.jpeg\",\"last_abandoned_product_url\":\"https://partner.trendyol.com/account/login\"},\"_expires\":1802634853000}"
+        },
+        {
+          "name": "customDataSet-gd-haric-all-1102261456",
+          "value": "{\"data\":{\"status\":true,\"cookie\":\"1080066\"},\"_expires\":1773690853000}"
+        },
+        {
+          "name": "ins-userDateV",
+          "value": "{\"data\":[1771098811],\"_expires\":1802634811000}"
+        },
+        {
+          "name": "mergen-session",
+          "value": "{\"id\":\"044bd822-22bc-46d4-ba33-74ea8a645f32\",\"startedAt\":\"2026-02-14T19:53:29.906Z\",\"lastActivity\":\"2026-02-14T19:53:29.906Z\",\"status\":\"ok\"}"
+        },
+        {
+          "name": "ins-partner-name",
+          "value": "{\"data\":\"partnertrendyol\",\"_expires\":1771185253000}"
+        },
+        {
+          "name": "ins-loggedinUser",
+          "value": "{\"data\":1,\"_expires\":1802634853000}"
+        },
+        {
+          "name": "customDataSet-microads-camp-0902261451",
+          "value": "{\"data\":{\"status\":false,\"cookie\":\"1080066\"},\"_expires\":1773690853000}"
+        },
+        {
+          "name": "customDataSet-LANCIA",
+          "value": "{\"data\":{\"status\":0,\"cookie\":null},\"_expires\":1773690853000}"
+        },
+        {
+          "name": "cus49",
+          "value": "{\"data\":1,\"_expires\":2050243380000}"
+        },
+        {
+          "name": "userLocation",
+          "value": "{\"data\":{\"geoId\":\"34\",\"city\":\"Istanbul\",\"region\":\"\",\"regionId\":\"\",\"country\":\"TR\",\"cName\":\"Türkiye\",\"request\":\"f65b296ae5599fb4d7c36eab81c51d26\",\"latitude\":\"f13af8bdace70df705772dfdd5d2893f\",\"longitude\":\"00b84805c8d91ea0a21a2f7f7d901eaa\"},\"_expires\":1771185211000}"
+        },
+        {
+          "name": "seller-center-header:isShowMicroExportTooltip",
+          "value": "{\"value\":true,\"expire\":1771185251629}"
+        },
+        {
+          "name": "ins-sourceUrl",
+          "value": "{\"data\":\"https://partner.trendyol.com/auth/logout?redirect=%2F\",\"_expires\":1773690811000}"
+        },
+        {
+          "name": "sellerID",
+          "value": "1080066"
+        },
+        {
+          "name": "ring_last_ring_check",
+          "value": "1771098809907"
+        },
+        {
+          "name": "ins-current-currency",
+          "value": "{\"data\":\"TRY\",\"_expires\":1771185253000}"
+        },
+        {
+          "name": "reloadSignal",
+          "value": "true"
+        },
+        {
+          "name": "ins-landingPage",
+          "value": "{\"data\":\"https://partner.trendyol.com/auth/login?redirect=%2F\",\"_expires\":1773690811000}"
+        },
+        {
+          "name": "ins-cleared-custom-dataset",
+          "value": "{\"data\":1,\"_expires\":1772394811000}"
+        },
+        {
+          "name": "insUserInfoHash",
+          "value": "{\"data\":370096977,\"_expires\":1802634853000}"
+        }
+      ]
+    },
+    {
+      "origin": "https://partnertrendyol.api.useinsider.com",
+      "localStorage": [
+        {
+          "name": "customDataSet-gd-haric-all-1102261456",
+          "value": "{\"data\":{\"status\":true,\"cookie\":\"1080066\"},\"_expires\":1773690853000}"
+        },
+        {
+          "name": "sp-camp-14494",
+          "value": "{\"data\":{\"step1-displayed\":true,\"viDa\":1771098853,\"salesLogDuration\":1771185253,\"closed\":true,\"clDa\":1771098855},\"_expires\":1771185255000}"
+        },
+        {
+          "name": "ins-userDateV",
+          "value": "{\"data\":[1771098811],\"_expires\":1802634811000}"
+        },
+        {
+          "name": "cus53",
+          "value": "{\"data\":1,\"_expires\":1875009600000}"
+        },
+        {
+          "name": "customDataSet-dcpc-camp-02261453",
+          "value": "{\"data\":{\"status\":false,\"cookie\":\"1080066\"},\"_expires\":1773690853000}"
+        },
+        {
+          "name": "predictiveData",
+          "value": "{\"data\":{\"239e8facde7b5f967559546e7a8b6226\":\"0829730d8d3359e1def2be1282a66143\",\"d044e59738a29b684e0201004da899ab\":{},\"bb5abb09ed2a010715f90d1471fefa8f\":\"unknown\",\"24bc4d7e882d70a7230bd5d4bfec59fa\":\"0829730d8d3359e1def2be1282a66143\",\"eab96bed5ffe7616367b1cf73177df61\":{},\"bb0e9389f4b5f3e0a6d64476a11d8e46\":\"0829730d8d3359e1def2be1282a66143\",\"3e30c1160b1fc322e1cb6b140328c9bf\":\"0829730d8d3359e1def2be1282a66143\",\"eac1f6a7d41d7788270083894c6bc311\":\"0829730d8d3359e1def2be1282a66143\",\"400e1f11f54030aa956f09d9f5a9f5e8\":{},\"8c5790807e18afbe2f90e6c7233c5668\":\"0829730d8d3359e1def2be1282a66143\",\"a437ecf119dca2112117fdb8a4430d58\":\"acb1014443cc38c56080e72f284baf6f\",\"7973c824d5d9703d3dc667c5627cdb55\":\"unknown\",\"da0e25b2b5e0c05d7c24946bd9b97706\":{},\"a96afc2c6a3e5bd37b4513e0ab245859\":{},\"c954718c959cc0bd8feb842688b88a4b\":\"0829730d8d3359e1def2be1282a66143\",\"632c40979127bbd314dee6dadf614a09\":\"unknown\",\"d1f19677e1559f24b9b33c57f3278de9\":60000},\"_expires\":1771098871109}"
+        },
+        {
+          "name": "ins-partner-name",
+          "value": "{\"data\":\"partnertrendyol\",\"_expires\":1771185253000}"
+        },
+        {
+          "name": "ins-loggedinUser",
+          "value": "{\"data\":1,\"_expires\":1802634853000}"
+        },
+        {
+          "name": "ins-user-segments",
+          "value": "{\"data\":{\"696\":1443,\"1851\":3823,\"1864\":3847,\"1908\":3930,\"2005\":4121,\"2021\":4147,\"2112\":\"c176\",\"2354\":\"c193\",\"3555\":7191,\"3795\":7626,\"4874\":\"c523\",\"4976\":\"c528\",\"5199\":10357,\"5200\":10359,\"5404\":10768,\"5405\":\"c557\",\"5476\":10910,\"5670\":\"c588\",\"5830\":\"c596\",\"5853\":\"c600\",\"6104\":12144,\"6206\":\"c604\",\"6207\":12348,\"6562\":13048,\"6564\":13052,\"6565\":13054,\"6566\":13056,\"6567\":14471,\"6568\":13060,\"6569\":13062,\"6666\":13254,\"6756\":13436,\"6772\":13468,\"6778\":13479,\"7099\":14125,\"7277\":14494,\"7278\":14497,\"7343\":14630,\"7353\":14650,\"7355\":14654,\"7375\":14696,\"7390\":14387,\"7406\":14758,\"7408\":14762,\"7433\":14814,\"7442\":14832,\"7499\":14949,\"7500\":14951,\"7501\":14953,\"7502\":14955,\"7572\":15101,\"7587\":15131,\"7684\":15328,\"7689\":15338,\"7750\":\"c624\",\"7758\":15479,\"7985\":15946,\"8174\":16345,\"8175\":16347,\"8478\":\"c632\",\"8479\":\"c634\",\"8481\":16972,\"8483\":\"c638\",\"8484\":\"c639\",\"8485\":16974,\"8548\":17103,\"8549\":17105,\"8632\":17260,\"8650\":17292,\"8659\":\"c657\",\"8670\":17329,\"8684\":17357,\"8685\":17359,\"8706\":17401,\"8750\":17488,\"8751\":17490,\"8752\":17492,\"8753\":17494,\"8754\":17496,\"8755\":17498,\"8756\":17500,\"8759\":17506,\"8760\":17508,\"8801\":\"c668\",\"8809\":17604,\"8810\":\"c670\",\"8829\":17642,\"8860\":\"c672\",\"8873\":17730,\"8912\":17811,\"8913\":17813,\"8919\":17825,\"8922\":17831,\"8942\":\"c677\",\"8953\":17887,\"8961\":17904,\"8964\":17910,\"8968\":17916,\"8995\":17970,\"9010\":18000,\"9023\":18027,\"9024\":18029,\"9025\":18030,\"9026\":18033,\"9027\":18035,\"9028\":18037,\"9029\":18039,\"9030\":18041,\"9044\":18069,\"9082\":18147,\"9096\":18175,\"9099\":18182,\"9100\":18184,\"9101\":18186,\"9102\":18188,\"9103\":18190,\"9104\":18192,\"9105\":18194,\"9106\":18196,\"9107\":18198,\"9108\":20744,\"9109\":20746,\"9110\":18204,\"9111\":18206,\"9112\":18208,\"9113\":18210,\"9142\":18271,\"9143\":18273,\"9168\":\"c684\",\"9178\":18343,\"9184\":18355,\"9185\":18357,\"9186\":18359,\"9187\":18361,\"9221\":\"c686\",\"9240\":18468,\"9241\":18470,\"9242\":18472,\"9243\":18474,\"9244\":18476,\"9246\":18480,\"9275\":18538,\"9276\":18540,\"9365\":18715,\"9405\":18797,\"9433\":18854,\"9435\":18858,\"9436\":18860,\"9465\":18924,\"9469\":18932,\"9485\":18965,\"9486\":18967,\"9487\":18969,\"9497\":18991,\"9498\":18993,\"9521\":19039,\"9536\":19069,\"9545\":19087,\"9546\":19089,\"9547\":19091,\"9548\":19093,\"9549\":19095,\"9550\":19097,\"9552\":19101,\"9553\":19103,\"9554\":19105,\"9556\":19109,\"9558\":19113,\"9559\":19115,\"9587\":19171,\"9588\":19173,\"9597\":19191,\"9672\":19342,\"9675\":19348,\"9676\":19350,\"9688\":19374,\"9689\":19376,\"9699\":19396,\"9706\":19410,\"9707\":19412,\"9708\":19414,\"9709\":19416,\"9715\":19428,\"9716\":19430,\"9717\":19432,\"9718\":19434,\"9719\":19436,\"9720\":19438,\"9721\":19440,\"9722\":19442,\"9723\":19444,\"9726\":19450,\"9774\":19547,\"9811\":19621,\"9835\":19669,\"9836\":19671,\"9837\":19673,\"9838\":19675,\"9839\":19677,\"9840\":19679,\"9866\":19731,\"9884\":19767,\"9885\":19769,\"9886\":19771,\"9887\":19773,\"9888\":19775,\"9889\":19777,\"9904\":19807,\"9954\":19907,\"10007\":20013,\"10010\":20019,\"10011\":20021,\"10024\":20047,\"10025\":20049,\"10041\":20084,\"10042\":20086,\"10043\":20088,\"10044\":20090,\"10053\":20108,\"10054\":20110,\"10082\":20171,\"10083\":20173,\"10110\":20230,\"10111\":20232,\"10112\":20234,\"10113\":20236,\"10117\":20245,\"10118\":20247,\"10120\":20251,\"10133\":20277,\"10134\":20279,\"10135\":20281,\"10142\":20295,\"10158\":20327,\"10159\":20329,\"10176\":20363,\"10199\":20410,\"10225\":20462,\"10226\":20464,\"10231\":20474,\"10246\":20504,\"10292\":20599,\"10294\":20603,\"10295\":20605,\"10296\":20607,\"10298\":20611,\"10299\":20613,\"10300\":20615,\"10301\":20617,\"10302\":20619,\"10303\":20621,\"10304\":20623,\"10305\":20625,\"10306\":20627,\"10307\":20629,\"10308\":20631,\"10309\":20633,\"10310\":20635,\"10347\":20711,\"10385\":20795,\"10386\":20799,\"10388\":20803,\"10389\":20805,\"10390\":20807,\"10391\":20809,\"10394\":20815,\"10395\":20817,\"10398\":20823,\"10401\":20829,\"10402\":20831,\"10415\":20857,\"10416\":20859,\"10417\":20861,\"10418\":20863,\"10419\":20865,\"10435\":20898,\"10436\":20900,\"10437\":20902,\"10473\":20974,\"10484\":20998,\"10490\":21010,\"10491\":21012,\"10505\":21041,\"10514\":21059,\"10515\":21061,\"10528\":21087,\"10529\":21089,\"10530\":21091,\"10534\":21099,\"10535\":21101,\"10536\":21103,\"10553\":21138,\"10554\":21140,\"10555\":21142,\"10616\":21264,\"10633\":21301,\"10635\":21305,\"10636\":21307,\"10684\":21403,\"10686\":21407,\"10687\":21409,\"10690\":21415,\"10691\":21417,\"10751\":21538,\"10752\":21540,\"10753\":21542,\"10784\":21604,\"10869\":21774,\"10870\":21776,\"10873\":21782,\"10875\":21786,\"10876\":21788,\"10877\":21790,\"10881\":21798,\"10896\":21828,\"10897\":21830,\"10913\":21862,\"10917\":21870,\"10935\":21906,\"10936\":21908,\"10937\":21910,\"10938\":21912,\"10939\":21914,\"10940\":21916,\"11021\":22080,\"11025\":22088,\"11026\":22090,\"11029\":22096,\"11030\":22098,\"11032\":22102,\"11063\":22164,\"11067\":22173,\"11068\":22175,\"11105\":22249,\"11106\":22251,\"11107\":22253,\"11108\":22255,\"11109\":22257,\"11149\":22337,\"11150\":22339,\"11151\":22341,\"11152\":22343,\"11153\":22345,\"11154\":22347,\"11155\":22349,\"11166\":22371,\"11167\":22373,\"11170\":22379,\"11171\":22381,\"11174\":22387,\"11178\":22395,\"11179\":22397,\"11180\":22399,\"11191\":22421,\"11192\":22423,\"11193\":22425,\"11194\":22427,\"11195\":22429,\"11197\":22433,\"11206\":22451,\"11212\":22463,\"11216\":22471,\"11217\":22473,\"11218\":22475,\"11219\":22477,\"11234\":22508,\"11243\":22524,\"11244\":22526,\"11245\":22528,\"11247\":22532,\"11248\":22534,\"11249\":22536,\"11250\":22538,\"11251\":22540,\"11252\":22542,\"11253\":22544,\"11254\":22546,\"11255\":22548,\"11256\":22550,\"11257\":22552,\"11260\":22558,\"11261\":22560,\"11262\":22562,\"11267\":22572,\"11272\":22582,\"11273\":22584,\"11274\":22586,\"11275\":22588,\"11276\":22590,\"11277\":22592,\"11278\":22594,\"11281\":22600,\"11282\":22602,\"11284\":22606,\"11285\":22608,\"11287\":22612,\"11288\":22614,\"11290\":22618,\"11291\":22620,\"11292\":22622,\"11293\":22624},\"_expires\":1771102453000}"
+        },
+        {
+          "name": "ins-wp-active-tab",
+          "value": "{\"data\":\"0.h6hs0pzuq96\",\"_expires\":1771185253000}"
+        },
+        {
+          "name": "customDataSet-microads-camp-0902261451",
+          "value": "{\"data\":{\"status\":false,\"cookie\":\"1080066\"},\"_expires\":1773690853000}"
+        },
+        {
+          "name": "cus45",
+          "value": "{\"data\":1,\"_expires\":2027419920000}"
+        },
+        {
+          "name": "customDataSet-LANCIA",
+          "value": "{\"data\":{\"status\":0,\"cookie\":null},\"_expires\":1773690853000}"
+        },
+        {
+          "name": "customDataSet-topspenders-camp02261454",
+          "value": "{\"data\":{\"status\":false,\"cookie\":\"1080066\"},\"_expires\":1773690853000}"
+        },
+        {
+          "name": "cus49",
+          "value": "{\"data\":1,\"_expires\":2050243380000}"
+        },
+        {
+          "name": "insUserPermissionGranted",
+          "value": "{\"data\":{\"state\":null},\"_expires\":1802634853000}"
+        },
+        {
+          "name": "userLocation",
+          "value": "{\"data\":{\"geoId\":\"34\",\"city\":\"Istanbul\",\"region\":\"\",\"regionId\":\"\",\"country\":\"TR\",\"cName\":\"Türkiye\",\"request\":\"f65b296ae5599fb4d7c36eab81c51d26\",\"latitude\":\"f13af8bdace70df705772dfdd5d2893f\",\"longitude\":\"00b84805c8d91ea0a21a2f7f7d901eaa\"},\"_expires\":1771185211000}"
+        },
+        {
+          "name": "ins-sourceUrl",
+          "value": "{\"data\":\"https://partner.trendyol.com/auth/logout?redirect=%2F\",\"_expires\":1773690811000}"
+        },
+        {
+          "name": "spUID",
+          "value": "{\"data\":\"177109881092792d43a5b39.acd54880\",\"_expires\":1802634853000}"
+        },
+        {
+          "name": "customDataSet-autokw-videoads-camp02261452",
+          "value": "{\"data\":{\"status\":false,\"cookie\":\"1080066\"},\"_expires\":1773690853000}"
+        },
+        {
+          "name": "ins-contact-field",
+          "value": "{\"data\":true,\"_expires\":1802634853000}"
+        },
+        {
+          "name": "ins-current-currency",
+          "value": "{\"data\":\"TRY\",\"_expires\":1771185253000}"
+        },
+        {
+          "name": "cus48",
+          "value": "{\"data\":1,\"_expires\":1998311640000}"
+        },
+        {
+          "name": "ins-gaSSId",
+          "value": "{\"data\":{\"id\":\"uif9k5bv-cqsb-qxvv-19br-9m34jeqsaxgy_1771098811\"},\"_expires\":1771100655000}"
+        },
+        {
+          "name": "insCustomAttributes",
+          "value": "{\"data\":{\"seller_id\":\"1080066\",\"mealseller\":false,\"storebaseenabled\":false,\"ismeal\":false,\"is_user_android\":false,\"is_user_iphone\":false,\"filled_surveys\":\"[]\",\"testromanya180925\":false,\"c_regionnamecee\":false,\"c_languageroesittir\":false,\"c_languageroicerir\":false,\"c_regionnamegulf\":false,\"c_regionnametr\":true},\"_expires\":1802634853000}"
+        },
+        {
+          "name": "ins-landingPage",
+          "value": "{\"data\":\"https://partner.trendyol.com/auth/login?redirect=%2F\",\"_expires\":1773690811000}"
+        },
+        {
+          "name": "customDataSet-targetspentchurn02261455",
+          "value": "{\"data\":{\"status\":false,\"cookie\":\"1080066\"},\"_expires\":1773690853000}"
+        },
+        {
+          "name": "ins-cleared-custom-dataset",
+          "value": "{\"data\":1,\"_expires\":1772394811000}"
+        },
+        {
+          "name": "insUserInfoHash",
+          "value": "{\"data\":370096977,\"_expires\":1802634853000}"
+        },
+        {
+          "name": "ins-default-attributes",
+          "value": "{\"data\":{\"last_abandoned_cart_amount\":0,\"last_visited_category_url\":\"https://partner.trendyol.com/account/login\",\"last_visited_product_img\":\"https://image.useinsider.com/partnertrendyol/webPushDefaultImage/uaKB64ZV05nkgeQW0LJq1675324061.jpeg\",\"last_visited_product_url\":\"https://partner.trendyol.com/account/login\",\"last_abandoned_product_img\":\"https://image.useinsider.com/partnertrendyol/webPushDefaultImage/uaKB64ZV05nkgeQW0LJq1675324061.jpeg\",\"last_abandoned_product_url\":\"https://partner.trendyol.com/account/login\"},\"_expires\":1802634853000}"
+        }
+      ]
+    },
+    {
+      "origin": "https://www.google.com",
+      "localStorage": [
+        {
+          "name": "rc::a",
+          "value": "MXVuMGM4NTFpajlqZGE="
+        },
+        {
+          "name": "rc::f",
+          "value": "0aABtgWgiyjP44dBc5nqfyCUw0UgEYy-VaogpCqikGockix61PyUBwm_WZG4T7MPbEMulTe5E"
+        }
+      ]
+    }
+  ]
+}

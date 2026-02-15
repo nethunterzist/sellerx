@@ -164,7 +164,7 @@
     "dumen": "Dümen",
     "returns": "İadeler",
     "ads": "Reklamlar",
-    "qa": "Müşteri Soruları",
+    "qa": "AI Asistan",
     "stores": "Mağazalar",
     "reports": "Raporlar",
     "billing": "Abonelik",
@@ -673,7 +673,11 @@
       "color": "Renk",
       "reason": "Neden",
       "auto_accepted": "Otomatik Onay",
-      "seller_accepted": "Satıcı Onaylı"
+      "seller_accepted": "Satıcı Onaylı",
+      "auditHistory": "Durum Geçmişi",
+      "auditLoading": "Geçmiş yükleniyor...",
+      "auditEmpty": "Geçmiş bulunamadı",
+      "auditError": "Geçmiş yüklenemedi"
     },
     "detail_modal": {
       "title": "İade Detayı",
@@ -1040,25 +1044,125 @@
     }
   },
   "qa": {
-    "title": "Müşteri Soruları",
-    "description": "Trendyol'daki müşteri sorularını görüntüleyin ve yönetin",
-    "noStoreSelected": "Soruları görüntülemek için bir mağaza seçin",
-    "syncButton": "Senkronize Et",
-    "syncing": "Senkronize ediliyor...",
-    "syncSuccess": "Senkronizasyon tamamlandı",
-    "syncResultMessage": "{newQuestions} yeni soru, {updatedQuestions} güncellenen soru",
-    "aiEnabled": "AI Cevap Aktif",
-    "aiDisabled": "AI Cevap Pasif",
-    "aiEnabledDescription": "Bekleyen sorulara AI destekli cevap önerisi alabilirsiniz. Her sorunun altındaki 'AI Cevap Öner' butonuna tıklayın.",
-    "aiDisabledDescription": "AI cevap özelliği pasif. Aktif etmek için Ayarlar > AI Cevap bölümüne gidin.",
-    "aiSettings": "Ayarlar",
-    "questionsTitle": "Soru Listesi",
-    "questionsDescription": "Müşterilerinizin ürünleriniz hakkındaki soruları",
+    "title": "AI Asistan",
+    "description": "Yapay zeka destekli otomatik müşteri cevap sistemi",
+    "noStoreSelected": "AI Asistan'ı kullanmak için bir mağaza seçin",
+    "hero": {
+      "title": "AI Asistan",
+      "aiActive": "AI Aktif",
+      "aiInactive": "AI Pasif",
+      "answered": "Yanıtlanan",
+      "pending": "Bekleyen",
+      "avgConfidence": "Ort. Güven",
+      "timeSaved": "Tasarruf",
+      "minutes": "dk",
+      "toggleOn": "AI'ı aktif et",
+      "toggleOff": "AI'ı pasif et"
+    },
     "mainTabs": {
-      "questions": "Sorular",
-      "suggestions": "Zekâ Önerileri",
-      "seniority": "Kıdem Durumu",
-      "alerts": "Uyarılar"
+      "answerFlow": "Cevap Akışı",
+      "aiBrain": "AI Beyni",
+      "rules": "Kurallar",
+      "performance": "Performans",
+      "crossSell": "Capraz Satis"
+    },
+    "answerFlow": {
+      "pendingApproval": "Onay Bekleyen",
+      "autoAnswered": "Otomatik Cevaplanan",
+      "humanRequired": "İnsan Gerekli",
+      "approveAndSend": "Onayla ve Gönder",
+      "edit": "Düzenle",
+      "reject": "Reddet",
+      "answeredAt": "Cevaplandı",
+      "answerQuestion": "Cevapla",
+      "aiSuggest": "AI Öner",
+      "noQuestions": "Bu kategoride soru bulunmuyor",
+      "source": {
+        "product": "Ürün",
+        "historical_qa": "Geçmiş Soru",
+        "knowledge_base": "Bilgi Bankası",
+        "template": "Şablon"
+      },
+      "generating": "AI cevap üretiyor...",
+      "lowConfidence": "Düşük güven skoru - kontrol edin",
+      "edited": "Cevap düzenlendi",
+      "suggestedAnswer": "Önerilen Cevap",
+      "generateButton": "AI Cevap Üret",
+      "generateError": "AI cevap üretilemedi",
+      "approveSuccess": "Cevap onaylandı ve gönderildi",
+      "approveError": "Cevap onaylanamadı",
+      "showAnswer": "Cevabı göster",
+      "hideAnswer": "Cevabı gizle",
+      "manualAnswer": "Manuel Cevapla",
+      "saveEdit": "Kaydet",
+      "cancelEdit": "İptal"
+    },
+    "aiBrain": {
+      "knowledgeBase": "Bilgi Bankası",
+      "learningSuggestions": "Öğrenme Önerileri",
+      "addKnowledge": "Bilgi Ekle",
+      "editKnowledge": "Bilgiyi Düzenle",
+      "emptyKnowledge": "AI'ın daha iyi cevap vermesi için bilgi ekleyin",
+      "emptySuggestions": "AI henüz yeni öğrenme önerisi tespit etmedi",
+      "category": "Kategori",
+      "titleField": "Başlık",
+      "content": "İçerik",
+      "keywords": "Anahtar Kelimeler",
+      "keywordsPlaceholder": "Virgülle ayırarak yazın",
+      "priority": "Öncelik",
+      "save": "Kaydet",
+      "saving": "Kaydediliyor...",
+      "cancel": "İptal",
+      "deleteConfirm": "Bu bilgiyi silmek istediğinize emin misiniz?",
+      "activeItems": "{count} aktif kayıt"
+    },
+    "rules": {
+      "toneAndStyle": "Ton ve Stil",
+      "safetyRules": "Güvenlik Kuralları",
+      "autoAnswerPolicy": "Otomatik Cevap Politikası",
+      "tone": "AI Tonu",
+      "toneOptions": {
+        "professional": "Profesyonel",
+        "friendly": "Samimi",
+        "formal": "Resmi"
+      },
+      "language": "Dil",
+      "maxLength": "Maks. Cevap Uzunluğu",
+      "maxLengthChars": "karakter",
+      "includeGreeting": "Selamlama Dahil",
+      "includeSignature": "İmza Dahil",
+      "signatureText": "İmza Metni",
+      "confidenceThreshold": "Güven Eşiği",
+      "autoAnswer": "Otomatik Cevap",
+      "autoAnswerWarning": "Güven eşiğini geçen sorular otomatik cevaplanır",
+      "saveSettings": "Ayarları Kaydet",
+      "saving": "Kaydediliyor...",
+      "saved": "Ayarlar kaydedildi",
+      "safetyRule": {
+        "legalRisk": "Hukuki ifadeler otomatik engellenir",
+        "healthSafety": "Sağlık konuları insan onayı gerektirir",
+        "knowledgeConflict": "Bilgi çelişkisi tespit edildiğinde uyarı",
+        "brandInconsistency": "Marka tutarsızlığı tespit edildiğinde uyarı"
+      },
+      "goToAiBrain": "AI Beyni'ne Git",
+      "policyDescription": "Bilgi bankasındaki aktif kayıtlar AI'ın cevap üretmesinde kullanılır"
+    },
+    "performance": {
+      "summary": "AI Performans Özeti",
+      "totalPatterns": "Toplam Pattern",
+      "autoSubmitEligible": "Auto-Submit Uygun",
+      "activeAlerts": "Aktif Uyarı",
+      "avgApprovalRate": "Ort. Onay Oranı",
+      "seniorityStatus": "Kıdem Durumu",
+      "alerts": "Uyarılar",
+      "noAlerts": "Aktif uyarı bulunmuyor"
+    },
+    "activityFeed": {
+      "title": "Son AI Aktivitesi",
+      "empty": "Henüz AI aktivitesi yok",
+      "answered": "yanıtladı",
+      "approved": "onaylandı",
+      "generated": "üretildi"
     },
     "tabs": {
       "all": "Tümü",
@@ -1087,7 +1191,8 @@
       "answerButton": "Cevapla",
       "aiSuggestButton": "AI Cevap Öner",
       "closeAiPanel": "AI Panelini Kapat",
-      "aiDisabledNote": "AI cevap özelliği için Ayarlar > AI Cevap bölümünden AI'ı aktif edin"
+      "aiDisabledNote": "AI cevap özelliği için Ayarlar > AI Cevap bölümünden AI'ı aktif edin",
+      "noProduct": "Ürün bilgisi yok"
     },
     "emptyState": {
       "title": "Henüz müşteri sorusu bulunmuyor",
@@ -1122,7 +1227,9 @@
       "contentLabel": "İçerik",
       "save": "Kaydet ve Onayla",
       "cancel": "İptal",
-      "saving": "Kaydediliyor..."
+      "saving": "Kaydediliyor...",
+      "suggestedTitle": "Önerilen Başlık",
+      "newSuggestions": "yeni öneri"
     },
     "seniority": {
       "title": "AI Kıdem Durumu",
@@ -1199,6 +1306,107 @@
       "success": "Cevap başarıyla kaydedildi",
       "error": "Cevap gönderilemedi",
       "cancel": "İptal"
+    },
+    "crossSell": {
+      "rulesTitle": "Capraz Satis Kurallari",
+      "createRule": "Yeni Kural",
+      "analytics": {
+        "impressions": "Gosterim",
+        "clicks": "Tiklama",
+        "conversions": "Donusum",
+        "conversionRate": "Donusum Orani"
+      },
+      "globalToggle": {
+        "title": "Capraz Satis Sistemi",
+        "description": "AI cevaplarinda urun onerileri goster",
+        "active": "Aktif",
+        "inactive": "Pasif",
+        "enabled": "Capraz satis aktif edildi",
+        "disabled": "Capraz satis pasif edildi",
+        "error": "Ayar guncellenemedi"
+      },
+      "ruleBuilder": {
+        "createTitle": "Yeni Capraz Satis Kurali",
+        "editTitle": "Kurali Duzenle",
+        "name": "Kural Adi",
+        "namePlaceholder": "ornegin: Kilif onerileri",
+        "description": "Aciklama",
+        "descriptionPlaceholder": "Bu kural ne zaman tetiklenir?",
+        "triggers": "Tetikleyiciler",
+        "triggerValuePlaceholder": "Deger girin ve Enter'a basin",
+        "triggerTypes": {
+          "keyword": "Anahtar Kelime",
+          "category": "Kategori",
+          "product": "Urun",
+          "questionPattern": "Soru Kalıbi"
+        },
+        "recommendationType": "Oneri Turu",
+        "recommendationTypes": {
+          "complementary": "Tamamlayici",
+          "upsell": "Ust Segment",
+          "alternative": "Alternatif",
+          "bundle": "Paket"
+        },
+        "products": "Onerilecek Urunler",
+        "maxRecommendations": "Maks. Oneri Sayisi",
+        "messageTemplate": "Mesaj Sablonu",
+        "messageTemplatePlaceholder": "ornegin: Bu urunle birlikte su urunleri de inceleyebilirsiniz:",
+        "status": "Durum",
+        "statusActive": "Aktif",
+        "statusInactive": "Pasif",
+        "statusDraft": "Taslak",
+        "cancel": "Iptal",
+        "create": "Olustur",
+        "update": "Guncelle",
+        "createSuccess": "Kural olusturuldu",
+        "updateSuccess": "Kural guncellendi",
+        "createError": "Kural olusturulamadi",
+        "updateError": "Kural guncellenemedi",
+        "validation": {
+          "nameRequired": "Kural adi zorunludur",
+          "triggersRequired": "En az bir tetikleyici ekleyin",
+          "productsRequired": "En az bir urun secin"
+        }
+      },
+      "ruleCard": {
+        "status": {
+          "active": "Aktif",
+          "inactive": "Pasif",
+          "draft": "Taslak"
+        },
+        "edit": "Duzenle",
+        "delete": "Sil",
+        "impressions": "gosterim",
+        "conversion": "donusum",
+        "products": "urun"
+      },
+      "ruleList": {
+        "count": "{count} kural",
+        "empty": "Henuz capraz satis kurali yok",
+        "emptyHint": "Yeni kural olusturarak baslayin",
+        "deleteConfirm": "Bu kurali silmek istediginize emin misiniz?",
+        "deleteSuccess": "Kural silindi",
+        "deleteError": "Kural silinemedi",
+        "activated": "Kural aktif edildi",
+        "deactivated": "Kural pasif edildi",
+        "toggleError": "Durum guncellenemedi"
+      },
+      "productSelector": {
+        "searchPlaceholder": "Urun ara (barkod veya isim)...",
+        "limitReached": "Maks. {max} urun secebilirsiniz",
+        "searching": "Aranıyor...",
+        "noResults": "Urun bulunamadi",
+        "outOfStock": "Stokta yok",
+        "selectedCount": "{count}/{max} urun secildi"
+      },
+      "preview": {
+        "title": "Canli Onizleme",
+        "customerQuestion": "Musteri Sorusu",
+        "aiAnswer": "AI Cevabi",
+        "sampleAnswer": "Urunumuz hakkinda detayli bilgi...",
+        "defaultTemplate": "Bu urunlerle birlikte inceleyebilirsiniz:",
+        "emptyProducts": "Onerilecek urun secin"
+      }
     }
   },
   "Billing": {
@@ -1931,162 +2139,6 @@
       "daily_average": "Günlük ortalama",
       "no_expenses": "Henüz gider tanımlanmamış",
       "add_hint": "Ayarlar sayfasından gider ekleyebilirsiniz"
-    }
-  },
-  "stockTracking": {
-    "title": "Rakip Stok Takibi",
-    "description": "Rakip ürünlerin stok seviyelerini takip edin",
-    "noStore": "Stok takibi için bir mağaza seçin",
-    "refresh": "Yenile",
-    "mockModeEnabled": "Mock mod aktif - Örnek veriler gösteriliyor",
-    "addProduct": "Ürün Ekle",
-    "trackedProducts": "Takip Edilen Ürünler",
-    "trackedProductsDesc": "{count}/{max} ürün takip ediliyor",
-    "backToList": "Listeye Dön",
-    "productNotFound": "Ürün bulunamadı",
-    "dashboard": {
-      "totalTracked": "Toplam Takip",
-      "trackedProducts": "Takip Edilen Ürünler",
-      "outOfStock": "Stok Yok",
-      "lowStock": "Düşük Stok",
-      "inStock": "Stokta",
-      "unreadAlerts": "Okunmamış Uyarılar",
-      "description": "takip edilen ürün",
-      "criticalProducts": "kritik ürün",
-      "belowThreshold": "eşik altında",
-      "stockAvailable": "stok mevcut"
-    },
-    "table": {
-      "image": "Görsel",
-      "product": "Ürün",
-      "stock": "Stok",
-      "price": "Fiyat",
-      "currentStock": "Mevcut Stok",
-      "lastChecked": "Son Kontrol",
-      "status": "Durum",
-      "actions": "İşlemler",
-      "noProducts": "Henüz takip edilen ürün yok",
-      "noProductsDesc": "Rakip ürünleri takip etmek için ürün ekleyin",
-      "checkNow": "Kontrol Et",
-      "checkSuccess": "Stok kontrolü başarılı",
-      "checkError": "Stok kontrolü başarısız",
-      "remove": "Kaldır",
-      "removeConfirm": "Bu ürünü takipten çıkarmak istediğinizden emin misiniz?",
-      "removeSuccess": "Ürün takipten çıkarıldı",
-      "removeError": "Ürün kaldırılırken hata oluştu",
-      "delete": "Sil",
-      "deleteConfirmTitle": "Ürünü Sil",
-      "deleteConfirmDescription": "Bu ürünü takipten çıkarmak istediğinizden emin misiniz?",
-      "confirmDelete": "Sil",
-      "deleteSuccess": "Ürün takipten çıkarıldı",
-      "deleteError": "Ürün kaldırılırken hata oluştu",
-      "outOfStock": "Stok Yok",
-      "lowStock": "Düşük Stok",
-      "inStock": "Stokta",
-      "noData": "Veri Yok",
-      "unit": "adet",
-      "viewDetails": "Detayları Gör",
-      "viewDetail": "Detayları Gör",
-      "openTrendyol": "Trendyol'da Aç",
-      "empty": "Henüz takip edilen ürün yok"
-    },
-    "addModal": {
-      "title": "Ürün Ekle",
-      "description": "Takip etmek istediğiniz rakip ürünün Trendyol URL'sini girin",
-      "urlLabel": "Trendyol Ürün URL'si",
-      "urlPlaceholder": "https://www.trendyol.com/...",
-      "urlHelp": "Trendyol ürün sayfasının tam URL'sini yapıştırın",
-      "thresholdLabel": "Düşük Stok Eşiği",
-      "thresholdHelp": "Bu seviyenin altına düşünce uyarı alırsınız",
-      "cancel": "İptal",
-      "add": "Ekle",
-      "adding": "Ekleniyor...",
-      "success": "Ürün takibe eklendi",
-      "error": "Ürün eklenemedi",
-      "invalidUrl": "Geçerli bir Trendyol URL'si girin",
-      "limitReached": "Maksimum 10 ürün takip edilebilir"
-    },
-    "addProductForm": {
-      "title": "Ürün Ekle",
-      "description": "Takip etmek istediğiniz rakip ürünün Trendyol URL'sini girin",
-      "urlLabel": "Trendyol Ürün URL'si",
-      "urlHint": "Trendyol ürün sayfasının tam URL'sini yapıştırın",
-      "alertSettings": "Uyarı Ayarları",
-      "urlRequired": "Lütfen bir URL girin",
-      "invalidUrl": "Geçerli bir Trendyol URL'si girin",
-      "invalidProductUrl": "Tanımlanamayan Trendyol ürün sayfası. Ürün detay sayfasının URL'sini girin (örn: trendyol.com/marka/urun-p-123456)",
-      "validating": "Ürün bilgileri alınıyor...",
-      "productNotFound": "Ürün bulunamadı",
-      "previewError": "Ürün bilgileri alınamadı",
-      "inStock": "Stokta",
-      "outOfStock": "Tükendi",
-      "pieces": "adet",
-      "success": "Ürün takibe eklendi",
-      "error": "Ürün eklenemedi",
-      "submit": "Ekle"
-    },
-    "common": {
-      "cancel": "İptal"
-    },
-    "alerts": {
-      "title": "Stok Uyarıları",
-      "empty": "Henüz uyarı yok",
-      "noAlerts": "Henüz uyarı yok",
-      "noAlertsDesc": "Stok değişikliklerinde burada bildirim alacaksınız",
-      "markAsRead": "Okundu İşaretle",
-      "markAllRead": "Tümünü Okundu İşaretle",
-      "types": {
-        "OUT_OF_STOCK": "Stok Tükendi",
-        "LOW_STOCK": "Düşük Stok",
-        "BACK_IN_STOCK": "Stok Geldi",
-        "STOCK_INCREASED": "Stok Artışı"
-      },
-      "severity": {
-        "LOW": "Düşük",
-        "MEDIUM": "Orta",
-        "HIGH": "Yüksek",
-        "CRITICAL": "Kritik"
-      }
-    },
-    "detail": {
-      "currentStock": "Mevcut Stok",
-      "price": "Fiyat",
-      "minStock": "Min. Stok",
-      "maxStock": "Maks. Stok",
-      "avgStock": "Ort. Stok",
-      "totalChecks": "Toplam Kontrol",
-      "outOfStockCount": "Stok Bitti Sayısı",
-      "lastOutOfStock": "Son stok bitimi",
-      "last30Days": "Son 30 gün",
-      "paused": "Duraklatıldı"
-    },
-    "chart": {
-      "title": "Stok Geçmişi",
-      "noData": "Henüz stok verisi yok",
-      "stock": "Stok",
-      "change": "Değişim",
-      "price": "Fiyat",
-      "stockLevel": "Stok Seviyesi",
-      "lowStockThreshold": "Düşük Stok Eşiği",
-      "lowStockLine": "Düşük stok"
-    },
-    "settings": {
-      "title": "Uyarı Ayarları",
-      "isActive": "Takip Aktif",
-      "isActiveDesc": "Bu ürün için stok takibini açın/kapatın",
-      "alertOnOutOfStock": "Stok Tükenince Uyar",
-      "alertOnOutOfStockDesc": "Rakip stoğu bitince bildirim al",
-      "alertOnLowStock": "Düşük Stokta Uyar",
-      "alertOnLowStockDesc": "Stok eşiğin altına düşünce bildirim al",
-      "lowStockThreshold": "Düşük Stok Eşiği",
-      "lowStockThresholdDesc": "Bu seviyenin altı düşük stok sayılır",
-      "alertOnBackInStock": "Stok Gelince Uyar",
-      "alertOnBackInStockDesc": "Rakip stoğa geri gelince bildirim al",
-      "alertOnStockIncrease": "Stok Artışında Uyar",
-      "alertOnStockIncreaseDesc": "Rakip stoğu önemli miktarda artınca bildirim al",
-      "save": "Kaydet",
-      "saveSuccess": "Ayarlar kaydedildi",
-      "saveError": "Ayarlar kaydedilirken hata oluştu"
     }
   },
   "referral": {

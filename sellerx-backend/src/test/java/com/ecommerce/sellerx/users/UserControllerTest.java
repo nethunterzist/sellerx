@@ -301,7 +301,7 @@ class UserControllerTest extends BaseControllerTest {
             // When/Then
             performWithoutAuth(post("/users").content(requestBody))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.email").value("Email is already registered."));
+                    .andExpect(jsonPath("$.error").value("Registration could not be completed. Please try again or use a different email."));
         }
     }
 }

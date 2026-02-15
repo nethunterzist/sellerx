@@ -224,9 +224,15 @@ export function useAlerts(options?: {
 }
 
 /**
- * Get unread alerts
+ * Get unread alerts.
+ * When WebSocket is connected, polling is disabled (real-time via WebSocket).
+ * Falls back to polling when WebSocket is not available.
+ *
+ * @param options.disablePolling - Force disable polling (e.g., when WebSocket is connected)
  */
-export function useUnreadAlerts() {
+export function useUnreadAlerts(options?: { disablePolling?: boolean }) {
+  const { disablePolling = false } = options || {};
+
   return useQuery({
     queryKey: alertKeys.unread(),
     queryFn: async (): Promise<AlertHistory[]> => {
@@ -236,15 +242,21 @@ export function useUnreadAlerts() {
       }
       return response.json();
     },
-    // Refetch every 30 seconds for real-time updates
-    refetchInterval: 30000,
+    // Only poll if WebSocket is not connected (fallback)
+    refetchInterval: disablePolling ? false : 30000,
   });
 }
 
 /**
- * Get unread alert count
+ * Get unread alert count.
+ * When WebSocket is connected, polling is disabled (real-time via WebSocket).
+ * Falls back to polling when WebSocket is not available.
+ *
+ * @param options.disablePolling - Force disable polling (e.g., when WebSocket is connected)
  */
-export function useUnreadAlertCount() {
+export function useUnreadAlertCount(options?: { disablePolling?: boolean }) {
+  const { disablePolling = false } = options || {};
+
   return useQuery({
     queryKey: alertKeys.unreadCount(),
     queryFn: async (): Promise<{ count: number }> => {
@@ -254,8 +266,8 @@ export function useUnreadAlertCount() {
       }
       return response.json();
     },
-    // Refetch every 30 seconds for real-time badge updates
-    refetchInterval: 30000,
+    // Only poll if WebSocket is not connected (fallback)
+    refetchInterval: disablePolling ? false : 30000,
   });
 }
 

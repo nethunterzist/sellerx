@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
+import { FadeIn } from "@/components/motion";
 import { cn } from "@/lib/utils";
 import { ChevronRight, ChevronDown, Store, ExternalLink, X, Loader2, FileText } from "lucide-react";
-import { useProductCommissionBreakdown, useProductCargoBreakdown } from "@/hooks/queries/use-invoices";
+import { useProductCommissionBreakdown, useProductCargoBreakdown, useProductExpenseBreakdown } from "@/hooks/queries/use-invoices";
 import { useSelectedStore } from "@/hooks/queries/use-stores";
 import { Button } from "@/components/ui/button";
 import {
@@ -291,6 +292,14 @@ export function ProductDetailPanel({
     endDate
   );
 
+  // Fetch expense breakdown (platform fees, penalties, international, other)
+  const { data: expenseData, isLoading: isLoadingExpense } = useProductExpenseBreakdown(
+    storeId,
+    product?.barcode,
+    startDate,
+    endDate
+  );
+
   // Frontend slice pagination for cost history
   const costHistoryData = useMemo(() => {
     if (!product?.costHistory) return { visible: [], total: 0, hasMore: false };
@@ -389,6 +398,7 @@ export function ProductDetailPanel({
         </div>
 
         {/* Content - 32 Finansal Metrik */}
+        <FadeIn delay={0.1}>
         <div className="divide-y divide-border">
           {/* ========== SATIŞ METRİKLERİ ========== */}
 
@@ -405,6 +415,36 @@ export function ProductDetailPanel({
             value={String(product.units)}
             isBold
           />
+
+          {/* ========== İADE BİLGİLERİ ========== */}
+          {(product.returnQuantity > 0 || product.refundCost > 0) && (
+            <ExpandableRow
+              label="İadeler"
+              value={`${product.returnQuantity || 0} adet`}
+              isNegative
+            >
+              {product.returnQuantity > 0 && (
+                <SubRow
+                  label="İade Adedi"
+                  value={`${product.returnQuantity} adet`}
+                />
+              )}
+              {product.refundCost > 0 && (
+                <SubRow
+                  label="İade Tutarı"
+                  value={formatCurrency(-product.refundCost)}
+                  isNegative
+                />
+              )}
+              {product.refundRate > 0 && (
+                <SubRow
+                  label="İade Oranı"
+                  value={formatPercentage(product.refundRate)}
+                  isNegative
+                />
+              )}
+            </ExpandableRow>
+          )}
 
           {/* ========== İNDİRİMLER & KUPONLAR ========== */}
 
@@ -531,6 +571,62 @@ export function ProductDetailPanel({
               </div>
             ) : null}
           </ExpandableRow>
+
+          {/* ========== DİĞER GİDERLER (Expense Breakdown) ========== */}
+          {isLoadingExpense ? (
+            <div className="flex items-center gap-2 py-3 px-4 text-sm text-muted-foreground border-b border-border">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              Gider verisi yükleniyor...
+            </div>
+          ) : expenseData && expenseData.hasExpenseData ? (
+            <ExpandableRow
+              label="Diğer Giderler"
+              value={formatCurrency(-expenseData.totalExpenses)}
+              isNegative={expenseData.totalExpenses > 0}
+            >
+              {/* Platform Hizmet Bedeli */}
+              {expenseData.platformServiceFee > 0 && (
+                <SubRow
+                  label={`📄 Platform Hizmet (${expenseData.platformServiceFeeCount})`}
+                  value={formatCurrency(-expenseData.platformServiceFee)}
+                  isNegative
+                />
+              )}
+              {/* Uluslararası Kargo */}
+              {expenseData.internationalShippingFee > 0 && (
+                <SubRow
+                  label={`🌍 Uluslararası Kargo (${expenseData.internationalShippingCount})`}
+                  value={formatCurrency(-expenseData.internationalShippingFee)}
+                  isNegative
+                />
+              )}
+              {/* Cezalar */}
+              {expenseData.penaltyFee > 0 && (
+                <SubRow
+                  label={`⚠️ Cezalar (${expenseData.penaltyCount})`}
+                  value={formatCurrency(-expenseData.penaltyFee)}
+                  isNegative
+                />
+              )}
+              {/* Diğer */}
+              {expenseData.otherExpenses > 0 && (
+                <SubRow
+                  label={`📋 Diğer (${expenseData.otherExpenseCount})`}
+                  value={formatCurrency(-expenseData.otherExpenses)}
+                  isNegative
+                />
+              )}
+              {/* Toplam KDV */}
+              {expenseData.totalVatAmount > 0 && (
+                <div className="flex items-center justify-between py-2 px-4 pl-10 border-b border-border bg-muted/30">
+                  <span className="text-xs text-muted-foreground">KDV Toplamı</span>
+                  <span className="text-xs font-medium text-muted-foreground">
+                    {formatCurrency(expenseData.totalVatAmount)}
+                  </span>
+                </div>
+              )}
+            </ExpandableRow>
+          ) : null}
 
           {/* Divider */}
           <div className="h-1 bg-muted" />
@@ -733,6 +829,7 @@ export function ProductDetailPanel({
           )}
 
         </div>
+        </FadeIn>
       </SheetContent>
     </Sheet>
   );

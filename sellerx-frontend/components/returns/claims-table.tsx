@@ -20,10 +20,12 @@ import {
   X,
   Eye,
   ExternalLink,
+  History,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { TrendyolClaim, ClaimStatus, ClaimItem } from "@/types/returns";
 import { useCurrency } from "@/lib/contexts/currency-context";
+import { useClaimItemAudit } from "@/hooks/queries/use-returns";
 
 function formatDate(dateString: string | null): string {
   if (!dateString) return "-";
@@ -36,68 +38,154 @@ function formatDate(dateString: string | null): string {
   });
 }
 
-interface ClaimItemsRowProps {
-  items: ClaimItem[];
+interface ClaimItemAuditTimelineProps {
+  storeId: string;
+  itemId: string;
 }
 
-function ClaimItemsRow({ items }: ClaimItemsRowProps) {
+function ClaimItemAuditTimeline({ storeId, itemId }: ClaimItemAuditTimelineProps) {
+  const { data: audit, isLoading, error } = useClaimItemAudit(storeId, itemId, true);
+
+  if (isLoading) {
+    return (
+      <div className="mt-2 pl-4 text-xs text-muted-foreground">
+        <RefreshCw className="h-3 w-3 animate-spin inline mr-1" />
+        Gecmis yukleniyor...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="mt-2 pl-4 text-xs text-red-500">
+        Gecmis yuklenemedi
+      </div>
+    );
+  }
+
+  if (!audit || audit.length === 0) {
+    return (
+      <div className="mt-2 pl-4 text-xs text-muted-foreground">
+        Gecmis bulunamadi
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-2 pl-4 space-y-1.5">
+      {audit.map((entry, idx) => (
+        <div key={idx} className="flex items-start gap-2 text-xs">
+          <div className="mt-1.5 h-1.5 w-1.5 rounded-full bg-blue-500 shrink-0" />
+          <div>
+            <span className="font-medium text-foreground">
+              {entry.previousStatus}
+            </span>
+            <span className="text-muted-foreground mx-1">&rarr;</span>
+            <span className="font-medium text-foreground">
+              {entry.newStatus}
+            </span>
+            <span className="text-muted-foreground ml-2">
+              ({formatDate(entry.date)}
+              {entry.executorApp && `, ${entry.executorApp}`}
+              {entry.executorUser && ` - ${entry.executorUser}`})
+            </span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+interface ClaimItemsRowProps {
+  items: ClaimItem[];
+  storeId?: string;
+}
+
+function ClaimItemsRow({ items, storeId }: ClaimItemsRowProps) {
   const { formatCurrency } = useCurrency();
+  const [auditItemId, setAuditItemId] = useState<string | null>(null);
+
+  const toggleAudit = (itemId: string) => {
+    setAuditItemId((prev) => (prev === itemId ? null : itemId));
+  };
+
   return (
     <div className="bg-muted p-4 rounded-lg mt-2 space-y-2">
       <p className="text-xs font-medium text-muted-foreground uppercase">
         Iade Kalemleri
       </p>
       {items.map((item, idx) => (
-        <div
-          key={idx}
-          className="flex items-center justify-between text-sm border-b border-border pb-2 last:border-0"
-        >
-          <div className="flex items-center gap-3 flex-1">
-            {item.imageUrl && (
-              <img
-                src={item.imageUrl}
-                alt={item.productName}
-                className="w-10 h-10 object-cover rounded"
-              />
-            )}
-            <div>
-              <p className="font-medium text-foreground line-clamp-1">
-                {item.productName}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Barkod: {item.barcode}
-                {item.productSize && ` | Beden: ${item.productSize}`}
-                {item.productColor && ` | Renk: ${item.productColor}`}
-              </p>
-              {item.reasonName && (
-                <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
-                  Neden: {item.reasonName}
-                </p>
+        <div key={idx}>
+          <div className="flex items-center justify-between text-sm border-b border-border pb-2 last:border-0">
+            <div className="flex items-center gap-3 flex-1">
+              {item.imageUrl && (
+                <img
+                  src={item.imageUrl}
+                  alt={item.productName}
+                  className="w-10 h-10 object-cover rounded"
+                />
               )}
-              {item.customerNote && (
-                <p className="text-xs text-muted-foreground mt-1 italic">
-                  "{item.customerNote}"
+              <div>
+                <p className="font-medium text-foreground line-clamp-1">
+                  {item.productName}
                 </p>
+                <p className="text-xs text-muted-foreground">
+                  Barkod: {item.barcode}
+                  {item.productSize && ` | Beden: ${item.productSize}`}
+                  {item.productColor && ` | Renk: ${item.productColor}`}
+                </p>
+                {item.reasonName && (
+                  <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
+                    Neden: {item.reasonName}
+                  </p>
+                )}
+                {item.customerNote && (
+                  <p className="text-xs text-muted-foreground mt-1 italic">
+                    &quot;{item.customerNote}&quot;
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="text-right">
+                <p className="font-medium">
+                  {item.quantity} x {formatCurrency(item.price)}
+                </p>
+                <div className="flex items-center gap-2 justify-end mt-1">
+                  {item.autoAccepted && (
+                    <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded">
+                      Otomatik Onay
+                    </span>
+                  )}
+                  {item.acceptedBySeller && (
+                    <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-2 py-0.5 rounded">
+                      Satici Onayli
+                    </span>
+                  )}
+                </div>
+              </div>
+              {storeId && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={cn(
+                    "h-7 px-2 text-xs gap-1",
+                    auditItemId === item.claimItemId
+                      ? "text-blue-600 bg-blue-50 dark:bg-blue-900/20"
+                      : "text-muted-foreground"
+                  )}
+                  onClick={() => toggleAudit(item.claimItemId)}
+                  title="Durum Gecmisi"
+                >
+                  <History className="h-3.5 w-3.5" />
+                  Gecmis
+                </Button>
               )}
             </div>
           </div>
-          <div className="text-right">
-            <p className="font-medium">
-              {item.quantity} x {formatCurrency(item.price)}
-            </p>
-            <div className="flex items-center gap-2 justify-end mt-1">
-              {item.autoAccepted && (
-                <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded">
-                  Otomatik Onay
-                </span>
-              )}
-              {item.acceptedBySeller && (
-                <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-2 py-0.5 rounded">
-                  Satici Onayli
-                </span>
-              )}
-            </div>
-          </div>
+          {auditItemId === item.claimItemId && storeId && (
+            <ClaimItemAuditTimeline storeId={storeId} itemId={item.claimItemId} />
+          )}
         </div>
       ))}
     </div>
@@ -117,6 +205,7 @@ interface ClaimsTableProps {
   getStatusColor: (status: ClaimStatus) => string;
   getStatusLabel: (status: ClaimStatus) => string;
   approvePending: boolean;
+  storeId?: string;
 }
 
 export function ClaimsTable({
@@ -132,6 +221,7 @@ export function ClaimsTable({
   getStatusColor,
   getStatusLabel,
   approvePending,
+  storeId,
 }: ClaimsTableProps) {
   const { formatCurrency } = useCurrency();
   const [expandedClaims, setExpandedClaims] = useState<Set<string>>(new Set());
@@ -308,7 +398,7 @@ export function ClaimsTable({
                     <TableRow>
                       <TableCell colSpan={8} className="p-0">
                         <div className="px-4 pb-4">
-                          <ClaimItemsRow items={claim.items} />
+                          <ClaimItemsRow items={claim.items} storeId={storeId} />
                         </div>
                       </TableCell>
                     </TableRow>

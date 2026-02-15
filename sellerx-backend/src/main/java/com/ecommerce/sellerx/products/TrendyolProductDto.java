@@ -49,6 +49,15 @@ public class TrendyolProductDto {
     // ============== ÖTV (Excel F5) ==============
     private BigDecimal otvRate; // Özel Tüketim Vergisi oranı
 
+    // ============== Kargo Maliyeti ==============
+    private BigDecimal lastShippingCostPerUnit; // Son kargo faturasından hesaplanan birim kargo maliyeti
+
+    // ============== Buybox Bilgileri ==============
+    private Integer buyboxOrder;
+    private BigDecimal buyboxPrice;
+    private Boolean hasMultipleSeller;
+    private LocalDateTime buyboxUpdatedAt;
+
     private Boolean approved;
     private Boolean archived;
     private Boolean blacklisted;

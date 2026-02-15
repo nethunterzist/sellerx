@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { FadeIn } from "@/components/motion";
 import {
   SettingsLayout,
   ProfileSettings,
@@ -121,12 +122,14 @@ function SettingsContent() {
   };
 
   return (
+    <FadeIn>
     <SettingsLayout
       activeSection={activeSection}
       onSectionChange={handleSectionChange}
     >
       {renderContent()}
     </SettingsLayout>
+    </FadeIn>
   );
 }
 

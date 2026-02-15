@@ -13,6 +13,12 @@ public class AuthSecurityRules implements SecurityRules {
         registry
                 .requestMatchers(HttpMethod.POST, "/auth/login").permitAll()
                 .requestMatchers(HttpMethod.POST, "/auth/refresh").permitAll()
-                .requestMatchers(HttpMethod.POST, "/auth/logout").permitAll();
+                .requestMatchers(HttpMethod.POST, "/auth/logout").permitAll()
+                // Password reset endpoints (public)
+                .requestMatchers(HttpMethod.POST, "/auth/forgot-password").permitAll()
+                .requestMatchers(HttpMethod.GET, "/auth/verify-reset-token").permitAll()
+                .requestMatchers(HttpMethod.POST, "/auth/reset-password").permitAll()
+                // Email verification (verify-email is public, others require auth)
+                .requestMatchers(HttpMethod.GET, "/auth/verify-email").permitAll();
     }
 }

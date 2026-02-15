@@ -350,8 +350,9 @@ class StoreControllerTest extends BaseControllerTest {
         @Test
         @DisplayName("should return sync progress for owner")
         void shouldReturnSyncProgressForOwner() throws Exception {
-            // Given
-            User user = createAndSaveTestUser("owner@example.com");
+            // Given - Use UUID in email to ensure uniqueness across test runs
+            String uniqueEmail = "sync-progress-owner-" + UUID.randomUUID() + "@example.com";
+            User user = createAndSaveTestUser(uniqueEmail);
             Store store = createAndSaveStore(user, "Test Store");
 
             // When/Then
@@ -364,9 +365,11 @@ class StoreControllerTest extends BaseControllerTest {
         @Test
         @DisplayName("should return 403 when user is not owner")
         void shouldReturn403WhenUserIsNotOwner() throws Exception {
-            // Given
-            User owner = createAndSaveTestUser("owner@example.com");
-            User otherUser = createAndSaveTestUser("other@example.com");
+            // Given - Use UUID in email to ensure uniqueness across test runs
+            String ownerEmail = "sync-progress-owner-" + UUID.randomUUID() + "@example.com";
+            String otherEmail = "sync-progress-other-" + UUID.randomUUID() + "@example.com";
+            User owner = createAndSaveTestUser(ownerEmail);
+            User otherUser = createAndSaveTestUser(otherEmail);
             Store store = createAndSaveStore(owner, "Owner's Store");
 
             // When/Then

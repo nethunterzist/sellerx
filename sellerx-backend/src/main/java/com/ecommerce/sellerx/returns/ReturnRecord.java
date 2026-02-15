@@ -79,6 +79,15 @@ public class ReturnRecord {
     @Builder.Default
     private String returnStatus = "RECEIVED";
 
+    /**
+     * Whether the returned product can be resold.
+     * null = decision pending (default: only shipping costs counted as loss)
+     * true = resalable (only shipping costs as loss)
+     * false = not resalable (shipping + product cost as loss)
+     */
+    @Column(name = "is_resalable")
+    private Boolean isResalable;
+
     // Hakediş kontrolü
     @Column(name = "commission_refunded")
     @Builder.Default
@@ -104,11 +113,14 @@ public class ReturnRecord {
      * Calculate total loss from all cost components
      */
     public void calculateTotalLoss() {
+        // Trendyol iade durumunda komisyonu geri veriyor, totalLoss'a dahil etme
+        // Ürün maliyeti sadece isResalable == false ise dahil edilir (satılamaz kararı)
         this.totalLoss = BigDecimal.ZERO
-                .add(productCost != null ? productCost : BigDecimal.ZERO)
                 .add(shippingCostOut != null ? shippingCostOut : BigDecimal.ZERO)
                 .add(shippingCostReturn != null ? shippingCostReturn : BigDecimal.ZERO)
-                .add(commissionLoss != null ? commissionLoss : BigDecimal.ZERO)
                 .add(packagingCost != null ? packagingCost : BigDecimal.ZERO);
+        if (Boolean.FALSE.equals(isResalable) && productCost != null) {
+            this.totalLoss = this.totalLoss.add(productCost);
+        }
     }
 }

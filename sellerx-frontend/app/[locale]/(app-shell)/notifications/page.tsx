@@ -35,6 +35,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Filter,
+  Undo2,
 } from "lucide-react";
 
 const alertTypeIcons: Record<AlertType, { icon: React.ElementType; color: string; bg: string }> = {
@@ -42,6 +43,7 @@ const alertTypeIcons: Record<AlertType, { icon: React.ElementType; color: string
   PROFIT: { icon: DollarSign, color: "text-green-600 dark:text-green-400", bg: "bg-green-100 dark:bg-green-900/30" },
   PRICE: { icon: Tag, color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-100 dark:bg-blue-900/30" },
   ORDER: { icon: ShoppingCart, color: "text-purple-600 dark:text-purple-400", bg: "bg-purple-100 dark:bg-purple-900/30" },
+  RETURN: { icon: Undo2, color: "text-red-600 dark:text-red-400", bg: "bg-red-100 dark:bg-red-900/30" },
   SYSTEM: { icon: Settings, color: "text-gray-600 dark:text-gray-400", bg: "bg-gray-100 dark:bg-gray-800" },
 };
 
@@ -57,6 +59,7 @@ const alertTypeLabels: Record<AlertType, string> = {
   PROFIT: "Kar",
   PRICE: "Fiyat",
   ORDER: "Siparis",
+  RETURN: "Iade",
   SYSTEM: "Sistem",
 };
 

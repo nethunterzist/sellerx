@@ -37,6 +37,7 @@ import {
   ShoppingCart,
   Settings,
   Zap,
+  Undo2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -54,6 +55,7 @@ const ALERT_TYPE_ICONS: Record<AlertType, React.ReactNode> = {
   PROFIT: <DollarSign className="h-4 w-4" />,
   PRICE: <Tag className="h-4 w-4" />,
   ORDER: <ShoppingCart className="h-4 w-4" />,
+  RETURN: <Undo2 className="h-4 w-4" />,
   SYSTEM: <Settings className="h-4 w-4" />,
 };
 
@@ -62,6 +64,7 @@ const ALERT_TYPE_COLORS: Record<AlertType, string> = {
   PROFIT: "bg-green-100 dark:bg-green-900/30 text-green-600",
   PRICE: "bg-purple-100 dark:bg-purple-900/30 text-purple-600",
   ORDER: "bg-orange-100 dark:bg-orange-900/30 text-orange-600",
+  RETURN: "bg-red-100 dark:bg-red-900/30 text-red-600",
   SYSTEM: "bg-gray-100 dark:bg-gray-800 text-gray-600",
 };
 
@@ -102,7 +105,11 @@ export function AlertRulesSettings() {
 
   const formatScope = (rule: AlertRule): string => {
     if (rule.productBarcode) {
-      return `Ürün: ${rule.productBarcode}`;
+      const barcodes = rule.productBarcode.split(",").map(b => b.trim()).filter(Boolean);
+      if (barcodes.length === 1) {
+        return `Ürün: ${barcodes[0]}`;
+      }
+      return `${barcodes.length} ürün seçili`;
     }
     if (rule.categoryName) {
       return `Kategori: ${rule.categoryName}`;
@@ -157,22 +164,6 @@ export function AlertRulesSettings() {
           </div>
         </div>
       )}
-
-      {/* Info Card */}
-      <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800 p-6">
-        <div className="flex gap-4">
-          <Zap className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
-          <div>
-            <p className="font-medium text-blue-800 dark:text-blue-200">Nasıl Çalışır?</p>
-            <ul className="text-sm text-blue-700 dark:text-blue-300 mt-2 space-y-1">
-              <li>• Ürün senkronizasyonu sonrası stok kuralları otomatik kontrol edilir</li>
-              <li>• Koşul sağlandığında email ve/veya uygulama içi bildirim gönderilir</li>
-              <li>• Cooldown süresi spam bildirimleri önler</li>
-              <li>• Kuralları istediğiniz zaman aktif/pasif yapabilirsiniz</li>
-            </ul>
-          </div>
-        </div>
-      </div>
 
       {/* Rules List */}
       {rules && rules.length > 0 ? (
@@ -321,6 +312,22 @@ export function AlertRulesSettings() {
           </Button>
         </div>
       )}
+
+      {/* Info Card */}
+      <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800 p-6">
+        <div className="flex gap-4">
+          <Zap className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="font-medium text-blue-800 dark:text-blue-200">Nasıl Çalışır?</p>
+            <ul className="text-sm text-blue-700 dark:text-blue-300 mt-2 space-y-1">
+              <li>• Ürün senkronizasyonu sonrası stok kuralları otomatik kontrol edilir</li>
+              <li>• Koşul sağlandığında email ve/veya uygulama içi bildirim gönderilir</li>
+              <li>• Cooldown süresi spam bildirimleri önler</li>
+              <li>• Kuralları istediğiniz zaman aktif/pasif yapabilirsiniz</li>
+            </ul>
+          </div>
+        </div>
+      </div>
 
       {/* Create/Edit Modal */}
       <AlertRuleFormModal

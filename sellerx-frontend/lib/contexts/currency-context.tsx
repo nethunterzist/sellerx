@@ -65,10 +65,10 @@ const CURRENCY_CONFIG: Record<SupportedCurrency, { symbol: string; locale: strin
 };
 
 const FALLBACK_RATES: ExchangeRates = {
-  USD_TRY: 34.5,
-  EUR_TRY: 37.2,
-  TRY_USD: 0.029,
-  TRY_EUR: 0.027,
+  USD_TRY: 43.65,
+  EUR_TRY: 47.0,
+  TRY_USD: 0.0229,
+  TRY_EUR: 0.0213,
 };
 
 // =============================================================================

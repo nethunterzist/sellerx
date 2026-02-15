@@ -5,6 +5,7 @@ import com.ecommerce.sellerx.financial.TrendyolFinancialSettlementService;
 import com.ecommerce.sellerx.financial.TrendyolOtherFinancialsService;
 import com.ecommerce.sellerx.orders.OrderGapAnalysisService;
 import com.ecommerce.sellerx.orders.TrendyolOrderService;
+import com.ecommerce.sellerx.products.BuyboxService;
 import com.ecommerce.sellerx.stores.Store;
 import com.ecommerce.sellerx.stores.StoreRepository;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +14,7 @@ import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.Scheduled;
 
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -24,13 +26,19 @@ import java.util.List;
  *
  * Daily Schedule (Turkey time - Europe/Istanbul):
  * - 07:00: Settlement API sync (fetches last 14 days with real commission)
- * - 07:15: Cargo Shipping sync (cargo invoice details & shipping costs)
+ * - 07:15: Cargo Shipping sync (last 30 days - cargo invoice details & shipping costs)
  * - 07:30: Product commission cache update (updates lastCommissionRate from settlements)
+ * - 07:45: Payment Order sync (fetches last 90 days of payment orders for hakedis)
  * - 08:00: Reconciliation job (matches ORDER_API orders with Settlement data)
  * - 08:15: Deduction invoice sync (fetches last 30 days of deduction & return invoices)
+ * - 08:30: Stoppage sync (fetches last 90 days of stoppages/tevkifat)
  * - Every hour @:30: Gap fill from Orders API (fetches recent orders with estimated commission)
  * - Every hour @:45: Deduction invoice catch-up (fetches last 3 days of deduction & return invoices)
- * - Every 6 hours: Gap analysis status logging
+ * - Every 6 hours @:00: Gap analysis status logging
+ * - Every 6 hours @:30: Extended order catch-up (7-day window for status transitions)
+ *
+ * Weekly Schedule:
+ * - Monday 03:00: Cargo invoice catch-up (last 90 days - catches delayed Trendyol invoices)
  *
  * Data Flow:
  * 1. Settlement sync → Real commission data arrives
@@ -49,6 +57,7 @@ public class HybridSyncScheduleConfig {
     private final TrendyolOrderService orderService;
     private final CommissionReconciliationService reconciliationService;
     private final OrderGapAnalysisService gapAnalysisService;
+    private final BuyboxService buyboxService;
 
     /**
      * Daily Settlement API sync at 07:00 Turkey time.
@@ -107,9 +116,10 @@ public class HybridSyncScheduleConfig {
             }
 
             try {
-                // Sync last 14 days of cargo invoices and update orders
+                // Sync last 30 days of cargo invoices and update orders
+                // Trendyol issues cargo invoices with 1-4 week delays, so 30 days covers typical delays
                 java.time.LocalDate endDate = java.time.LocalDate.now();
-                java.time.LocalDate startDate = endDate.minusDays(14);
+                java.time.LocalDate startDate = endDate.minusDays(30);
 
                 int syncedCount = otherFinancialsService.syncCargoInvoices(store.getId(), startDate, endDate);
                 successCount++;
@@ -121,6 +131,45 @@ public class HybridSyncScheduleConfig {
         }
 
         log.info("Daily Cargo Shipping sync completed: {} success, {} failed", successCount, failCount);
+    }
+
+    /**
+     * Weekly cargo invoice catch-up at 03:00 every Monday (Turkey time).
+     * Fetches last 90 days of cargo invoices to catch delayed Trendyol invoices.
+     *
+     * Trendyol issues cargo invoices in batches with 1-4 week delays.
+     * The daily sync (30-day window) covers most cases, but this weekly job
+     * ensures complete cargo invoice coverage for edge cases where invoices
+     * are issued beyond the 30-day window.
+     */
+    @Scheduled(cron = "0 0 3 * * MON", zone = "Europe/Istanbul")
+    @SchedulerLock(name = "weeklyCargoInvoiceCatchUp", lockAtLeastFor = "10m", lockAtMostFor = "120m")
+    public void weeklyCargoInvoiceCatchUp() {
+        log.info("Starting weekly Cargo Invoice catch-up (90-day window) for all stores");
+
+        List<Store> stores = storeRepository.findByInitialSyncCompletedTrue();
+        int successCount = 0;
+        int failCount = 0;
+
+        for (Store store : stores) {
+            if (!"trendyol".equalsIgnoreCase(store.getMarketplace())) {
+                continue;
+            }
+
+            try {
+                java.time.LocalDate endDate = java.time.LocalDate.now();
+                java.time.LocalDate startDate = endDate.minusDays(90);
+
+                int syncedCount = otherFinancialsService.syncCargoInvoices(store.getId(), startDate, endDate);
+                successCount++;
+                log.info("Weekly cargo catch-up completed for store: {} - {} invoices synced", store.getId(), syncedCount);
+            } catch (Exception e) {
+                failCount++;
+                log.error("Weekly cargo catch-up failed for store {}: {}", store.getId(), e.getMessage());
+            }
+        }
+
+        log.info("Weekly Cargo Invoice catch-up completed: {} success, {} failed", successCount, failCount);
     }
 
     /**
@@ -139,6 +188,43 @@ public class HybridSyncScheduleConfig {
         log.info("Product commission cache update is handled during settlement processing");
         // Commission rates are updated during settlement processing in TrendyolFinancialSettlementService
         // This scheduled slot can be used for additional cache maintenance if needed
+    }
+
+    /**
+     * Daily Payment Order sync at 07:45 Turkey time.
+     * Fetches payment orders (hak edis) from Trendyol OtherFinancials API.
+     *
+     * Payment orders contain settlement details for completed orders.
+     * Uses 90-day lookback (Trendyol API limit) to catch all pending settlements.
+     */
+    @Scheduled(cron = "0 45 7 * * *", zone = "Europe/Istanbul")
+    @SchedulerLock(name = "dailyPaymentOrderSync", lockAtLeastFor = "5m", lockAtMostFor = "30m")
+    public void dailyPaymentOrderSync() {
+        log.info("Starting daily Payment Order sync for all stores");
+
+        List<Store> stores = storeRepository.findByInitialSyncCompletedTrue();
+        int successCount = 0;
+        int failCount = 0;
+
+        for (Store store : stores) {
+            if (!"trendyol".equalsIgnoreCase(store.getMarketplace())) {
+                continue;
+            }
+
+            try {
+                LocalDate endDate = LocalDate.now();
+                LocalDate startDate = endDate.minusDays(90);
+
+                int syncedCount = otherFinancialsService.syncPaymentOrders(store.getId(), startDate, endDate);
+                successCount++;
+                log.debug("Payment order sync completed for store: {} - {} payment orders synced", store.getId(), syncedCount);
+            } catch (Exception e) {
+                failCount++;
+                log.error("Payment order sync failed for store {}: {}", store.getId(), e.getMessage());
+            }
+        }
+
+        log.info("Daily Payment Order sync completed: {} success, {} failed", successCount, failCount);
     }
 
     /**
@@ -275,6 +361,43 @@ public class HybridSyncScheduleConfig {
     }
 
     /**
+     * Daily Stoppage (Tevkifat) sync at 08:30 Turkey time.
+     * Fetches stoppage transactions from Trendyol OtherFinancials API.
+     *
+     * Stoppages are tax withholdings (tevkifat) applied to seller payments.
+     * Uses 90-day lookback (Trendyol API limit) to ensure complete coverage.
+     */
+    @Scheduled(cron = "0 30 8 * * *", zone = "Europe/Istanbul")
+    @SchedulerLock(name = "dailyStoppageSync", lockAtLeastFor = "5m", lockAtMostFor = "30m")
+    public void dailyStoppageSync() {
+        log.info("Starting daily Stoppage sync for all stores");
+
+        List<Store> stores = storeRepository.findByInitialSyncCompletedTrue();
+        int successCount = 0;
+        int failCount = 0;
+
+        for (Store store : stores) {
+            if (!"trendyol".equalsIgnoreCase(store.getMarketplace())) {
+                continue;
+            }
+
+            try {
+                LocalDate endDate = LocalDate.now();
+                LocalDate startDate = endDate.minusDays(90);
+
+                int syncedCount = otherFinancialsService.syncStoppages(store.getId(), startDate, endDate);
+                successCount++;
+                log.debug("Stoppage sync completed for store: {} - {} stoppages synced", store.getId(), syncedCount);
+            } catch (Exception e) {
+                failCount++;
+                log.error("Stoppage sync failed for store {}: {}", store.getId(), e.getMessage());
+            }
+        }
+
+        log.info("Daily Stoppage sync completed: {} success, {} failed", successCount, failCount);
+    }
+
+    /**
      * Hourly Deduction Invoice catch-up at :45 past every hour.
      * Fetches recent deduction and return invoices with a 3-day lookback window.
      *
@@ -308,6 +431,53 @@ public class HybridSyncScheduleConfig {
         }
 
         log.info("Hourly Deduction Invoice catch-up completed for {} stores", successCount);
+    }
+
+
+    /**
+     * Extended catch-up every 6 hours at :30.
+     * Scans last 7 days to catch status transitions (Shipped → Delivered).
+     * Complements the hourly gap fill which only adds new orders.
+     */
+    @Scheduled(cron = "0 30 */6 * * *", zone = "Europe/Istanbul")
+    @SchedulerLock(name = "extendedOrderCatchUp", lockAtLeastFor = "5m", lockAtMostFor = "60m")
+    public void extendedOrderCatchUp() {
+        log.info("Starting extended order catch-up (7-day window) for all stores");
+
+        List<Store> stores = storeRepository.findByInitialSyncCompletedTrue();
+        int successCount = 0;
+        int failCount = 0;
+
+        for (Store store : stores) {
+            if (!"trendyol".equalsIgnoreCase(store.getMarketplace())) {
+                continue;
+            }
+
+            try {
+                java.time.LocalDateTime endTime = java.time.LocalDateTime.now();
+                java.time.LocalDateTime startTime = endTime.minusDays(7);
+                orderService.fetchAndSaveOrdersForStoreInRange(store.getId(), startTime, endTime);
+                successCount++;
+                log.debug("Extended catch-up completed for store: {}", store.getId());
+            } catch (Exception e) {
+                failCount++;
+                log.error("Extended catch-up failed for store {}: {}", store.getId(), e.getMessage());
+            }
+        }
+
+        log.info("Extended order catch-up completed: {} success, {} failed", successCount, failCount);
+    }
+
+    /**
+     * Buybox sync every 2 hours at :30 Turkey time.
+     * Fetches buybox information from Trendyol for all on-sale products.
+     * Updates buybox_order, buybox_price, has_multiple_seller for competitive analysis.
+     */
+    @Scheduled(cron = "0 30 */2 * * ?", zone = "Europe/Istanbul")
+    @SchedulerLock(name = "syncBuyboxForAllStores", lockAtLeastFor = "2m", lockAtMostFor = "15m")
+    public void syncBuyboxForAllStores() {
+        log.info("Starting scheduled buybox sync for all stores");
+        buyboxService.syncBuyboxForAllStores();
     }
 
     /**

@@ -1,0 +1,55 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getBackendHeaders } from "@/lib/api/bff-auth";
+
+const BACKEND_URL = process.env.API_BASE_URL;
+
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<{ storeId: string }> }
+) {
+  if (!BACKEND_URL) {
+    return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
+  }
+
+  try {
+    const headers = await getBackendHeaders(request);
+
+    if (!headers.Authorization) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { storeId } = await context.params;
+    const searchParams = request.nextUrl.searchParams;
+    const startDate = searchParams.get("startDate");
+    const endDate = searchParams.get("endDate");
+
+    if (!startDate || !endDate) {
+      return NextResponse.json(
+        { error: "startDate and endDate are required" },
+        { status: 400 }
+      );
+    }
+
+    const response = await fetch(
+      `${BACKEND_URL}/api/returns/stores/${storeId}/returned-orders?startDate=${startDate}&endDate=${endDate}`,
+      { headers }
+    );
+
+    if (!response.ok) {
+      const error = await response.text();
+      return NextResponse.json(
+        { error: error || "Backend error" },
+        { status: response.status }
+      );
+    }
+
+    const data = await response.json();
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error("Returned orders error:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}

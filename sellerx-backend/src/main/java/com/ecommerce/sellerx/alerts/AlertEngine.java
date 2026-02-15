@@ -2,18 +2,25 @@ package com.ecommerce.sellerx.alerts;
 
 import com.ecommerce.sellerx.email.EmailService;
 import com.ecommerce.sellerx.products.TrendyolProduct;
+import com.ecommerce.sellerx.returns.ReturnRecord;
+import com.ecommerce.sellerx.returns.ReturnRecordRepository;
 import com.ecommerce.sellerx.stores.Store;
 import com.ecommerce.sellerx.users.User;
+import com.ecommerce.sellerx.websocket.event.AlertCreatedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Alert Engine - Evaluates alert rules and triggers alerts when conditions are met.
@@ -26,7 +33,9 @@ public class AlertEngine {
 
     private final AlertRuleRepository alertRuleRepository;
     private final AlertHistoryRepository alertHistoryRepository;
+    private final ReturnRecordRepository returnRecordRepository;
     private final EmailService emailService;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * Check stock alerts for a list of products.
@@ -112,9 +121,17 @@ public class AlertEngine {
      * Check if a rule applies to a specific product.
      */
     private boolean ruleAppliesToProduct(AlertRule rule, TrendyolProduct product) {
-        // Check product barcode filter
+        // Check product barcode filter (supports comma-separated multiple barcodes)
         if (rule.getProductBarcode() != null && !rule.getProductBarcode().isEmpty()) {
-            if (!rule.getProductBarcode().equals(product.getBarcode())) {
+            String[] barcodes = rule.getProductBarcode().split(",");
+            boolean matches = false;
+            for (String barcode : barcodes) {
+                if (barcode.trim().equals(product.getBarcode())) {
+                    matches = true;
+                    break;
+                }
+            }
+            if (!matches) {
                 return false;
             }
         }
@@ -266,6 +283,135 @@ public class AlertEngine {
     }
 
     /**
+     * Check return alerts for a store.
+     * Evaluates return count and return rate per barcode over the last 7 days.
+     */
+    @Async
+    @Transactional
+    public void checkReturnAlerts(Store store) {
+        log.debug("Checking return alerts for store: {}", store.getId());
+
+        User user = store.getUser();
+        List<AlertRule> returnRules = alertRuleRepository.findActiveRulesByType(
+                user.getId(), store.getId(), AlertType.RETURN);
+
+        if (returnRules.isEmpty()) {
+            log.debug("No active return rules found for user: {}", user.getId());
+            return;
+        }
+
+        // Fetch last 7 days of returns
+        LocalDateTime endDate = LocalDateTime.now();
+        LocalDateTime startDate = endDate.minusDays(7);
+        List<ReturnRecord> recentReturns = returnRecordRepository.findByStoreAndDateRange(
+                store.getId(), startDate, endDate);
+
+        if (recentReturns.isEmpty()) {
+            log.debug("No recent returns found for store: {}", store.getId());
+            return;
+        }
+
+        // Group returns by barcode
+        Map<String, List<ReturnRecord>> returnsByBarcode = recentReturns.stream()
+                .collect(Collectors.groupingBy(ReturnRecord::getBarcode));
+
+        for (AlertRule rule : returnRules) {
+            try {
+                evaluateReturnRule(rule, returnsByBarcode, store, user);
+            } catch (Exception e) {
+                log.error("Error evaluating return rule {} for store {}: {}",
+                        rule.getId(), store.getId(), e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Evaluate a single return rule against grouped return data.
+     */
+    private void evaluateReturnRule(AlertRule rule, Map<String, List<ReturnRecord>> returnsByBarcode,
+                                     Store store, User user) {
+        if (!rule.canTrigger()) {
+            log.debug("Return rule {} is in cooldown, skipping", rule.getId());
+            return;
+        }
+
+        for (Map.Entry<String, List<ReturnRecord>> entry : returnsByBarcode.entrySet()) {
+            String barcode = entry.getKey();
+            List<ReturnRecord> returns = entry.getValue();
+
+            // Check if rule applies to this barcode
+            if (rule.getProductBarcode() != null && !rule.getProductBarcode().isEmpty()) {
+                String[] targetBarcodes = rule.getProductBarcode().split(",");
+                boolean matches = false;
+                for (String target : targetBarcodes) {
+                    if (target.trim().equals(barcode)) {
+                        matches = true;
+                        break;
+                    }
+                }
+                if (!matches) continue;
+            }
+
+            int returnCount = returns.stream()
+                    .mapToInt(r -> r.getQuantity() != null ? r.getQuantity() : 1)
+                    .sum();
+
+            BigDecimal returnCountValue = BigDecimal.valueOf(returnCount);
+
+            boolean shouldTrigger = evaluateCondition(
+                    rule.getConditionType(), returnCountValue, rule.getThreshold());
+
+            if (shouldTrigger) {
+                String productName = returns.get(0).getProductName();
+                if (productName == null) productName = barcode;
+                triggerReturnAlert(rule, barcode, truncate(productName, 50), returnCount, store, user);
+                // Only trigger once per rule evaluation to avoid spam
+                return;
+            }
+        }
+    }
+
+    /**
+     * Trigger a return alert.
+     */
+    private void triggerReturnAlert(AlertRule rule, String barcode, String productName,
+                                     int returnCount, Store store, User user) {
+        String title = String.format("Iade Uyarisi: %s - Son 7 gunde %d iade", productName, returnCount);
+        String message = String.format(
+                "Urun '%s' (Barkod: %s) son 7 gunde %d adet iade aldı. Belirlediginiz esik: %s.",
+                productName, barcode, returnCount,
+                rule.getThreshold() != null ? rule.getThreshold().intValue() + " adet" : "-");
+
+        AlertSeverity severity = returnCount >= 10 ? AlertSeverity.CRITICAL
+                : returnCount >= 5 ? AlertSeverity.HIGH : AlertSeverity.MEDIUM;
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("barcode", barcode);
+        data.put("productName", productName);
+        data.put("returnCount", returnCount);
+        data.put("threshold", rule.getThreshold());
+        data.put("period", "7d");
+
+        AlertHistory alert = createAlert(rule, user, store, title, message, severity, data);
+
+        // Send email notification if enabled
+        if (Boolean.TRUE.equals(rule.getEmailEnabled()) && user.getEmail() != null) {
+            try {
+                emailService.sendAlertEmail(
+                        user.getEmail(), title, message,
+                        store.getStoreName(), severity.name(), AlertType.RETURN.name());
+                alert.setEmailSent(true);
+                alertHistoryRepository.save(alert);
+            } catch (Exception e) {
+                log.error("Failed to send return alert email to {}: {}", user.getEmail(), e.getMessage());
+            }
+        }
+
+        log.info("Return alert triggered: {} for barcode {} (returns: {})",
+                rule.getName(), barcode, returnCount);
+    }
+
+    /**
      * Create and save an alert.
      */
     @Transactional
@@ -297,6 +443,9 @@ public class AlertEngine {
         // Update rule trigger info
         rule.recordTrigger();
         alertRuleRepository.save(rule);
+
+        // Publish event for WebSocket notification
+        eventPublisher.publishEvent(new AlertCreatedEvent(this, saved));
 
         log.debug("Created alert: {} for user: {}", saved.getId(), user.getId());
 
@@ -364,6 +513,9 @@ public class AlertEngine {
                 log.error("Failed to send system alert email: {}", e.getMessage());
             }
         }
+
+        // Publish event for WebSocket notification
+        eventPublisher.publishEvent(new AlertCreatedEvent(this, saved));
 
         return saved;
     }

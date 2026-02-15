@@ -11,9 +11,6 @@ export async function GET(
   try {
     const { id: storeId } = await params;
     const { searchParams } = new URL(request.url);
-    const page = searchParams.get("page") || "0";
-    const size = searchParams.get("size") || "20";
-    const search = searchParams.get("search") || "";
 
     const headers = await getBackendHeaders(request);
 
@@ -21,9 +18,37 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const searchParam = search ? `&search=${encodeURIComponent(search)}` : "";
+    // Build query params for backend - forward all parameters
+    const backendParams = new URLSearchParams();
+    backendParams.set("page", searchParams.get("page") || "0");
+    backendParams.set("size", searchParams.get("size") || "20");
+    backendParams.set("sortBy", searchParams.get("sortBy") || "totalSpend");
+    backendParams.set("sortDir", searchParams.get("sortDir") || "desc");
+
+    // Forward optional params
+    const optionalParams = [
+      "search",
+      "minOrderCount",
+      "maxOrderCount",
+      "minItemCount",
+      "maxItemCount",
+      "minTotalSpend",
+      "maxTotalSpend",
+      "minAvgOrderValue",
+      "maxAvgOrderValue",
+      "minRepeatInterval",
+      "maxRepeatInterval",
+    ];
+
+    optionalParams.forEach((param) => {
+      const value = searchParams.get(param);
+      if (value) {
+        backendParams.set(param, value);
+      }
+    });
+
     const response = await fetch(
-      `${API_BASE_URL}/api/stores/${storeId}/customer-analytics/customers?page=${page}&size=${size}${searchParam}`,
+      `${API_BASE_URL}/api/stores/${storeId}/customer-analytics/customers?${backendParams.toString()}`,
       {
         headers,
       }

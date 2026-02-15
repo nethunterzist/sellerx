@@ -3,7 +3,6 @@ import type {
   Question,
   QuestionsPage,
   QaStats,
-  QaSyncResponse,
   QuestionStatus,
   KnowledgeSuggestion,
   SuggestionStatus,
@@ -98,18 +97,6 @@ async function fetchStats(storeId: string): Promise<QaStats> {
   return response.json();
 }
 
-async function syncQuestions(storeId: string): Promise<QaSyncResponse> {
-  const response = await fetch(`/api/qa/stores/${storeId}/questions/sync`, {
-    method: "POST",
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to sync questions");
-  }
-
-  return response.json();
-}
-
 // Hooks
 
 /**
@@ -147,22 +134,6 @@ export function useQaStats(storeId: string) {
     queryKey: qaKeys.statsByStore(storeId),
     queryFn: () => fetchStats(storeId),
     enabled: !!storeId,
-  });
-}
-
-/**
- * Sync questions from Trendyol
- */
-export function useSyncQuestions() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: syncQuestions,
-    onSuccess: (data, storeId) => {
-      // Invalidate and refetch questions and stats
-      queryClient.invalidateQueries({ queryKey: qaKeys.questionsByStore(storeId) });
-      queryClient.invalidateQueries({ queryKey: qaKeys.statsByStore(storeId) });
-    },
   });
 }
 

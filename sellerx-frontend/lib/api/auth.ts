@@ -77,4 +77,83 @@ export const authApi = {
 
     return res.json();
   },
+
+  forgotPassword: async (email: string) => {
+    const res = await fetch("/api/auth/forgot-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.message || "Şifre sıfırlama isteği başarısız");
+    }
+
+    return res.json();
+  },
+
+  verifyResetToken: async (token: string) => {
+    const res = await fetch(`/api/auth/verify-reset-token?token=${encodeURIComponent(token)}`);
+
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.message || "Token doğrulama başarısız");
+    }
+
+    return res.json();
+  },
+
+  resetPassword: async (data: { token: string; newPassword: string }) => {
+    const res = await fetch("/api/auth/reset-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.message || "Şifre sıfırlama başarısız");
+    }
+
+    return res.json();
+  },
+
+  verifyEmail: async (token: string) => {
+    const res = await fetch(`/api/auth/verify-email?token=${encodeURIComponent(token)}`);
+
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.message || "Email doğrulama başarısız");
+    }
+
+    return res.json();
+  },
+
+  resendVerification: async () => {
+    const res = await fetch("/api/auth/resend-verification", {
+      method: "POST",
+      credentials: "include",
+    });
+
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.message || "Email gönderilemedi");
+    }
+
+    return res.json();
+  },
+
+  verificationStatus: async () => {
+    const res = await fetch("/api/auth/verification-status", {
+      credentials: "include",
+    });
+
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.message || "Durum kontrol edilemedi");
+    }
+
+    return res.json();
+  },
 };

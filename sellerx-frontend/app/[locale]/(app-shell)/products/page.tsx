@@ -2,10 +2,7 @@
 
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { useSelectedStore } from "@/hooks/queries/use-stores";
-import {
-  useProductsByStorePaginatedFull,
-  useBulkUpdateCosts,
-} from "@/hooks/queries/use-products";
+import { useProductsByStorePaginatedFull } from "@/hooks/queries/use-products";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -21,14 +18,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, ChevronLeft, ChevronRight, Coins, Download, Upload, FileSpreadsheet, ExternalLink, Sparkles } from "lucide-react";
-import ExcelJS from "exceljs";
-import { saveAs } from "file-saver";
+import { Search, ChevronLeft, ChevronRight, Coins, Download, ExternalLink, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { TrendyolProduct, ProductFilters } from "@/types/product";
 import { CostEditModal } from "@/components/products/cost-edit-modal";
 import { ProductFiltersPopover } from "@/components/products/product-filters";
 import { useCurrency } from "@/lib/contexts/currency-context";
+import { FadeIn } from "@/components/motion";
 import {
   FilterBarSkeleton,
   TableSkeleton,
@@ -104,8 +100,6 @@ export default function ProductsPage() {
     setPage(0);
   }, []);
 
-  const bulkCostMutation = useBulkUpdateCosts();
-
   const handleOpenCostModal = (product: TrendyolProduct) => {
     setSelectedProduct(product);
     setCostModalOpen(true);
@@ -114,6 +108,12 @@ export default function ProductsPage() {
   // Excel Export - Download cost template with current data
   const handleExportExcel = async () => {
     if (!data?.products || data.products.length === 0) return;
+
+    // Dynamic import for Excel libraries (reduces initial bundle size)
+    const [ExcelJS, { saveAs }] = await Promise.all([
+      import("exceljs").then((m) => m.default),
+      import("file-saver"),
+    ]);
 
     const todayStr = new Date().toISOString().split("T")[0];
     const exportData = data.products.map((product: TrendyolProduct) => {
@@ -156,99 +156,6 @@ export default function ProductsPage() {
     saveAs(blob, `urun-maliyetleri-${todayStr}.xlsx`);
   };
 
-  // Excel Import - Read and process uploaded file
-  const handleImportExcel = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file || !storeId) return;
-
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      try {
-        const arrayBuffer = e.target?.result as ArrayBuffer;
-        const workbook = new ExcelJS.Workbook();
-        await workbook.xlsx.load(arrayBuffer);
-        const worksheet = workbook.worksheets[0];
-
-        if (!worksheet) {
-          alert("Excel dosyasında sayfa bulunamadı.");
-          return;
-        }
-
-        // Get headers from first row
-        const headerRow = worksheet.getRow(1);
-        const headers: string[] = [];
-        headerRow.eachCell((cell, colNumber) => {
-          headers[colNumber] = cell.value?.toString() || "";
-        });
-
-        // Process data rows
-        const todayStr = new Date().toISOString().split("T")[0];
-        const updates: Array<{
-          barcode: string;
-          unitCost: number;
-          costVatRate: number;
-          quantity: number;
-          stockDate: string;
-        }> = [];
-
-        worksheet.eachRow((row, rowNumber) => {
-          if (rowNumber === 1) return; // Skip header
-
-          const rowData: Record<string, any> = {};
-          row.eachCell((cell, colNumber) => {
-            const header = headers[colNumber];
-            if (header) {
-              rowData[header] = cell.value;
-            }
-          });
-
-          const barcode = rowData["Barkod"]?.toString();
-          const newCost = parseFloat(rowData["Yeni Maliyet (TL)"]);
-          const vatRate = parseFloat(rowData["KDV Oranı (%)"]) || 18;
-          const quantity = parseInt(rowData["Stok Adedi"]) || 1;
-
-          let stockDate = rowData["Stok Tarihi (YYYY-MM-DD)"]?.toString() || todayStr;
-          if (!/^\d{4}-\d{2}-\d{2}$/.test(stockDate)) {
-            stockDate = todayStr;
-          }
-
-          if (barcode && !isNaN(newCost) && newCost > 0) {
-            updates.push({ barcode, unitCost: newCost, costVatRate: vatRate, quantity, stockDate });
-          }
-        });
-
-        if (updates.length === 0) {
-          alert("Güncellenecek maliyet bulunamadı. 'Yeni Maliyet (TL)' sütununu doldurun.");
-          return;
-        }
-
-        // Call bulk update API
-        bulkCostMutation.mutate(
-          { storeId, items: updates },
-          {
-            onSuccess: (result) => {
-              let message = `${result.successCount} ürün maliyeti başarıyla güncellendi.`;
-              if (result.failureCount > 0) {
-                message += ` ${result.failureCount} ürün güncellenemedi.`;
-              }
-              alert(message);
-            },
-            onError: (error) => {
-              alert(`Maliyet güncellemesi başarısız: ${error.message}`);
-            },
-          }
-        );
-
-      } catch (error) {
-        console.error("Excel okuma hatası:", error);
-        alert("Excel dosyası okunamadı. Lütfen geçerli bir Excel dosyası yükleyin.");
-      }
-    };
-
-    reader.readAsArrayBuffer(file);
-    event.target.value = "";
-  };
-
   // Products are now filtered server-side
   const products = data?.products || [];
 
@@ -263,6 +170,7 @@ export default function ProductsPage() {
   if (isLoading) return <ProductsPageSkeleton />;
 
   return (
+    <FadeIn>
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-4">
@@ -294,54 +202,8 @@ export default function ProductsPage() {
             <Download className="h-4 w-4" />
             Excel İndir
           </Button>
-
-          {/* Excel Import */}
-          <label>
-            <input
-              type="file"
-              accept=".xlsx,.xls"
-              onChange={handleImportExcel}
-              className="hidden"
-              disabled={!storeId || bulkCostMutation.isPending}
-            />
-            <Button
-              variant="outline"
-              className="gap-2 cursor-pointer border-gray-300 dark:border-gray-600 dark:bg-gray-800/50 dark:hover:bg-gray-700/50"
-              disabled={!storeId || bulkCostMutation.isPending}
-              asChild
-            >
-              <span>
-                <Upload className={cn("h-4 w-4", bulkCostMutation.isPending && "animate-spin")} />
-                {bulkCostMutation.isPending ? "Yükleniyor..." : "Excel Yükle"}
-              </span>
-            </Button>
-          </label>
         </div>
       </div>
-
-
-      {/* Bulk Cost Update Result */}
-      {bulkCostMutation.isSuccess && (
-        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
-          <p className="text-green-800 dark:text-green-200 text-sm flex items-center gap-2">
-            <FileSpreadsheet className="h-4 w-4" />
-            Maliyet güncellemesi tamamlandı! {bulkCostMutation.data.successCount} ürün güncellendi.
-            {bulkCostMutation.data.failureCount > 0 && (
-              <span className="text-yellow-700">
-                ({bulkCostMutation.data.failureCount} ürün güncellenemedi)
-              </span>
-            )}
-          </p>
-        </div>
-      )}
-
-      {bulkCostMutation.isError && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-          <p className="text-red-800 dark:text-red-200 text-sm">
-            Maliyet güncellemesi başarısız: {bulkCostMutation.error.message}
-          </p>
-        </div>
-      )}
 
       {/* Error State */}
       {error && (
@@ -688,5 +550,6 @@ export default function ProductsPage() {
         />
       )}
     </div>
+    </FadeIn>
   );
 }

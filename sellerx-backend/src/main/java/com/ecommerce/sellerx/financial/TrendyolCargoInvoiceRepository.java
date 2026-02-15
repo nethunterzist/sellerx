@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -69,6 +70,51 @@ public interface TrendyolCargoInvoiceRepository extends JpaRepository<TrendyolCa
             "WHERE c.store.id = :storeId " +
             "AND c.invoiceDate BETWEEN :startDate AND :endDate")
     BigDecimal sumAmountByStoreAndDateRange(
+            @Param("storeId") UUID storeId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate);
+
+    /**
+     * Sum outbound shipping costs ('Gönderi Kargo Bedeli') grouped by order number.
+     * Used by ReturnAnalyticsService to get real outbound shipping costs for returned orders.
+     */
+    @Query(value = """
+            SELECT c.order_number as orderNumber, SUM(c.amount) as totalAmount
+            FROM trendyol_cargo_invoices c
+            WHERE c.store_id = :storeId
+              AND c.order_number IN (:orderNumbers)
+              AND c.shipment_package_type = 'Gönderi Kargo Bedeli'
+            GROUP BY c.order_number
+            """, nativeQuery = true)
+    List<OrderShippingCostProjection> sumOutboundShippingByOrderNumbers(
+            @Param("storeId") UUID storeId,
+            @Param("orderNumbers") List<String> orderNumbers);
+
+    /**
+     * Sum return shipping costs ('İade Kargo Bedeli') grouped by order number.
+     * Used by ReturnAnalyticsService to get real return shipping costs for returned orders.
+     */
+    @Query(value = """
+            SELECT c.order_number as orderNumber, SUM(c.amount) as totalAmount
+            FROM trendyol_cargo_invoices c
+            WHERE c.store_id = :storeId
+              AND c.order_number IN (:orderNumbers)
+              AND c.shipment_package_type = 'İade Kargo Bedeli'
+            GROUP BY c.order_number
+            """, nativeQuery = true)
+    List<OrderShippingCostProjection> sumReturnShippingByOrderNumbers(
+            @Param("storeId") UUID storeId,
+            @Param("orderNumbers") List<String> orderNumbers);
+
+    /**
+     * Find distinct order numbers that have return cargo invoices ('İade Kargo Bedeli') in a date range.
+     * Used by ReturnAnalyticsService to identify returned orders from cargo invoice data.
+     */
+    @Query("SELECT DISTINCT c.orderNumber FROM TrendyolCargoInvoice c " +
+           "WHERE c.store.id = :storeId " +
+           "AND c.shipmentPackageType = 'İade Kargo Bedeli' " +
+           "AND c.invoiceDate BETWEEN :startDate AND :endDate")
+    List<String> findReturnCargoOrderNumbers(
             @Param("storeId") UUID storeId,
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate);
@@ -190,7 +236,9 @@ public interface TrendyolCargoInvoiceRepository extends JpaRepository<TrendyolCa
      * Used for "Detay" panel in KARGO Ürünler tab.
      *
      * Returns cargo invoices sorted by invoice date descending, limited to 50 most recent.
+     * @deprecated Use paginated version {@link #findByStoreIdAndBarcodeAndDateRangePaginated} instead
      */
+    @Deprecated
     @Query(value = """
             SELECT ci.*
             FROM trendyol_cargo_invoices ci
@@ -205,6 +253,78 @@ public interface TrendyolCargoInvoiceRepository extends JpaRepository<TrendyolCa
             LIMIT 50
             """, nativeQuery = true)
     List<TrendyolCargoInvoice> findByStoreIdAndBarcodeAndDateRange(
+            @Param("storeId") UUID storeId,
+            @Param("barcode") String barcode,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate);
+
+    /**
+     * Get cargo invoice details for a specific product (barcode) within date range WITH PAGINATION.
+     * Joins with trendyol_orders to match order items by barcode.
+     * Used for "Detay" panel in KARGO Ürünler tab with lazy loading.
+     *
+     * @param storeId Store UUID
+     * @param barcode Product barcode
+     * @param startDate Start of date range
+     * @param endDate End of date range
+     * @param pageable Pagination parameters (page, size, sort)
+     * @return Paginated list of cargo invoices
+     */
+    @Query(value = """
+            SELECT ci.*
+            FROM trendyol_cargo_invoices ci
+            JOIN trendyol_orders o ON ci.order_number = o.ty_order_number AND ci.store_id = o.store_id
+            WHERE ci.store_id = :storeId
+            AND ci.invoice_date BETWEEN :startDate AND :endDate
+            AND EXISTS (
+                SELECT 1 FROM jsonb_array_elements(o.order_items) AS item
+                WHERE item->>'barcode' = :barcode
+            )
+            ORDER BY ci.invoice_date DESC, ci.created_at DESC
+            """,
+            countQuery = """
+            SELECT COUNT(*)
+            FROM trendyol_cargo_invoices ci
+            JOIN trendyol_orders o ON ci.order_number = o.ty_order_number AND ci.store_id = o.store_id
+            WHERE ci.store_id = :storeId
+            AND ci.invoice_date BETWEEN :startDate AND :endDate
+            AND EXISTS (
+                SELECT 1 FROM jsonb_array_elements(o.order_items) AS item
+                WHERE item->>'barcode' = :barcode
+            )
+            """,
+            nativeQuery = true)
+    Page<TrendyolCargoInvoice> findByStoreIdAndBarcodeAndDateRangePaginated(
+            @Param("storeId") UUID storeId,
+            @Param("barcode") String barcode,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            Pageable pageable);
+
+    /**
+     * Get aggregate summary (totals) for a specific product (barcode) within date range.
+     * Returns total amount, vat, desi, shipment count WITHOUT pagination.
+     * Used for summary display while cargo list is paginated.
+     *
+     * @return [totalAmount, totalVatAmount, totalDesi, shipmentCount, orderCount]
+     */
+    @Query(value = """
+            SELECT
+                COALESCE(SUM(ci.amount), 0) as totalAmount,
+                COALESCE(SUM(ci.vat_amount), 0) as totalVatAmount,
+                COALESCE(SUM(ci.desi), 0) as totalDesi,
+                COUNT(DISTINCT ci.id) as shipmentCount,
+                COUNT(DISTINCT ci.order_number) as orderCount
+            FROM trendyol_cargo_invoices ci
+            JOIN trendyol_orders o ON ci.order_number = o.ty_order_number AND ci.store_id = o.store_id
+            WHERE ci.store_id = :storeId
+            AND ci.invoice_date BETWEEN :startDate AND :endDate
+            AND EXISTS (
+                SELECT 1 FROM jsonb_array_elements(o.order_items) AS item
+                WHERE item->>'barcode' = :barcode
+            )
+            """, nativeQuery = true)
+    CargoSummaryProjection getCargoSummaryByStoreIdAndBarcodeAndDateRange(
             @Param("storeId") UUID storeId,
             @Param("barcode") String barcode,
             @Param("startDate") LocalDate startDate,

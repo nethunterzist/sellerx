@@ -19,11 +19,18 @@ Veritabanı ana tabloları, ilişkiler ve JSONB kolonlar. Kaynak: `01-migration-
 | return_records, trendyol_claims | İade ve talepler. |
 | education_videos, video_watch_history | Eğitim videoları ve izleme. |
 | activity_logs | Kullanıcı aksiyon logu, details (JSONB). |
+| email_queue | E-posta kuyruğu, retry mekanizması, status takibi, variables (JSONB). |
+| email_templates | E-posta şablonları, email_type (unique), subject/body template. |
+| email_base_layout | E-posta temel layout (header/footer HTML, stiller, logo, renk). |
+| password_reset_tokens | Parola sıfırlama tokenları, 1 saat geçerlilik, tek kullanımlık. |
+| sync_tasks | Asenkron sync görevleri, ilerleme takibi (sayfa/item bazlı). |
+| impersonation_logs | Admin kullanıcı taklit (impersonation) denetim kaydı. |
 
 ## İlişkiler (Özet)
 
-- **users** → stores (1:N, `stores.user_id`), subscriptions, payment_methods, invoices, feature_usage, billing_addresses, video_watch_history, user_notifications, support_tickets, activity_logs, alert_rules; referral: referrer / referred.
-- **stores** → trendyol_products, trendyol_orders, trendyol_invoices, store_expenses, purchase_orders, suppliers, return_records, trendyol_claims, alert_rules, stock_tracked_products, store_ai_settings, store_knowledge_base, TrendyolQuestion/KnowledgeSuggestion/QaPattern/ConflictAlert.
+- **users** → stores (1:N, `stores.user_id`), subscriptions, payment_methods, invoices, feature_usage, billing_addresses, video_watch_history, user_notifications, support_tickets, activity_logs, alert_rules, password_reset_tokens, email_queue (user_id); referral: referrer / referred.
+- **impersonation_logs** → admin_user_id, target_user_id (her ikisi de users referansı).
+- **stores** → trendyol_products, trendyol_orders, trendyol_invoices, store_expenses, purchase_orders, suppliers, return_records, trendyol_claims, alert_rules, stock_tracked_products, store_ai_settings, store_knowledge_base, TrendyolQuestion/KnowledgeSuggestion/QaPattern/ConflictAlert, sync_tasks.
 - **purchase_orders** → purchase_order_items, po_attachments; FK: store_id, supplier_id.
 - **suppliers** → store_id.
 - **trendyol_products** → purchase_order_items (product_id), stock_tracked_products.
@@ -42,7 +49,10 @@ erDiagram
   suppliers ||--o{ purchase_orders : "supplier_id"
   trendyol_products ||--o{ purchase_order_items : "product_id"
   stores ||--o{ webhook_events : "seller_id"
+  stores ||--o{ sync_tasks : "store_id"
   users ||--o{ subscriptions : "user_id"
+  users ||--o{ password_reset_tokens : "user_id"
+  users ||--o{ email_queue : "user_id"
   subscription_plans ||--o{ subscriptions : "plan_id"
 ```
 
@@ -59,9 +69,10 @@ erDiagram
 | trendyol_invoices | details | Fatura detayı. |
 | webhook_events | payload | Webhook gövdesi (JSONB veya TEXT). |
 | activity_logs | details | Aksiyon detayı. |
+| email_queue | variables | E-posta şablon değişkenleri. |
 
 ## Flyway
 
 - **Konum:** `sellerx-backend/src/main/resources/db/migration/`
-- **Sıra:** V1 → V84 (ardışık numaralar; V12 dahil 84 dosya).
+- **Sıra:** V1 → V118 (ardışık numaralar; 118 dosya).
 - **Not:** Numaralar kesintisiz değil; tüm mevcut migration'lar `01-migration-list.md` içinde listelenir.

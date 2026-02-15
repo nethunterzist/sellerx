@@ -495,18 +495,29 @@ if (!storeService.isStoreOwnedByUser(storeId, userId)) {
 
 ```
 sellerx-backend/src/main/java/com/ecommerce/sellerx/
-├── auth/           # JWT, SecurityConfig, Filter
+├── auth/           # JWT, SecurityConfig, Filter, EmailVerification, PasswordReset, AuthRateLimiter
 ├── users/          # User entity, service, controller
 ├── stores/         # Store yönetimi, onboarding
 ├── products/       # Ürün senkronizasyonu
-├── orders/         # Sipariş yönetimi, OrderCostCalculator
+├── orders/         # Sipariş yönetimi, OrderCostCalculator, ParallelStoreSyncService, ResilientSyncService
 ├── dashboard/      # İstatistik hesaplama
-├── financial/      # Finansal mutabakat
+├── financial/      # Finansal mutabakat, Stoppage
 ├── expenses/       # Gider takibi
+├── email/          # Queue-based email sistemi
+│   ├── entity/     # EmailQueue, EmailTemplate, EmailBaseLayout entity'leri
+│   ├── event/      # EmailVerificationEvent, PasswordResetRequestedEvent
+│   ├── repository/ # EmailQueue, EmailTemplate repository'leri
+│   ├── scheduler/  # EmailQueueProcessor (zamanlanmış email gönderimi)
+│   └── service/    # EmailTemplateService, EmailQueueService
+├── maintenance/    # DataRetentionService, DatabaseMaintenanceService
+├── queue/          # RabbitMQ consumer/producer (sync işlemleri)
+├── resilience/     # Circuit breaker, retry mekanizmaları (Resilience4j)
+├── sync/           # SyncTask entity, SyncTaskService (async sync yönetimi)
+├── websocket/      # STOMP over WebSocket, real-time alert bildirimleri
 ├── trendyol/       # Trendyol API client
 ├── webhook/        # Webhook alıcı
 ├── common/         # RateLimiter, GlobalExceptionHandler
-└── config/         # Spring config, AsyncConfig
+└── config/         # Spring config, AsyncConfig, Resilience4jConfig, RabbitMQConfig
 ```
 
 ---

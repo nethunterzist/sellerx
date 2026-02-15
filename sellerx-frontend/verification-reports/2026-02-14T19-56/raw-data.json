@@ -1,0 +1,59 @@
+{
+  "storeName": "Test Magazasi",
+  "storeEmail": "test@test.com",
+  "timestamp": "14.02.2026 22:57:05",
+  "sections": [
+    {
+      "title": "İadeler Sayfası (Son 30 Gün)",
+      "summary": {
+        "total": 4,
+        "matching": 3,
+        "warnings": 0,
+        "errors": 1,
+        "results": [
+          {
+            "field": "İade Adedi (Son 30 Gün)",
+            "match": true,
+            "dbValue": null,
+            "frontendValue": 11,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "İade Oranı (%)",
+            "match": false,
+            "dbValue": 0,
+            "frontendValue": 14,
+            "trendyolValue": null,
+            "deviation": 100,
+            "severity": "critical",
+            "note": "DB vs FE: diff=14.00"
+          },
+          {
+            "field": "Toplam İade Kaybi",
+            "match": true,
+            "dbValue": null,
+            "frontendValue": 14,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Toplam İade Tutari",
+            "match": true,
+            "frontendValue": null,
+            "trendyolValue": null,
+            "deviation": null,
+            "severity": "info",
+            "note": "All values null/missing"
+          }
+        ]
+      },
+      "screenshots": [
+        "06-returns-sellerx.png",
+        "06-returns-trendyol.png"
+      ]
+    }
+  ]
+}

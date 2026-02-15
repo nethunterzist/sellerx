@@ -25,6 +25,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Map;
 
 @AllArgsConstructor
 @RestController
@@ -37,6 +38,7 @@ public class AuthController {
     private final AuthService authService;
     private final ActivityLogService activityLogService;
     private final UserRepository userRepository;
+    private final AuthRateLimiter authRateLimiter;
 
     @Operation(
             summary = "User login",
@@ -45,13 +47,31 @@ public class AuthController {
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Login successful",
                     content = @Content(schema = @Schema(implementation = JwtResponse.class))),
-            @ApiResponse(responseCode = "401", description = "Invalid credentials", content = @Content)
+            @ApiResponse(responseCode = "401", description = "Invalid credentials", content = @Content),
+            @ApiResponse(responseCode = "429", description = "Too many login attempts", content = @Content)
     })
     @PostMapping("/login")
-    public JwtResponse login(
+    public ResponseEntity<?> login(
             @Valid @RequestBody LoginRequest request,
             HttpServletRequest httpRequest,
             HttpServletResponse response) {
+
+        String clientIp = getClientIp(httpRequest);
+
+        // Check rate limit before processing
+        if (!authRateLimiter.isLoginAllowed(clientIp)) {
+            long resetSeconds = authRateLimiter.getLoginResetTimeSeconds(clientIp);
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .header("Retry-After", String.valueOf(resetSeconds))
+                    .body(new RateLimitResponse(
+                            "Too many login attempts. Please try again later.",
+                            resetSeconds,
+                            0
+                    ));
+        }
+
+        // Record the attempt
+        authRateLimiter.recordLoginAttempt(clientIp);
 
         var loginResult = authService.login(request);
 
@@ -83,7 +103,7 @@ public class AuthController {
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, accessCookie.toString());
 
-        return new JwtResponse(loginResult.getAccessToken().toString());
+        return ResponseEntity.ok(new JwtResponse(loginResult.getAccessToken().toString()));
     }
 
     @Operation(
@@ -147,11 +167,21 @@ public class AuthController {
             @ApiResponse(responseCode = "401", description = "Invalid or expired refresh token", content = @Content)
     })
     @PostMapping("/refresh")
-    public JwtResponse refresh(
+    public ResponseEntity<?> refresh(
             @Parameter(hidden = true) @CookieValue(value = "refreshToken") String refreshToken,
+            HttpServletRequest httpRequest,
             HttpServletResponse response) {
-        var accessToken = authService.refreshAccessToken(refreshToken);
-        ResponseCookie accessCookie = ResponseCookie.from("access_token", accessToken.toString())
+
+        String clientIp = getClientIp(httpRequest);
+        if (!authRateLimiter.isRefreshAllowed(clientIp)) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .body(Map.of("error", "Too many refresh attempts."));
+        }
+        authRateLimiter.recordRefreshAttempt(clientIp);
+
+        var tokenPair = authService.refreshTokens(refreshToken);
+
+        ResponseCookie accessCookie = ResponseCookie.from("access_token", tokenPair.getAccessToken().toString())
                 .httpOnly(cookieConfig.isHttpOnly())
                 .secure(cookieConfig.isSecure())
                 .sameSite(cookieConfig.getSameSite())
@@ -159,7 +189,17 @@ public class AuthController {
                 .maxAge(Duration.ofSeconds(jwtConfig.getAccessTokenExpiration()))
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, accessCookie.toString());
-        return new JwtResponse(accessToken.toString());
+
+        ResponseCookie refreshCookie = ResponseCookie.from("refreshToken", tokenPair.getRefreshToken().toString())
+                .httpOnly(cookieConfig.isHttpOnly())
+                .secure(cookieConfig.isSecure())
+                .sameSite(cookieConfig.getSameSite())
+                .path("/")
+                .maxAge(Duration.ofSeconds(jwtConfig.getRefreshTokenExpiration()))
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
+
+        return ResponseEntity.ok(new JwtResponse(tokenPair.getAccessToken().toString()));
     }
 
     @Operation(
@@ -195,5 +235,30 @@ public class AuthController {
     public ResponseEntity<Void> handleBadCredentialsException() {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
     }
+
+    /**
+     * Extract client IP address from request, handling proxies.
+     */
+    private String getClientIp(HttpServletRequest request) {
+        String xForwardedFor = request.getHeader("X-Forwarded-For");
+        if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
+            // Take the first IP in the chain (original client)
+            return xForwardedFor.split(",")[0].trim();
+        }
+        String xRealIp = request.getHeader("X-Real-IP");
+        if (xRealIp != null && !xRealIp.isEmpty()) {
+            return xRealIp;
+        }
+        return request.getRemoteAddr();
+    }
+
+    /**
+     * Rate limit response DTO.
+     */
+    public record RateLimitResponse(
+            String message,
+            long retryAfterSeconds,
+            int remainingAttempts
+    ) {}
 }
 

@@ -25,9 +25,9 @@ public class TcmbApiClient {
     // TCMB's official daily exchange rates XML endpoint
     private static final String TCMB_URL = "https://www.tcmb.gov.tr/kurlar/today.xml";
 
-    // Fallback values in case TCMB is unavailable (approximate rates as of Jan 2025)
-    private static final BigDecimal FALLBACK_USD_TRY = new BigDecimal("34.5");
-    private static final BigDecimal FALLBACK_EUR_TRY = new BigDecimal("37.2");
+    // Fallback values in case TCMB is unavailable (approximate rates as of Feb 2026)
+    private static final BigDecimal FALLBACK_USD_TRY = new BigDecimal("43.65");
+    private static final BigDecimal FALLBACK_EUR_TRY = new BigDecimal("47.00");
 
     private final RestTemplate restTemplate;
 

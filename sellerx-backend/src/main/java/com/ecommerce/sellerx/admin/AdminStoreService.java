@@ -14,6 +14,7 @@ import com.ecommerce.sellerx.stores.WebhookStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -80,41 +81,43 @@ public class AdminStoreService {
     }
 
     /**
-     * Get store count by sync status
+     * Get store count by sync status (uses indexed count query)
      */
     public long getStoreCountBySyncStatus(SyncStatus status) {
-        return storeRepository.findAll().stream()
-                .filter(store -> status == store.getSyncStatus())
-                .count();
+        return storeRepository.countBySyncStatus(status);
     }
 
     /**
-     * Get store count with sync errors
+     * Get store count with sync errors (uses indexed count query)
      */
     public long getStoreCountWithSyncErrors() {
-        return storeRepository.findAll().stream()
-                .filter(store -> SyncStatus.FAILED == store.getSyncStatus() || store.getSyncErrorMessage() != null)
-                .count();
+        return storeRepository.countWithSyncErrors();
     }
 
     /**
-     * Get store count with webhook errors
+     * Get store count with webhook errors (uses indexed count query)
      */
     public long getStoreCountWithWebhookErrors() {
-        return storeRepository.findAll().stream()
-                .filter(store -> WebhookStatus.FAILED == store.getWebhookStatus() || store.getWebhookErrorMessage() != null)
-                .count();
+        return storeRepository.countWithWebhookErrors();
     }
 
     /**
-     * Search stores by store name or user email
+     * Search stores by store name or user email with pagination
      */
+    public Page<AdminStoreListDto> searchStores(String query, Pageable pageable) {
+        return storeRepository.searchByStoreNameOrUserEmail(query, pageable)
+                .map(this::toListDto);
+    }
+
+    /**
+     * Legacy search method - limited to first 100 results for backward compatibility
+     * @deprecated Use searchStores(String query, Pageable pageable) instead
+     */
+    @Deprecated
     public List<AdminStoreListDto> searchStores(String query) {
-        return storeRepository.findAll().stream()
-                .filter(store -> store.getStoreName().toLowerCase().contains(query.toLowerCase())
-                        || store.getUser().getEmail().toLowerCase().contains(query.toLowerCase()))
+        return storeRepository.searchByStoreNameOrUserEmail(query, PageRequest.of(0, 100))
                 .map(this::toListDto)
-                .collect(Collectors.toList());
+                .getContent();
     }
 
     private AdminStoreListDto toListDto(Store store) {

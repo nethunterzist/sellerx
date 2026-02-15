@@ -10,6 +10,7 @@ import com.sendgrid.helpers.mail.objects.Email;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
+import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -21,6 +22,7 @@ import java.util.Map;
  * Handles email sending through SendGrid's API with async support.
  */
 @Service
+@Primary
 @Slf4j
 @RequiredArgsConstructor
 public class SendGridEmailService implements EmailService {

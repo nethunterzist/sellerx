@@ -17,7 +17,7 @@
 
 | Paket | Açıklama | Ana sınıflar |
 |-------|----------|--------------|
-| admin | Admin panel API: mağaza, kullanıcı, sipariş, ürün, billing, referral, bildirim, activity log, dashboard, destek | AdminStoreController, AdminUserController, AdminOrderController, AdminProductController, AdminBillingController, AdminReferralController, AdminNotificationController, AdminActivityLogController, AdminDashboardController, AdminSupportController, ilgili *Service sınıfları |
+| admin | Admin panel API: mağaza, kullanıcı, sipariş, ürün, billing, referral, bildirim, activity log, dashboard, destek, sandbox, e-posta şablonları, resilience | AdminStoreController, AdminUserController, AdminOrderController, AdminProductController, AdminBillingController, AdminReferralController, AdminNotificationController, AdminActivityLogController, AdminDashboardController, AdminSupportController, AdminSandboxController, AdminSandboxService, AdminEmailTemplateController, AdminResilienceController, ilgili *Service sınıfları |
 
 ## Domain: Sipariş, Ürün, Finansal
 
@@ -62,10 +62,20 @@
 | notifications | Kullanıcı bildirimleri | NotificationController, NotificationService, UserNotificationRepository |
 | referral | Davet kodu, ödül günü | ReferralController, ReferralService, ReferralConfig, ReferralRepository |
 | support | Destek talepleri, mesajlar | SupportTicketController, SupportTicketService, AdminSupportController |
-| email | E-posta gönderimi (SendGrid) | EmailService, SendGridEmailService, EmailConfig |
+| email | E-posta gönderimi (SendGrid + SMTP), kuyruk, şablonlar, event-driven bildirimler. Alt paketler: entity/ (EmailQueue, EmailBaseLayout, EmailTemplateEntity), event/ (EmailEventListener, AlertTriggeredEvent, SubscriptionEvent, UserRegisteredEvent, PasswordResetRequestedEvent, EmailVerificationEvent, AdminBroadcastEvent), repository/ (EmailQueueRepository, EmailTemplateRepository, EmailBaseLayoutRepository), scheduler/ (EmailQueueProcessor, SubscriptionReminderJob), service/ (EmailQueueService, EmailTemplateService) | EmailService, SendGridEmailService, SmtpEmailService, SmtpEmailConfig, EmailConfig, EmailStatus, EmailType |
 | currency | Döviz kurları (TCMB), scheduled güncelleme | CurrencyController, CurrencyService, TcmbApiClient, ExchangeRateRepository |
 | ai | Mağaza AI ayarları, knowledge base, cevap şablonları | AiSettingsController, KnowledgeBaseController, AiSettingsService |
 
+## Domain: Bakım, Kuyruk, Dayanıklılık, WebSocket, Sync
+
+| Paket | Açıklama | Ana sınıflar |
+|-------|----------|--------------|
+| maintenance | Veritabanı bakımı, veri saklama politikası, materialized view yenileme, tablo bloat kontrolü | DataMaintenanceScheduler, DashboardStatsRepository |
+| queue | RabbitMQ tabanlı senkronizasyon mesaj kuyruğu | SyncMessage, SyncQueueConsumer, SyncQueueProducer |
+| resilience | Dayanıklı API istemcisi, circuit breaker, retry | ResilientApiClient, ResilientApiException |
+| websocket | Gerçek zamanlı bildirimler, WebSocket yapılandırması | WebSocketConfig, WebSocketAuthInterceptor, AlertNotificationService, WebSocketSecurityRules |
+| sync | Asenkron sipariş/ürün senkronizasyonu, görev takibi | AsyncOrderSyncService, AsyncProductSyncService, SyncTask, SyncTaskService, SyncTaskRepository |
+
 ---
 
-**Toplam:** 29 paket (activitylog, admin, ai, alerts, auth, billing, categories, common, config, controller, currency, dashboard, education, email, expenses, financial, notifications, orders, products, purchasing, qa, referral, returns, stocktracking, stores, support, trendyol, users, webhook).
+**Toplam:** 34 paket (activitylog, admin, ai, alerts, auth, billing, categories, common, config, controller, currency, dashboard, education, email, expenses, financial, maintenance, notifications, orders, products, purchasing, qa, queue, referral, resilience, returns, stocktracking, stores, support, sync, trendyol, users, webhook, websocket).

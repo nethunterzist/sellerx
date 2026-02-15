@@ -9,6 +9,10 @@ SecurityRules bean'lerinden çıkarılmıştır. Sıra: featureSecurityRules for
 | POST | /auth/login | AuthSecurityRules |
 | POST | /auth/refresh | AuthSecurityRules |
 | POST | /auth/logout | AuthSecurityRules |
+| POST | /auth/forgot-password | AuthSecurityRules |
+| GET | /auth/verify-reset-token | AuthSecurityRules |
+| POST | /auth/reset-password | AuthSecurityRules |
+| GET | /auth/verify-email | AuthSecurityRules |
 | POST | /api/webhook/trendyol/** | WebhookSecurityRules |
 | POST | /api/webhook/iyzico/** | WebhookSecurityRules, IyzicoSecurityRules |
 | POST | /api/webhook/parasut/** | WebhookSecurityRules |
@@ -40,7 +44,7 @@ SecurityRules bean'lerinden çıkarılmıştır. Sıra: featureSecurityRules for
 |------|----------|
 | /api/admin/** | Tüm admin endpoint'leri (stores, users, billing, activity-logs, orders, products, referrals, dashboard, notifications, support/tickets). |
 
-Admin alt path'leri: /api/admin/stores, /api/admin/users, /api/admin/billing, /api/admin/activity-logs, /api/admin/orders, /api/admin/products, /api/admin/referrals, /api/admin/dashboard, /api/admin/notifications, /api/admin/support/tickets. Detay için [01-backend-endpoints.md](./01-backend-endpoints.md) Admin bölümüne bakın.
+Admin alt path'leri: /api/admin/stores, /api/admin/users, /api/admin/billing, /api/admin/activity-logs, /api/admin/orders, /api/admin/products, /api/admin/referrals, /api/admin/dashboard, /api/admin/notifications, /api/admin/support/tickets, /api/admin/sandbox, /api/admin/email-templates, /api/admin/resilience. Detay için [01-backend-endpoints.md](./01-backend-endpoints.md) Admin bölümüne bakın.
 
 ---
 

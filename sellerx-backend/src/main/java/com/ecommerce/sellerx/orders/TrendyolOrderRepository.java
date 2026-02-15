@@ -59,14 +59,6 @@ public interface TrendyolOrderRepository extends JpaRepository<TrendyolOrder, UU
                                                            @Param("startDate") LocalDateTime startDate,
                                                            @Param("endDate") LocalDateTime endDate);
 
-    // Find returned orders
-    @Query("SELECT o FROM TrendyolOrder o WHERE o.store.id = :storeId " +
-           "AND o.orderDate BETWEEN :startDate AND :endDate " +
-           "AND o.status IN ('Returned')")
-    List<TrendyolOrder> findReturnedOrdersByStoreAndDateRange(@Param("storeId") UUID storeId,
-                                                            @Param("startDate") LocalDateTime startDate,
-                                                            @Param("endDate") LocalDateTime endDate);
-
     // Count orders with items that have costs vs without costs
     @Query(value = "SELECT COUNT(DISTINCT o.id) " +
                    "FROM trendyol_orders o " +
@@ -113,6 +105,30 @@ public interface TrendyolOrderRepository extends JpaRepository<TrendyolOrder, UU
     long countByStoreIdAndOrderDateBetween(@Param("storeId") UUID storeId,
                                            @Param("startDate") LocalDateTime startDate,
                                            @Param("endDate") LocalDateTime endDate);
+
+    // Count orders by store, status and date range
+    @Query("SELECT COUNT(o) FROM TrendyolOrder o WHERE o.store.id = :storeId " +
+           "AND o.status = :status AND o.orderDate BETWEEN :startDate AND :endDate")
+    long countByStoreIdAndStatusAndOrderDateBetween(@Param("storeId") UUID storeId,
+                                                    @Param("status") String status,
+                                                    @Param("startDate") LocalDateTime startDate,
+                                                    @Param("endDate") LocalDateTime endDate);
+
+    // Count orders by store, multiple statuses and date range
+    @Query("SELECT COUNT(o) FROM TrendyolOrder o WHERE o.store.id = :storeId " +
+           "AND o.status IN :statuses AND o.orderDate BETWEEN :startDate AND :endDate")
+    long countByStoreIdAndStatusInAndOrderDateBetween(@Param("storeId") UUID storeId,
+                                                      @Param("statuses") List<String> statuses,
+                                                      @Param("startDate") LocalDateTime startDate,
+                                                      @Param("endDate") LocalDateTime endDate);
+
+    // Calculate total revenue by date range (excluding cancelled and returned orders)
+    @Query("SELECT COALESCE(SUM(o.totalPrice), 0.0) FROM TrendyolOrder o WHERE o.store.id = :storeId " +
+           "AND o.orderDate BETWEEN :startDate AND :endDate AND o.status NOT IN :excludedStatuses")
+    BigDecimal sumTotalPriceByStoreIdAndOrderDateBetweenAndStatusNotIn(@Param("storeId") UUID storeId,
+                                                                        @Param("startDate") LocalDateTime startDate,
+                                                                        @Param("endDate") LocalDateTime endDate,
+                                                                        @Param("excludedStatuses") List<String> excludedStatuses);
 
     // Calculate total revenue (excluding cancelled and returned orders)
     @Query("SELECT COALESCE(SUM(o.totalPrice), 0.0) FROM TrendyolOrder o WHERE o.store.id = :storeId AND o.status NOT IN :excludedStatuses")
@@ -470,7 +486,7 @@ public interface TrendyolOrderRepository extends JpaRepository<TrendyolOrder, UU
             @Param("endDate") LocalDateTime endDate);
 
     /**
-     * İade edilen sipariş sayısı.
+     * İade edilen sipariş sayısı (sadece status bazlı).
      */
     @Query("SELECT COUNT(o) FROM TrendyolOrder o " +
            "WHERE o.store.id = :storeId " +
@@ -513,6 +529,35 @@ public interface TrendyolOrderRepository extends JpaRepository<TrendyolOrder, UU
            "AND o.orderDate BETWEEN :startDate AND :endDate " +
            "AND o.status NOT IN ('Cancelled', 'UnSupplied')")
     BigDecimal sumEarlyPaymentFee(
+            @Param("storeId") UUID storeId,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate);
+
+    // ============== Stoppage Queries (siparişlerden hesaplanan %1) ==============
+
+    /**
+     * Sum stoppage from orders (calculated 1% withholding tax) for a date range.
+     * Used by invoice summary to show stoppage total from order-based calculation.
+     */
+    @Query("SELECT COALESCE(SUM(o.stoppage), 0) FROM TrendyolOrder o " +
+           "WHERE o.store.id = :storeId " +
+           "AND o.orderDate BETWEEN :startDate AND :endDate " +
+           "AND o.status NOT IN ('Cancelled')")
+    BigDecimal sumStoppageByStoreAndDateRange(
+            @Param("storeId") UUID storeId,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate);
+
+    /**
+     * Count orders with non-zero stoppage for a date range.
+     * Used by invoice summary to show stoppage count.
+     */
+    @Query("SELECT COUNT(o) FROM TrendyolOrder o " +
+           "WHERE o.store.id = :storeId " +
+           "AND o.orderDate BETWEEN :startDate AND :endDate " +
+           "AND o.status NOT IN ('Cancelled') " +
+           "AND o.stoppage IS NOT NULL AND o.stoppage > 0")
+    int countOrdersWithStoppage(
             @Param("storeId") UUID storeId,
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate);
@@ -575,8 +620,9 @@ public interface TrendyolOrderRepository extends JpaRepository<TrendyolOrder, UU
     // ============== Kargo Faturası ile Güncelleme ==============
 
     /**
-     * Updates orders with real shipping costs from cargo invoices.
-     * Joins trendyol_orders with trendyol_cargo_invoices by order_number.
+     * Updates orders with real OUTBOUND shipping costs from cargo invoices.
+     * Filters by shipment_package_type = 'Gönderi Kargo Bedeli' to exclude return cargo.
+     * Uses SUM to handle orders with multiple cargo invoice entries.
      * Only updates orders where is_shipping_estimated = true.
      *
      * @param storeId The store ID to update orders for
@@ -585,14 +631,46 @@ public interface TrendyolOrderRepository extends JpaRepository<TrendyolOrder, UU
     @Modifying
     @Query(value = """
         UPDATE trendyol_orders o
-        SET estimated_shipping_cost = c.amount,
+        SET estimated_shipping_cost = sub.total_cost,
             is_shipping_estimated = false
-        FROM trendyol_cargo_invoices c
-        WHERE o.ty_order_number = c.order_number
-          AND o.store_id = :storeId
+        FROM (
+            SELECT c.order_number, c.store_id, SUM(c.amount) as total_cost
+            FROM trendyol_cargo_invoices c
+            WHERE c.store_id = :storeId
+              AND c.shipment_package_type = 'Gönderi Kargo Bedeli'
+            GROUP BY c.order_number, c.store_id
+        ) sub
+        WHERE o.ty_order_number = sub.order_number
+          AND o.store_id = sub.store_id
           AND o.is_shipping_estimated = true
         """, nativeQuery = true)
     int updateOrdersWithCargoInvoices(@Param("storeId") UUID storeId);
+
+    /**
+     * Updates orders with real RETURN shipping costs from cargo invoices.
+     * Filters by shipment_package_type = 'İade Kargo Bedeli'.
+     * Uses SUM to handle orders with multiple return cargo invoice entries.
+     * Only updates orders where return_shipping_cost is still 0.
+     *
+     * @param storeId The store ID to update orders for
+     * @return Number of orders updated
+     */
+    @Modifying
+    @Query(value = """
+        UPDATE trendyol_orders o
+        SET return_shipping_cost = sub.total_cost
+        FROM (
+            SELECT c.order_number, c.store_id, SUM(c.amount) as total_cost
+            FROM trendyol_cargo_invoices c
+            WHERE c.store_id = :storeId
+              AND c.shipment_package_type = 'İade Kargo Bedeli'
+            GROUP BY c.order_number, c.store_id
+        ) sub
+        WHERE o.ty_order_number = sub.order_number
+          AND o.store_id = sub.store_id
+          AND (o.return_shipping_cost IS NULL OR o.return_shipping_cost = 0)
+        """, nativeQuery = true)
+    int updateOrdersWithReturnCargoInvoices(@Param("storeId") UUID storeId);
 
     // ============== Customer Analytics Queries ==============
 
@@ -1410,5 +1488,59 @@ public interface TrendyolOrderRepository extends JpaRepository<TrendyolOrder, UU
         String getBarcode();
         Long getTotalQuantitySold();
     }
+
+    /**
+     * Sum estimated shipping costs for orders in a date range.
+     * Used by dashboard as fallback when deduction invoices haven't arrived yet.
+     */
+    @Query("SELECT COALESCE(SUM(o.estimatedShippingCost), 0) FROM TrendyolOrder o " +
+           "WHERE o.store.id = :storeId " +
+           "AND o.orderDate BETWEEN :startDate AND :endDate " +
+           "AND o.status IN ('Created', 'Picking', 'Invoiced', 'Shipped', 'Delivered', 'AtCollectionPoint', 'UnPacked')")
+    BigDecimal sumEstimatedShippingCostByStoreAndDateRange(
+            @Param("storeId") UUID storeId,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate);
+
+    /**
+     * Recalculate estimated shipping costs for orders that still have is_shipping_estimated=true
+     * and no shipping cost set. Uses MAX(lastShippingCostPerUnit) across order items because
+     * Trendyol charges shipping per PACKAGE, not per item.
+     *
+     * @param storeId The store ID
+     * @return Number of orders updated
+     */
+    @Modifying
+    @Query(value = """
+        UPDATE trendyol_orders o
+        SET estimated_shipping_cost = sub.estimated_cost
+        FROM (
+            SELECT o2.id,
+                   MAX(COALESCE(p.last_shipping_cost_per_unit, 0)) as estimated_cost
+            FROM trendyol_orders o2
+            CROSS JOIN LATERAL jsonb_array_elements(o2.order_items) AS item
+            LEFT JOIN trendyol_products p
+              ON p.barcode = item->>'barcode' AND p.store_id = o2.store_id
+            WHERE o2.store_id = :storeId
+              AND o2.is_shipping_estimated = true
+              AND (o2.estimated_shipping_cost IS NULL OR o2.estimated_shipping_cost = 0)
+            GROUP BY o2.id
+        ) sub
+        WHERE o.id = sub.id AND sub.estimated_cost > 0
+        """, nativeQuery = true)
+    int recalculateEstimatedShipping(@Param("storeId") UUID storeId);
+
+    /**
+     * Find all orders for a store ordered by date (no pagination).
+     */
+    @Query("SELECT o FROM TrendyolOrder o WHERE o.store.id = :storeId ORDER BY o.orderDate DESC")
+    List<TrendyolOrder> findAllByStoreIdOrderByOrderDateDesc(@Param("storeId") UUID storeId);
+
+    /**
+     * Delete all orders for a store.
+     */
+    @Modifying
+    @Query("DELETE FROM TrendyolOrder o WHERE o.store.id = :storeId")
+    void deleteByStoreId(@Param("storeId") UUID storeId);
 
 }

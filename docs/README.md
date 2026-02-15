@@ -39,6 +39,7 @@ docs/
 │   ├── README.md
 │   ├── ADMIN_IMPERSONATION.md
 │   ├── COMMISSION_SYSTEM.md
+│   ├── STOPPAGE_SYSTEM.md
 │   ├── WEBHOOK_SYSTEM.md
 │   ├── STORE_ONBOARDING.md
 │   ├── DATABASE_SCHEMA.md
@@ -51,7 +52,23 @@ docs/
 │   ├── PURCHASING.md
 │   └── ...
 │
+├── scaling/                     # Ölçeklendirme ve Microservices Dönüşüm Planı
+│   ├── README.md                # Plan özeti
+│   ├── FAZ_0_ACIL_DUZELTMELER.md # Faz 0: Acil düzeltmeler
+│   ├── FAZ_1_RABBITMQ.md       # Faz 1: RabbitMQ entegrasyonu
+│   ├── FAZ_2_RESILIENCE4J.md   # Faz 2: Resilience4j entegrasyonu
+│   ├── FAZ_3_WEBSOCKET.md      # Faz 3: WebSocket entegrasyonu
+│   ├── FAZ_4_DATABASE.md       # Faz 4: Database optimizasyonları
+│   └── FAZ_5_FRONTEND.md       # Faz 5: Frontend optimizasyonları
+│
+├── deployment/                  # CI/CD ve deployment dokümanları
+│   └── CI_CD_GUIDE.md
+│
 └── archive/                     # Tarihli / referanssız (arşiv)
+    ├── DOC_VERIFICATION_REPORT.md
+    ├── DOC_CODE_GAP_REPORT.md
+    ├── FULL_PROJECT_DOCS_ANALYSIS.md
+    ├── COOLIFY_DEPLOYMENT_PLAN.md
     └── ...
 ```
 
@@ -60,13 +77,13 @@ docs/
 - **Envanter / harita (nerede ne var):** sprint-1 … sprint-7.
 - **Nasıl çalışıyor (derin mimari):** [architecture/](architecture/).
 - **Özellik detayı:** [features/](features/).
-- **Doc–kod doğrulama raporu:** [DOC_VERIFICATION_REPORT.md](DOC_VERIFICATION_REPORT.md).
-- **Doc–kod gap raporu:** [DOC_CODE_GAP_REPORT.md](DOC_CODE_GAP_REPORT.md).
-- **Proje + docs tam analiz raporu:** [FULL_PROJECT_DOCS_ANALYSIS.md](FULL_PROJECT_DOCS_ANALYSIS.md).
+- **Ölçeklendirme planı:** [scaling/](scaling/) - Microservices dönüşüm planı.
+- **Agent ekip yapısı:** [AGENT_TEAM.md](AGENT_TEAM.md).
+- **Tech stack, TODO ve teknik borç:** [TECHSTACK_TODO_DEBT.md](TECHSTACK_TODO_DEBT.md).
 - **Geliştirme günlüğü:** [CHANGELOG.md](CHANGELOG.md).
 - **Hangi kod hangi doc:** [sprint-7-doc-map/02-code-to-doc.md](sprint-7-doc-map/02-code-to-doc.md).
 - **Docker ile kurulum:** [../README-Docker.md](../README-Docker.md).
-- **Tech stack, TODO ve teknik borç:** [TECHSTACK_TODO_DEBT.md](TECHSTACK_TODO_DEBT.md).
+- **CI/CD ve deployment:** [deployment/CI_CD_GUIDE.md](deployment/CI_CD_GUIDE.md).
 
 ## Güncelleme Kuralı
 

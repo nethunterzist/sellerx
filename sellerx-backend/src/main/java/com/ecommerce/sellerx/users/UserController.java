@@ -1,5 +1,6 @@
 package com.ecommerce.sellerx.users;
 
+import com.ecommerce.sellerx.auth.AuthRateLimiter;
 import com.ecommerce.sellerx.auth.JwtService;
 import com.ecommerce.sellerx.config.CookieConfig;
 import com.ecommerce.sellerx.stores.StoreService;
@@ -11,6 +12,7 @@ import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -25,7 +27,9 @@ public class UserController {
     private final JwtService jwtService;
     private final CookieConfig cookieConfig;
     private final StoreService storeService;
+    private final AuthRateLimiter authRateLimiter;
 
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping
     public Iterable<UserDto> getAllUsers(
             @RequestParam(required = false, defaultValue = "", name = "sort") String sortBy
@@ -33,6 +37,7 @@ public class UserController {
         return userService.getAllUsers(sortBy);
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/{id}")
     public UserDto getUser(@PathVariable Long id) {
         return userService.getUser(id);
@@ -41,13 +46,24 @@ public class UserController {
     @PostMapping
     public ResponseEntity<?> registerUser(
             @Valid @RequestBody RegisterUserRequest request,
-            UriComponentsBuilder uriBuilder) {
+            UriComponentsBuilder uriBuilder,
+            HttpServletRequest httpRequest) {
+
+        String clientIp = getClientIp(httpRequest);
+        if (!authRateLimiter.isRegistrationAllowed(clientIp)) {
+            long resetSeconds = authRateLimiter.getRegistrationResetTimeSeconds(clientIp);
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header("Retry-After", String.valueOf(resetSeconds))
+                .body(Map.of("error", "Too many registration attempts. Please try again later."));
+        }
+        authRateLimiter.recordRegistrationAttempt(clientIp);
 
         var userDto = userService.registerUser(request);
         var uri = uriBuilder.path("/users/{id}").buildAndExpand(userDto.getId()).toUri();
         return ResponseEntity.created(uri).body(userDto);
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}")
     public UserDto updateUser(
             @PathVariable(name = "id") Long id,
@@ -55,15 +71,17 @@ public class UserController {
         return userService.updateUser(id, request);
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public void deleteUser(@PathVariable Long id) {
         userService.deleteUser(id);
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/{id}/change-password")
     public void changePassword(
             @PathVariable Long id,
-            @RequestBody ChangePasswordRequest request) {
+            @Valid @RequestBody ChangePasswordRequest request) {
         userService.changePassword(id, request);
     }
 
@@ -130,7 +148,7 @@ public class UserController {
 
     @PutMapping("/password")
     public ResponseEntity<?> changePasswordWithToken(
-            @RequestBody ChangePasswordRequest changeRequest,
+            @Valid @RequestBody ChangePasswordRequest changeRequest,
             HttpServletRequest request) {
         try {
             Long userId = jwtService.getUserIdFromToken(request);
@@ -216,10 +234,26 @@ public class UserController {
         }
     }
 
+    /**
+     * Extract client IP address from request, handling proxies.
+     */
+    private String getClientIp(HttpServletRequest request) {
+        String xForwardedFor = request.getHeader("X-Forwarded-For");
+        if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
+            // Take the first IP in the chain (original client)
+            return xForwardedFor.split(",")[0].trim();
+        }
+        String xRealIp = request.getHeader("X-Real-IP");
+        if (xRealIp != null && !xRealIp.isEmpty()) {
+            return xRealIp;
+        }
+        return request.getRemoteAddr();
+    }
+
     @ExceptionHandler(DuplicateUserException.class)
     public ResponseEntity<Map<String, String>> handleDuplicateUser() {
         return ResponseEntity.badRequest().body(
-                Map.of("email", "Email is already registered.")
+                Map.of("error", "Registration could not be completed. Please try again or use a different email.")
         );
     }
 

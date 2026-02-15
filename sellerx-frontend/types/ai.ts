@@ -50,6 +50,7 @@ export interface AiGenerateResponse {
   tokensUsed: number;
   generationTimeMs: number;
   logId: string;
+  crossSellProducts?: { barcode: string; title: string; image?: string; salePrice: number }[];
 }
 
 export interface AiApproveRequest {

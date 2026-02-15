@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
+import { FadeIn } from "@/components/motion";
 import { cn } from "@/lib/utils";
 import {
   Table,
@@ -24,7 +25,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Search, ChevronDown, ChevronUp, Download, MoreHorizontal, ArrowUpDown, ExternalLink, LayoutGrid, Filter } from "lucide-react";
+import { Search, ChevronDown, ChevronUp, ChevronRight, Download, MoreHorizontal, ArrowUpDown, ExternalLink, LayoutGrid, Filter } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -36,7 +37,6 @@ import {
 import { ProductDetailPanel, type ProductDetailData } from "./product-detail-panel";
 import { OrderDetailPanel } from "./order-detail-panel";
 import { useCurrency } from "@/lib/contexts/currency-context";
-import * as XLSX from "xlsx";
 import type { OrderDetail, OrderDetailPanelData } from "@/types/dashboard";
 
 // Import types and configs from modular structure
@@ -251,6 +251,9 @@ export function ProductsTable({ products, orders, isLoading, startDate, endDate 
   const [orderVisibleColumns, setOrderVisibleColumns] = useState<Set<string>>(() =>
     getDefaultVisibleColumns("dashboard-order-columns", ORDER_COLUMN_CONFIG)
   );
+
+  // Expanded orders state for accordion (which order groups are open)
+  const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
 
   // ========== FILTER STATES ==========
   const [selectedBrands, setSelectedBrands] = useState<Set<string>>(new Set());
@@ -628,6 +631,62 @@ export function ProductsTable({ products, orders, isLoading, startDate, endDate 
   const hasMoreOrderItems = filteredOrderItems.length > visibleCount;
   const remainingOrderItemsCount = filteredOrderItems.length - visibleCount;
 
+  // Group order items by orderNumber for accordion display
+  interface OrderGroup {
+    orderNumber: string;
+    orderDate: string;
+    orderTotalPrice: number;
+    items: OrderItem[];
+    // Aggregated totals for the group header
+    totalQuantity: number;
+    totalSales: number;
+    totalCost: number;
+    totalCommission: number;
+    totalProfit: number;
+  }
+
+  const groupedOrders = useMemo(() => {
+    const groups = new Map<string, OrderGroup>();
+
+    visibleOrderItems.forEach((item) => {
+      if (!groups.has(item.orderNumber)) {
+        groups.set(item.orderNumber, {
+          orderNumber: item.orderNumber,
+          orderDate: item.orderDate,
+          orderTotalPrice: item.orderTotalPrice,
+          items: [],
+          totalQuantity: 0,
+          totalSales: 0,
+          totalCost: 0,
+          totalCommission: 0,
+          totalProfit: 0,
+        });
+      }
+      const group = groups.get(item.orderNumber)!;
+      group.items.push(item);
+      group.totalQuantity += item.quantity;
+      group.totalSales += item.totalPrice;
+      group.totalCost += item.cost;
+      group.totalCommission += item.commission;
+      group.totalProfit += item.profit;
+    });
+
+    return Array.from(groups.values());
+  }, [visibleOrderItems]);
+
+  // Toggle order group expansion
+  const toggleOrderExpanded = (orderNumber: string) => {
+    setExpandedOrders((prev) => {
+      const next = new Set(prev);
+      if (next.has(orderNumber)) {
+        next.delete(orderNumber);
+      } else {
+        next.add(orderNumber);
+      }
+      return next;
+    });
+  };
+
   // Handle order row click - open OrderDetailPanel
   const handleOrderClick = (orderNumber: string) => {
     const order = orders?.find(o => o.orderNumber === orderNumber);
@@ -675,107 +734,68 @@ export function ProductsTable({ products, orders, isLoading, startDate, endDate 
     }
   };
 
-  // XLSX Download handler for products
-  const handleDownloadProductsXLSX = () => {
-    const headers = ["Ürün", "SKU", "Marka", "Kategori", "Satılan", "İade", "Satış", "Komisyon", "Brüt Kâr", "Net Kâr", "Marj (%)", "ROI (%)", "ACOS (%)", "Reklam Maliyeti", "CPC", "CVR (%)"];
-    const rows = filteredProducts.map(p => [
-      p.name,
-      p.sku,
-      p.brand || "",
-      p.categoryName || "",
-      p.unitsSold,
-      p.refunds,
-      p.sales,
-      p.commission || 0,
-      p.grossProfit,
-      p.netProfit,
-      p.margin,
-      p.roi,
-      p.acos != null ? p.acos.toFixed(2) : "-",
-      p.totalAdvertisingCost != null ? p.totalAdvertisingCost.toFixed(2) : "-",
-      p.cpc != null ? p.cpc.toFixed(2) : "-",
-      p.cvr != null ? (p.cvr * 100).toFixed(2) : "-"
-    ]);
+  // XLSX Download handler for products (lazy loaded)
+  const handleDownloadProductsXLSX = async () => {
+    const { exportToXLSX, formatProductsForExport } = await import("@/lib/utils/lazy-excel");
 
-    // Create worksheet
-    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    const { headers, rows } = formatProductsForExport(
+      filteredProducts.map(p => ({
+        name: p.name,
+        sku: p.sku,
+        brand: p.brand,
+        categoryName: p.categoryName,
+        unitsSold: p.unitsSold,
+        refunds: p.refunds,
+        sales: p.sales,
+        commission: p.commission,
+        grossProfit: p.grossProfit,
+        netProfit: p.netProfit,
+        margin: p.margin,
+        roi: p.roi,
+        acos: p.acos,
+        totalAdvertisingCost: p.totalAdvertisingCost,
+        cpc: p.cpc,
+        cvr: p.cvr,
+      }))
+    );
 
-    // Set column widths
-    ws["!cols"] = [
-      { wch: 40 }, // Ürün
-      { wch: 15 }, // SKU
-      { wch: 20 }, // Marka
-      { wch: 25 }, // Kategori
-      { wch: 10 }, // Satılan
-      { wch: 8 },  // İade
-      { wch: 12 }, // Satış
-      { wch: 12 }, // Komisyon
-      { wch: 12 }, // Brüt Kâr
-      { wch: 12 }, // Net Kâr
-      { wch: 10 }, // Marj
-      { wch: 10 }, // ROI
-      { wch: 10 }, // ACOS
-      { wch: 15 }, // Reklam Maliyeti
-      { wch: 8 },  // CPC
-      { wch: 10 }, // CVR
-    ];
-
-    // Create workbook
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Ürünler");
-
-    // Download
-    XLSX.writeFile(wb, `urunler_${new Date().toISOString().split('T')[0]}.xlsx`);
+    await exportToXLSX(
+      { headers, rows },
+      `urunler_${new Date().toISOString().split('T')[0]}.xlsx`,
+      "Ürünler",
+      [40, 15, 20, 25, 10, 8, 12, 12, 12, 12, 10, 10, 10, 15, 8, 10]
+    );
   };
 
-  // XLSX Download handler for order items
-  const handleDownloadOrdersXLSX = () => {
-    const headers = ["Sipariş No", "Tarih", "Ürün", "Barkod", "Adet", "Satış", "Maliyet", "Komisyon", "Kâr", "Marj (%)", "ROI (%)"];
-    const rows = filteredOrderItems.map(item => {
-      const margin = item.totalPrice > 0 ? Math.round((item.profit / item.totalPrice) * 100) : 0;
-      const roi = item.cost > 0 ? Math.round((item.profit / item.cost) * 100) : 0;
-      return [
-        item.orderNumber,
-        formatDate(item.orderDate),
-        item.productName,
-        item.barcode,
-        item.quantity,
-        item.totalPrice,
-        item.cost,
-        item.commission,
-        item.profit,
-        margin,
-        roi
-      ];
-    });
+  // XLSX Download handler for order items (lazy loaded)
+  const handleDownloadOrdersXLSX = async () => {
+    const { exportToXLSX, formatOrderItemsForExport } = await import("@/lib/utils/lazy-excel");
 
-    // Create worksheet
-    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    const { headers, rows } = formatOrderItemsForExport(
+      filteredOrderItems.map(item => ({
+        orderNumber: item.orderNumber,
+        orderDate: item.orderDate,
+        productName: item.productName,
+        barcode: item.barcode,
+        quantity: item.quantity,
+        totalPrice: item.totalPrice,
+        cost: item.cost,
+        commission: item.commission,
+        profit: item.profit,
+      })),
+      formatDate
+    );
 
-    // Set column widths
-    ws["!cols"] = [
-      { wch: 15 }, // Sipariş No
-      { wch: 20 }, // Tarih
-      { wch: 40 }, // Ürün
-      { wch: 15 }, // Barkod
-      { wch: 8 },  // Adet
-      { wch: 12 }, // Satış
-      { wch: 12 }, // Maliyet
-      { wch: 12 }, // Komisyon
-      { wch: 12 }, // Kâr
-      { wch: 10 }, // Marj
-      { wch: 10 }, // ROI
-    ];
-
-    // Create workbook
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Siparişler");
-
-    // Download
-    XLSX.writeFile(wb, `siparisler_${new Date().toISOString().split('T')[0]}.xlsx`);
+    await exportToXLSX(
+      { headers, rows },
+      `siparisler_${new Date().toISOString().split('T')[0]}.xlsx`,
+      "Siparişler",
+      [15, 20, 40, 15, 8, 12, 12, 12, 12, 10, 10]
+    );
   };
 
   return (
+    <FadeIn>
     <div className="bg-card rounded-lg border border-border">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-border">
@@ -1449,127 +1469,286 @@ export function ProductsTable({ products, orders, isLoading, startDate, endDate 
                   </TableCell>
                 </TableRow>
               ) : (
-                visibleOrderItems.map((item) => {
-                  const margin = item.totalPrice > 0 ? Math.round((item.profit / item.totalPrice) * 100) : 0;
-                  const roi = item.cost > 0 ? Math.round((item.profit / item.cost) * 100) : 0;
+                groupedOrders.map((group) => {
+                  const isExpanded = expandedOrders.has(group.orderNumber);
+                  const hasMultipleItems = group.items.length > 1;
+                  const groupMargin = group.totalSales > 0 ? Math.round((group.totalProfit / group.totalSales) * 100) : 0;
+                  const groupRoi = group.totalCost > 0 ? Math.round((group.totalProfit / group.totalCost) * 100) : 0;
 
                   return (
-                    <TableRow
-                      key={item.id}
-                      className="hover:bg-muted/50"
-                    >
-                      <TableCell>
-                        <div className="min-w-0">
-                          <p className="font-medium text-sm text-foreground">
-                            #{item.orderNumber}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {formatDate(item.orderDate)}
-                          </p>
-                          <p className="text-xs text-muted-foreground/70">
-                            Toplam: {formatCurrency(item.orderTotalPrice)}
-                          </p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="min-w-0">
-                          {item.productName.length > PRODUCT_NAME_LIMIT ? (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                {item.productUrl ? (
+                    <React.Fragment key={group.orderNumber}>
+                      {/* Group Header Row */}
+                      <TableRow
+                        className={cn(
+                          "hover:bg-muted/50",
+                          hasMultipleItems && "cursor-pointer",
+                          isExpanded && hasMultipleItems && "bg-muted/30"
+                        )}
+                        onClick={() => hasMultipleItems && toggleOrderExpanded(group.orderNumber)}
+                      >
+                        <TableCell>
+                          <div className="flex items-start gap-2">
+                            {hasMultipleItems && (
+                              <button
+                                className="mt-0.5 p-0.5 hover:bg-muted rounded transition-transform"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleOrderExpanded(group.orderNumber);
+                                }}
+                              >
+                                <ChevronRight
+                                  className={cn(
+                                    "h-4 w-4 text-muted-foreground transition-transform duration-200",
+                                    isExpanded && "rotate-90"
+                                  )}
+                                />
+                              </button>
+                            )}
+                            <div className="min-w-0">
+                              <p className="font-medium text-sm text-foreground">
+                                #{group.orderNumber}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {formatDate(group.orderDate)}
+                              </p>
+                              <p className="text-xs text-muted-foreground/70">
+                                Toplam: {formatCurrency(group.orderTotalPrice)}
+                              </p>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="min-w-0">
+                            {hasMultipleItems ? (
+                              <Badge variant="secondary" className="text-xs px-2 py-0.5">
+                                {group.items.length} ürün
+                              </Badge>
+                            ) : (
+                              <>
+                                {group.items[0].productName.length > PRODUCT_NAME_LIMIT ? (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      {group.items[0].productUrl ? (
+                                        <a
+                                          href={group.items[0].productUrl}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="font-medium text-sm text-foreground hover:text-[#F27A1A] hover:underline cursor-pointer"
+                                          onClick={(e) => e.stopPropagation()}
+                                        >
+                                          {truncateText(group.items[0].productName, PRODUCT_NAME_LIMIT)}
+                                        </a>
+                                      ) : (
+                                        <p className="font-medium text-sm text-foreground cursor-default">
+                                          {truncateText(group.items[0].productName, PRODUCT_NAME_LIMIT)}
+                                        </p>
+                                      )}
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top" className="max-w-[300px]">
+                                      <p>{group.items[0].productName}</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                ) : group.items[0].productUrl ? (
+                                  <a
+                                    href={group.items[0].productUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="font-medium text-sm text-foreground hover:text-[#F27A1A] hover:underline cursor-pointer"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    {group.items[0].productName}
+                                  </a>
+                                ) : (
+                                  <p className="font-medium text-sm text-foreground">
+                                    {group.items[0].productName}
+                                  </p>
+                                )}
+                                <p className="text-xs text-muted-foreground">
+                                  {group.items[0].barcode}
+                                </p>
+                              </>
+                            )}
+                          </div>
+                        </TableCell>
+                        {orderVisibleColumns.has("quantity") && (
+                          <TableCell className="text-right font-medium">
+                            {group.totalQuantity}
+                          </TableCell>
+                        )}
+                        {orderVisibleColumns.has("orderSales") && (
+                          <TableCell className="text-right font-medium">
+                            {formatCurrency(group.totalSales)}
+                          </TableCell>
+                        )}
+                        {orderVisibleColumns.has("cost") && (
+                          <TableCell className="text-right">
+                            <span className="text-orange-600">
+                              {formatCurrency(-group.totalCost)}
+                            </span>
+                          </TableCell>
+                        )}
+                        {orderVisibleColumns.has("orderCommission") && (
+                          <TableCell className="text-right">
+                            <span className="text-red-600">
+                              {formatCurrency(-group.totalCommission)}
+                            </span>
+                          </TableCell>
+                        )}
+                        {orderVisibleColumns.has("orderGrossProfit") && (
+                          <TableCell className="text-right">
+                            <span className={group.totalProfit >= 0 ? "text-green-600" : "text-red-600"}>
+                              {formatCurrency(group.totalProfit)}
+                            </span>
+                          </TableCell>
+                        )}
+                        {orderVisibleColumns.has("orderMargin") && (
+                          <TableCell className="text-right">
+                            <span className={groupMargin >= 0 ? "text-green-600" : "text-red-600"}>
+                              {groupMargin}%
+                            </span>
+                          </TableCell>
+                        )}
+                        {orderVisibleColumns.has("orderRoi") && (
+                          <TableCell className="text-right">
+                            <span className={groupRoi >= 0 ? "text-green-600" : "text-red-600"}>
+                              {groupRoi}%
+                            </span>
+                          </TableCell>
+                        )}
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 text-[#1D70F1]"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOrderClick(group.orderNumber);
+                            }}
+                          >
+                            Detay
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+
+                      {/* Expanded Child Rows */}
+                      {isExpanded && hasMultipleItems && group.items.map((item, idx) => {
+                        const itemMargin = item.totalPrice > 0 ? Math.round((item.profit / item.totalPrice) * 100) : 0;
+                        const itemRoi = item.cost > 0 ? Math.round((item.profit / item.cost) * 100) : 0;
+
+                        return (
+                          <TableRow
+                            key={item.id}
+                            className="bg-muted/20 hover:bg-muted/40"
+                          >
+                            <TableCell>
+                              <div className="flex items-center gap-2 pl-6">
+                                <div className="w-4 h-4 flex items-center justify-center text-muted-foreground">
+                                  {idx === group.items.length - 1 ? "└" : "├"}
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="min-w-0">
+                                {item.productName.length > PRODUCT_NAME_LIMIT ? (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      {item.productUrl ? (
+                                        <a
+                                          href={item.productUrl}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="font-medium text-sm text-foreground hover:text-[#F27A1A] hover:underline cursor-pointer"
+                                        >
+                                          {truncateText(item.productName, PRODUCT_NAME_LIMIT)}
+                                        </a>
+                                      ) : (
+                                        <p className="font-medium text-sm text-foreground cursor-default">
+                                          {truncateText(item.productName, PRODUCT_NAME_LIMIT)}
+                                        </p>
+                                      )}
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top" className="max-w-[300px]">
+                                      <p>{item.productName}</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                ) : item.productUrl ? (
                                   <a
                                     href={item.productUrl}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="font-medium text-sm text-foreground hover:text-[#F27A1A] hover:underline cursor-pointer"
                                   >
-                                    {truncateText(item.productName, PRODUCT_NAME_LIMIT)}
+                                    {item.productName}
                                   </a>
                                 ) : (
-                                  <p className="font-medium text-sm text-foreground cursor-default">
-                                    {truncateText(item.productName, PRODUCT_NAME_LIMIT)}
+                                  <p className="font-medium text-sm text-foreground">
+                                    {item.productName}
                                   </p>
                                 )}
-                              </TooltipTrigger>
-                              <TooltipContent side="top" className="max-w-[300px]">
-                                <p>{item.productName}</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          ) : item.productUrl ? (
-                            <a
-                              href={item.productUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="font-medium text-sm text-foreground hover:text-[#F27A1A] hover:underline cursor-pointer"
-                            >
-                              {item.productName}
-                            </a>
-                          ) : (
-                            <p className="font-medium text-sm text-foreground">
-                              {item.productName}
-                            </p>
-                          )}
-                          <p className="text-xs text-muted-foreground">
-                            {item.barcode}
-                          </p>
-                        </div>
-                      </TableCell>
-                      {orderVisibleColumns.has("quantity") && (
-                        <TableCell className="text-right font-medium">
-                          {item.quantity}
-                        </TableCell>
-                      )}
-                      {orderVisibleColumns.has("orderSales") && (
-                        <TableCell className="text-right font-medium">
-                          {formatCurrency(item.totalPrice)}
-                        </TableCell>
-                      )}
-                      {orderVisibleColumns.has("cost") && (
-                        <TableCell className="text-right">
-                          <span className="text-orange-600">
-                            {formatCurrency(-item.cost)}
-                          </span>
-                        </TableCell>
-                      )}
-                      {orderVisibleColumns.has("orderCommission") && (
-                        <TableCell className="text-right">
-                          <span className="text-red-600">
-                            {formatCurrency(-item.commission)}
-                          </span>
-                        </TableCell>
-                      )}
-                      {orderVisibleColumns.has("orderGrossProfit") && (
-                        <TableCell className="text-right">
-                          <span className={item.profit >= 0 ? "text-green-600" : "text-red-600"}>
-                            {formatCurrency(item.profit)}
-                          </span>
-                        </TableCell>
-                      )}
-                      {orderVisibleColumns.has("orderMargin") && (
-                        <TableCell className="text-right">
-                          <span className={margin >= 0 ? "text-green-600" : "text-red-600"}>
-                            {margin}%
-                          </span>
-                        </TableCell>
-                      )}
-                      {orderVisibleColumns.has("orderRoi") && (
-                        <TableCell className="text-right">
-                          <span className={roi >= 0 ? "text-green-600" : "text-red-600"}>
-                            {roi}%
-                          </span>
-                        </TableCell>
-                      )}
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 text-[#1D70F1]"
-                          onClick={() => handleOrderClick(item.orderNumber)}
-                        >
-                          Detay
-                        </Button>
-                      </TableCell>
-                    </TableRow>
+                                <p className="text-xs text-muted-foreground">
+                                  {item.barcode}
+                                </p>
+                              </div>
+                            </TableCell>
+                            {orderVisibleColumns.has("quantity") && (
+                              <TableCell className="text-right font-medium text-muted-foreground">
+                                {item.quantity}
+                              </TableCell>
+                            )}
+                            {orderVisibleColumns.has("orderSales") && (
+                              <TableCell className="text-right font-medium text-muted-foreground">
+                                {formatCurrency(item.totalPrice)}
+                              </TableCell>
+                            )}
+                            {orderVisibleColumns.has("cost") && (
+                              <TableCell className="text-right">
+                                <span className="text-orange-600/80">
+                                  {formatCurrency(-item.cost)}
+                                </span>
+                              </TableCell>
+                            )}
+                            {orderVisibleColumns.has("orderCommission") && (
+                              <TableCell className="text-right">
+                                <span className="text-red-600/80">
+                                  {formatCurrency(-item.commission)}
+                                </span>
+                              </TableCell>
+                            )}
+                            {orderVisibleColumns.has("orderGrossProfit") && (
+                              <TableCell className="text-right">
+                                <span className={cn(
+                                  "opacity-80",
+                                  item.profit >= 0 ? "text-green-600" : "text-red-600"
+                                )}>
+                                  {formatCurrency(item.profit)}
+                                </span>
+                              </TableCell>
+                            )}
+                            {orderVisibleColumns.has("orderMargin") && (
+                              <TableCell className="text-right">
+                                <span className={cn(
+                                  "opacity-80",
+                                  itemMargin >= 0 ? "text-green-600" : "text-red-600"
+                                )}>
+                                  {itemMargin}%
+                                </span>
+                              </TableCell>
+                            )}
+                            {orderVisibleColumns.has("orderRoi") && (
+                              <TableCell className="text-right">
+                                <span className={cn(
+                                  "opacity-80",
+                                  itemRoi >= 0 ? "text-green-600" : "text-red-600"
+                                )}>
+                                  {itemRoi}%
+                                </span>
+                              </TableCell>
+                            )}
+                            <TableCell></TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </React.Fragment>
                   );
                 })
               )}
@@ -1636,5 +1815,6 @@ export function ProductsTable({ products, orders, isLoading, startDate, endDate 
         order={selectedOrder}
       />
     </div>
+    </FadeIn>
   );
 }

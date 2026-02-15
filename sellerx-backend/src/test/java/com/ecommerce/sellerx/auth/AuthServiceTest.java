@@ -5,6 +5,7 @@ import com.ecommerce.sellerx.common.TestDataBuilder;
 import com.ecommerce.sellerx.users.Role;
 import com.ecommerce.sellerx.users.User;
 import com.ecommerce.sellerx.users.UserRepository;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -66,6 +67,12 @@ class AuthServiceTest extends BaseUnitTest {
         // Setup SecurityContext mock
         lenient().when(securityContext.getAuthentication()).thenReturn(authentication);
         SecurityContextHolder.setContext(securityContext);
+    }
+
+    @AfterEach
+    void tearDown() {
+        // Clear SecurityContext to prevent leaking mock context to other tests
+        SecurityContextHolder.clearContext();
     }
 
     /**
@@ -171,31 +178,35 @@ class AuthServiceTest extends BaseUnitTest {
     }
 
     @Nested
-    @DisplayName("refreshAccessToken")
-    class RefreshAccessToken {
+    @DisplayName("refreshTokens")
+    class RefreshTokens {
 
         @Test
-        @DisplayName("should return new access token for valid refresh token")
-        void shouldReturnNewAccessTokenForValidRefreshToken() {
+        @DisplayName("should return new token pair for valid refresh token")
+        void shouldReturnNewTokenPairForValidRefreshToken() {
             // Given
             String refreshTokenString = "valid-refresh-token";
             Jwt mockRefreshToken = mock(Jwt.class);
             Jwt mockNewAccessToken = mock(Jwt.class);
+            Jwt mockNewRefreshToken = mock(Jwt.class);
 
             when(mockRefreshToken.isExpired()).thenReturn(false);
             when(mockRefreshToken.getUserId()).thenReturn(1L);
             when(jwtService.parseToken(refreshTokenString)).thenReturn(mockRefreshToken);
             when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
             when(jwtService.generateAccessToken(testUser)).thenReturn(mockNewAccessToken);
+            when(jwtService.generateRefreshToken(testUser)).thenReturn(mockNewRefreshToken);
 
             // When
-            Jwt result = authService.refreshAccessToken(refreshTokenString);
+            LoginResponse result = authService.refreshTokens(refreshTokenString);
 
             // Then
-            assertThat(result).isEqualTo(mockNewAccessToken);
+            assertThat(result.getAccessToken()).isEqualTo(mockNewAccessToken);
+            assertThat(result.getRefreshToken()).isEqualTo(mockNewRefreshToken);
             verify(jwtService).parseToken(refreshTokenString);
             verify(userRepository).findById(1L);
             verify(jwtService).generateAccessToken(testUser);
+            verify(jwtService).generateRefreshToken(testUser);
         }
 
         @Test
@@ -209,7 +220,7 @@ class AuthServiceTest extends BaseUnitTest {
             when(jwtService.parseToken(expiredRefreshToken)).thenReturn(mockRefreshToken);
 
             // When/Then
-            assertThatThrownBy(() -> authService.refreshAccessToken(expiredRefreshToken))
+            assertThatThrownBy(() -> authService.refreshTokens(expiredRefreshToken))
                     .isInstanceOf(BadCredentialsException.class)
                     .hasMessage("Invalid refresh token");
 
@@ -226,7 +237,7 @@ class AuthServiceTest extends BaseUnitTest {
             when(jwtService.parseToken(invalidRefreshToken)).thenReturn(null);
 
             // When/Then
-            assertThatThrownBy(() -> authService.refreshAccessToken(invalidRefreshToken))
+            assertThatThrownBy(() -> authService.refreshTokens(invalidRefreshToken))
                     .isInstanceOf(BadCredentialsException.class)
                     .hasMessage("Invalid refresh token");
 
@@ -247,7 +258,7 @@ class AuthServiceTest extends BaseUnitTest {
             when(userRepository.findById(999L)).thenReturn(Optional.empty());
 
             // When/Then
-            assertThatThrownBy(() -> authService.refreshAccessToken(refreshTokenString))
+            assertThatThrownBy(() -> authService.refreshTokens(refreshTokenString))
                     .isInstanceOf(NoSuchElementException.class);
 
             verify(jwtService).parseToken(refreshTokenString);

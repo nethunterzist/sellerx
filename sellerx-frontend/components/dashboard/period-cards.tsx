@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
+import { motion } from "motion/react";
 import { PeriodCard } from "./period-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PeriodDetailModal, type PeriodDetailStats } from "./period-detail-modal";
@@ -15,6 +16,10 @@ export interface DynamicPeriodData {
   shortLabel: string;
   dateRange: string;
   color: "blue" | "teal" | "green" | "orange" | "purple" | "pink";
+  /** ISO date string for API calls (YYYY-MM-DD) */
+  startDate?: string;
+  /** ISO date string for API calls (YYYY-MM-DD) */
+  endDate?: string;
 }
 
 interface PeriodCardsPropsMulti {
@@ -24,6 +29,8 @@ interface PeriodCardsPropsMulti {
   isLoading?: boolean;
   selectedPeriod?: PeriodType;
   onPeriodSelect?: (period: PeriodType) => void;
+  /** Store ID for fetching deduction breakdown in modal */
+  storeId?: string;
 }
 
 interface PeriodCardsPropsSingle {
@@ -36,6 +43,12 @@ interface PeriodCardsPropsSingle {
   /** Date range for single card (e.g., "10 Oca - 16 Oca 2025") */
   customDateRange?: string;
   isLoading?: boolean;
+  /** Store ID for fetching deduction breakdown in modal */
+  storeId?: string;
+  /** Start date in ISO format for API calls */
+  startDate?: string;
+  /** End date in ISO format for API calls */
+  endDate?: string;
 }
 
 interface PeriodCardsPropsDynamic {
@@ -47,6 +60,8 @@ interface PeriodCardsPropsDynamic {
   /** Selected period index for filtering products table */
   selectedIndex?: number;
   onPeriodSelect?: (index: number) => void;
+  /** Store ID for fetching deduction breakdown in modal */
+  storeId?: string;
 }
 
 type PeriodCardsProps = PeriodCardsPropsMulti | PeriodCardsPropsSingle | PeriodCardsPropsDynamic;
@@ -304,6 +319,9 @@ interface DetailModalState {
   dateRange: string;
   stats: PeriodDetailStats | null;
   headerColor: string;
+  storeId?: string;
+  startDate?: string;
+  endDate?: string;
 }
 
 export function PeriodCards(props: PeriodCardsProps) {
@@ -314,21 +332,35 @@ export function PeriodCards(props: PeriodCardsProps) {
     dateRange: "",
     stats: null,
     headerColor: "bg-[#3B82F6]",
+    storeId: undefined,
+    startDate: undefined,
+    endDate: undefined,
   });
 
   // Helper to open detail modal
-  const openDetailModal = (title: string, dateRange: string, stats: DashboardStats, variant: SkeletonVariant) => {
+  const openDetailModal = (
+    title: string,
+    dateRange: string,
+    stats: DashboardStats,
+    variant: SkeletonVariant,
+    storeId?: string,
+    startDate?: string,
+    endDate?: string
+  ) => {
     setDetailModal({
       open: true,
       title,
       dateRange,
       stats: mapToDetailStats(stats),
       headerColor: variantToHeaderColor(variant),
+      storeId,
+      startDate,
+      endDate,
     });
   };
   // Dynamic mode for multi-period presets (weeks, months, quarters, etc.)
   if (props.mode === "dynamic") {
-    const { periodData, isLoading, selectedIndex = 0, onPeriodSelect } = props;
+    const { periodData, isLoading, selectedIndex = 0, onPeriodSelect, storeId } = props;
 
     if (isLoading) {
       return (
@@ -365,15 +397,20 @@ export function PeriodCards(props: PeriodCardsProps) {
             const variant = colorToVariant(period.color);
 
             return (
-              <PeriodCard
+              <motion.div
                 key={index}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.25, delay: index * 0.05, ease: [0.25, 0.1, 0.25, 1] as const }}
+                className="flex-1 min-w-0"
+              >
+              <PeriodCard
                 title={period.shortLabel}
                 dateRange={period.dateRange}
                 sales={cardData.sales}
                 ordersUnits={`${cardData.orders} / ${cardData.units}`}
                 refunds={cardData.refunds}
                 invoicedDeductions={cardData.invoicedDeductions}
-
                 grossProfit={cardData.grossProfit}
                 netProfit={cardData.netProfit}
                 commission={cardData.commission}
@@ -383,8 +420,9 @@ export function PeriodCards(props: PeriodCardsProps) {
                 variant={variant}
                 isSelected={selectedIndex === index}
                 onClick={() => onPeriodSelect?.(index)}
-                onDetailClick={() => openDetailModal(period.shortLabel, period.dateRange, period.stats!, variant)}
+                onDetailClick={() => openDetailModal(period.shortLabel, period.dateRange, period.stats!, variant, storeId, period.startDate, period.endDate)}
               />
+              </motion.div>
             );
           })}
         </div>
@@ -395,6 +433,9 @@ export function PeriodCards(props: PeriodCardsProps) {
           dateRange={detailModal.dateRange}
           stats={detailModal.stats}
           headerColor={detailModal.headerColor}
+          storeId={detailModal.storeId}
+          startDate={detailModal.startDate}
+          endDate={detailModal.endDate}
         />
       </>
     );
@@ -402,7 +443,7 @@ export function PeriodCards(props: PeriodCardsProps) {
 
   // Single card mode for custom date ranges
   if (props.mode === "single") {
-    const { customStats, customTitle, customDateRange, isLoading } = props;
+    const { customStats, customTitle, customDateRange, isLoading, storeId, startDate, endDate } = props;
 
     if (isLoading) {
       return (
@@ -436,7 +477,6 @@ export function PeriodCards(props: PeriodCardsProps) {
             ordersUnits={`${cardData.orders} / ${cardData.units}`}
             refunds={cardData.refunds}
             invoicedDeductions={cardData.invoicedDeductions}
-
             grossProfit={cardData.grossProfit}
             netProfit={cardData.netProfit}
             commission={cardData.commission}
@@ -445,7 +485,7 @@ export function PeriodCards(props: PeriodCardsProps) {
             itemsWithoutCost={cardData.itemsWithoutCost}
             variant="custom"
             isSelected={true}
-            onDetailClick={() => openDetailModal(title, dateRangeStr, customStats, "today")}
+            onDetailClick={() => openDetailModal(title, dateRangeStr, customStats, "today", storeId, startDate, endDate)}
           />
         </div>
         <PeriodDetailModal
@@ -455,13 +495,42 @@ export function PeriodCards(props: PeriodCardsProps) {
           dateRange={detailModal.dateRange}
           stats={detailModal.stats}
           headerColor={detailModal.headerColor}
+          storeId={detailModal.storeId}
+          startDate={detailModal.startDate}
+          endDate={detailModal.endDate}
         />
       </>
     );
   }
 
   // Multi card mode (default) - original implementation
-  const { stats, isLoading, selectedPeriod = "today", onPeriodSelect } = props;
+  const { stats, isLoading, selectedPeriod = "today", onPeriodSelect, storeId } = props;
+
+  // Helper to get ISO date range for API calls
+  const getIsoDateRange = (type: "today" | "yesterday" | "mtd" | "mtdForecast" | "lastMonth"): { startDate: string; endDate: string } => {
+    const now = new Date();
+    const formatDate = (d: Date) => d.toISOString().split("T")[0]; // YYYY-MM-DD
+
+    switch (type) {
+      case "today":
+        return { startDate: formatDate(now), endDate: formatDate(now) };
+      case "yesterday": {
+        const yesterday = new Date(now);
+        yesterday.setDate(yesterday.getDate() - 1);
+        return { startDate: formatDate(yesterday), endDate: formatDate(yesterday) };
+      }
+      case "mtd":
+      case "mtdForecast": {
+        const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+        return { startDate: formatDate(firstDay), endDate: formatDate(now) };
+      }
+      case "lastMonth": {
+        const firstDay = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const lastDay = new Date(now.getFullYear(), now.getMonth(), 0);
+        return { startDate: formatDate(firstDay), endDate: formatDate(lastDay) };
+      }
+    }
+  };
 
   // Show skeletons when loading
   if (isLoading) {
@@ -495,28 +564,6 @@ export function PeriodCards(props: PeriodCardsProps) {
   // Calculate forecast based on MTD data
   const forecast = thisMonth ? calculateForecast(thisMonth) : null;
 
-  // Calculate percentage changes for thisMonth vs lastMonth
-  const salesChangeThisMonth = thisMonth && lastMonth && lastMonth.sales !== 0
-    ? ((thisMonth.sales - lastMonth.sales) / lastMonth.sales) * 100
-    : undefined;
-
-  const netProfitChangeThisMonth = thisMonth && lastMonth && lastMonth.netProfit !== 0
-    ? ((thisMonth.netProfit - lastMonth.netProfit) / lastMonth.netProfit) * 100
-    : undefined;
-
-  // Calculate percentage changes for forecast vs lastMonth
-  const salesChangeForecast = forecast && lastMonth && lastMonth.sales !== 0
-    ? ((forecast.sales - lastMonth.sales) / lastMonth.sales) * 100
-    : undefined;
-
-  const netProfitChangeForecast = forecast && lastMonth && lastMonth.netProfit !== 0
-    ? ((forecast.netProfit - lastMonth.netProfit) / lastMonth.netProfit) * 100
-    : undefined;
-
-  // Last month vs previous month change (if we had data)
-  const salesChangeLastMonth = lastMonth ? 15.1 : undefined; // Mock data for demo
-  const netProfitChangeLastMonth = lastMonth ? -4.2 : undefined; // Mock data for demo
-
   // If no data at all, show empty state
   if (!today && !yesterday && !thisMonth && !lastMonth) {
     return (
@@ -528,118 +575,148 @@ export function PeriodCards(props: PeriodCardsProps) {
     );
   }
 
+  // Collect multi-mode cards for stagger indexing
+  const multiCards: { key: string; element: React.ReactElement }[] = [];
+
+  if (today && stats.today) {
+    multiCards.push({ key: "today", element: (
+      <PeriodCard
+        title="Bugun"
+        dateRange={getDateRange("today")}
+        sales={today.sales}
+        ordersUnits={`${today.orders} / ${today.units}`}
+        refunds={today.refunds}
+        invoicedDeductions={today.invoicedDeductions}
+        grossProfit={today.grossProfit}
+        netProfit={today.netProfit}
+        commission={today.commission}
+        productCosts={today.productCosts}
+        shippingCost={today.shippingCost}
+        itemsWithoutCost={today.itemsWithoutCost}
+        variant="today"
+        isSelected={selectedPeriod === "today"}
+        onClick={() => onPeriodSelect?.("today")}
+        onDetailClick={() => {
+          const dates = getIsoDateRange("today");
+          openDetailModal("Bugun", getDateRange("today"), stats.today, "today", storeId, dates.startDate, dates.endDate);
+        }}
+      />
+    )});
+  }
+  if (yesterday && stats.yesterday) {
+    multiCards.push({ key: "yesterday", element: (
+      <PeriodCard
+        title="Dun"
+        dateRange={getDateRange("yesterday")}
+        sales={yesterday.sales}
+        ordersUnits={`${yesterday.orders} / ${yesterday.units}`}
+        refunds={yesterday.refunds}
+        invoicedDeductions={yesterday.invoicedDeductions}
+        grossProfit={yesterday.grossProfit}
+        netProfit={yesterday.netProfit}
+        commission={yesterday.commission}
+        productCosts={yesterday.productCosts}
+        shippingCost={yesterday.shippingCost}
+        itemsWithoutCost={yesterday.itemsWithoutCost}
+        variant="yesterday"
+        isSelected={selectedPeriod === "yesterday"}
+        onClick={() => onPeriodSelect?.("yesterday")}
+        onDetailClick={() => {
+          const dates = getIsoDateRange("yesterday");
+          openDetailModal("Dun", getDateRange("yesterday"), stats.yesterday, "yesterday", storeId, dates.startDate, dates.endDate);
+        }}
+      />
+    )});
+  }
+  if (thisMonth && stats.thisMonth) {
+    multiCards.push({ key: "thisMonth", element: (
+      <PeriodCard
+        title="Bu Ay"
+        dateRange={getDateRange("mtd")}
+        sales={thisMonth.sales}
+        ordersUnits={`${thisMonth.orders} / ${thisMonth.units}`}
+        refunds={thisMonth.refunds}
+        invoicedDeductions={thisMonth.invoicedDeductions}
+        grossProfit={thisMonth.grossProfit}
+        netProfit={thisMonth.netProfit}
+        commission={thisMonth.commission}
+        productCosts={thisMonth.productCosts}
+        shippingCost={thisMonth.shippingCost}
+        itemsWithoutCost={thisMonth.itemsWithoutCost}
+        variant="thisMonth"
+        isSelected={selectedPeriod === "thisMonth"}
+        onClick={() => onPeriodSelect?.("thisMonth")}
+        onDetailClick={() => {
+          const dates = getIsoDateRange("mtd");
+          openDetailModal("Bu Ay", getDateRange("mtd"), stats.thisMonth, "thisMonth", storeId, dates.startDate, dates.endDate);
+        }}
+      />
+    )});
+  }
+  if (forecast && stats.thisMonth) {
+    multiCards.push({ key: "forecast", element: (
+      <PeriodCard
+        title="Bu Ay (tahmin)"
+        dateRange={getDateRange("mtdForecast")}
+        sales={forecast.sales}
+        ordersUnits={`${forecast.orders} / ${forecast.units}`}
+        refunds={forecast.refunds}
+        invoicedDeductions={forecast.invoicedDeductions}
+        grossProfit={forecast.grossProfit}
+        netProfit={forecast.netProfit}
+        commission={forecast.commission}
+        productCosts={forecast.productCosts}
+        shippingCost={forecast.shippingCost}
+        itemsWithoutCost={forecast.itemsWithoutCost}
+        variant="thisMonthForecast"
+        disabled={true}
+        onDetailClick={() => {
+          const dates = getIsoDateRange("mtdForecast");
+          openDetailModal("Bu Ay (tahmin)", getDateRange("mtdForecast"), stats.thisMonth, "thisMonthForecast", storeId, dates.startDate, dates.endDate);
+        }}
+      />
+    )});
+  }
+  if (lastMonth && stats.lastMonth) {
+    multiCards.push({ key: "lastMonth", element: (
+      <PeriodCard
+        title="Gecen Ay"
+        dateRange={getDateRange("lastMonth")}
+        sales={lastMonth.sales}
+        ordersUnits={`${lastMonth.orders} / ${lastMonth.units}`}
+        refunds={lastMonth.refunds}
+        invoicedDeductions={lastMonth.invoicedDeductions}
+        grossProfit={lastMonth.grossProfit}
+        netProfit={lastMonth.netProfit}
+        commission={lastMonth.commission}
+        productCosts={lastMonth.productCosts}
+        shippingCost={lastMonth.shippingCost}
+        itemsWithoutCost={lastMonth.itemsWithoutCost}
+        variant="lastMonth"
+        isSelected={selectedPeriod === "lastMonth"}
+        onClick={() => onPeriodSelect?.("lastMonth")}
+        onDetailClick={() => {
+          const dates = getIsoDateRange("lastMonth");
+          openDetailModal("Gecen Ay", getDateRange("lastMonth"), stats.lastMonth, "lastMonth", storeId, dates.startDate, dates.endDate);
+        }}
+      />
+    )});
+  }
+
   return (
     <>
       <div className="flex gap-4 overflow-x-auto pb-2">
-        {today && stats.today && (
-          <PeriodCard
-            title="Bugun"
-            dateRange={getDateRange("today")}
-            sales={today.sales}
-            ordersUnits={`${today.orders} / ${today.units}`}
-            refunds={today.refunds}
-            invoicedDeductions={today.invoicedDeductions}
-            grossProfit={today.grossProfit}
-            netProfit={today.netProfit}
-            commission={today.commission}
-            productCosts={today.productCosts}
-            shippingCost={today.shippingCost}
-            itemsWithoutCost={today.itemsWithoutCost}
-            variant="today"
-            isSelected={selectedPeriod === "today"}
-            onClick={() => onPeriodSelect?.("today")}
-            onDetailClick={() => openDetailModal("Bugun", getDateRange("today"), stats.today, "today")}
-          />
-        )}
-        {yesterday && stats.yesterday && (
-          <PeriodCard
-            title="Dun"
-            dateRange={getDateRange("yesterday")}
-            sales={yesterday.sales}
-            ordersUnits={`${yesterday.orders} / ${yesterday.units}`}
-            refunds={yesterday.refunds}
-            invoicedDeductions={yesterday.invoicedDeductions}
-
-            grossProfit={yesterday.grossProfit}
-            netProfit={yesterday.netProfit}
-            commission={yesterday.commission}
-            productCosts={yesterday.productCosts}
-            shippingCost={yesterday.shippingCost}
-            itemsWithoutCost={yesterday.itemsWithoutCost}
-            variant="yesterday"
-            isSelected={selectedPeriod === "yesterday"}
-            onClick={() => onPeriodSelect?.("yesterday")}
-            onDetailClick={() => openDetailModal("Dun", getDateRange("yesterday"), stats.yesterday, "yesterday")}
-          />
-        )}
-        {thisMonth && stats.thisMonth && (
-          <PeriodCard
-            title="Bu Ay"
-            dateRange={getDateRange("mtd")}
-            sales={thisMonth.sales}
-            ordersUnits={`${thisMonth.orders} / ${thisMonth.units}`}
-            refunds={thisMonth.refunds}
-            invoicedDeductions={thisMonth.invoicedDeductions}
-
-            grossProfit={thisMonth.grossProfit}
-            netProfit={thisMonth.netProfit}
-            commission={thisMonth.commission}
-            productCosts={thisMonth.productCosts}
-            shippingCost={thisMonth.shippingCost}
-            itemsWithoutCost={thisMonth.itemsWithoutCost}
-            variant="thisMonth"
-            salesChange={salesChangeThisMonth}
-            netProfitChange={netProfitChangeThisMonth}
-            isSelected={selectedPeriod === "thisMonth"}
-            onClick={() => onPeriodSelect?.("thisMonth")}
-            onDetailClick={() => openDetailModal("Bu Ay", getDateRange("mtd"), stats.thisMonth, "thisMonth")}
-          />
-        )}
-        {forecast && stats.thisMonth && (
-          <PeriodCard
-            title="Bu Ay (tahmin)"
-            dateRange={getDateRange("mtdForecast")}
-            sales={forecast.sales}
-            ordersUnits={`${forecast.orders} / ${forecast.units}`}
-            refunds={forecast.refunds}
-            invoicedDeductions={forecast.invoicedDeductions}
-
-            grossProfit={forecast.grossProfit}
-            netProfit={forecast.netProfit}
-            commission={forecast.commission}
-            productCosts={forecast.productCosts}
-            shippingCost={forecast.shippingCost}
-            itemsWithoutCost={forecast.itemsWithoutCost}
-            variant="thisMonthForecast"
-            salesChange={salesChangeForecast}
-            netProfitChange={netProfitChangeForecast}
-            disabled={true}
-            onDetailClick={() => openDetailModal("Bu Ay (tahmin)", getDateRange("mtdForecast"), stats.thisMonth, "thisMonthForecast")}
-          />
-        )}
-        {lastMonth && stats.lastMonth && (
-          <PeriodCard
-            title="Gecen Ay"
-            dateRange={getDateRange("lastMonth")}
-            sales={lastMonth.sales}
-            ordersUnits={`${lastMonth.orders} / ${lastMonth.units}`}
-            refunds={lastMonth.refunds}
-            invoicedDeductions={lastMonth.invoicedDeductions}
-
-            grossProfit={lastMonth.grossProfit}
-            netProfit={lastMonth.netProfit}
-            commission={lastMonth.commission}
-            productCosts={lastMonth.productCosts}
-            shippingCost={lastMonth.shippingCost}
-            itemsWithoutCost={lastMonth.itemsWithoutCost}
-            variant="lastMonth"
-            salesChange={salesChangeLastMonth}
-            netProfitChange={netProfitChangeLastMonth}
-            isSelected={selectedPeriod === "lastMonth"}
-            onClick={() => onPeriodSelect?.("lastMonth")}
-            onDetailClick={() => openDetailModal("Gecen Ay", getDateRange("lastMonth"), stats.lastMonth, "lastMonth")}
-          />
-        )}
+        {multiCards.map((card, index) => (
+          <motion.div
+            key={card.key}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.25, delay: index * 0.05, ease: [0.25, 0.1, 0.25, 1] as const }}
+            className="flex-1 min-w-0"
+          >
+            {card.element}
+          </motion.div>
+        ))}
       </div>
       <PeriodDetailModal
         open={detailModal.open}
@@ -648,6 +725,9 @@ export function PeriodCards(props: PeriodCardsProps) {
         dateRange={detailModal.dateRange}
         stats={detailModal.stats}
         headerColor={detailModal.headerColor}
+        storeId={detailModal.storeId}
+        startDate={detailModal.startDate}
+        endDate={detailModal.endDate}
       />
     </>
   );

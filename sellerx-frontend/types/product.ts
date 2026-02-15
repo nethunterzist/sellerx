@@ -17,9 +17,6 @@ export interface CostAndStockInfo {
   // ============== ÖTV Desteği (Excel F5) ==============
   otvRate?: number | null; // Özel Tüketim Vergisi oranı (örn: 0.2 = %20)
 
-  // ============== Reklam Metrikleri (Excel C23, C24) ==============
-  cpc?: number | null; // Cost Per Click (TL)
-  cvr?: number | null; // Conversion Rate (örn: 0.018 = %1.8)
 }
 
 // Backend: TrendyolProductDto
@@ -64,6 +61,18 @@ export interface TrendyolProduct {
 
   // ============== ÖTV (Excel F5) ==============
   otvRate?: number | null; // Özel Tüketim Vergisi oranı
+
+  // ============== Kargo Maliyeti ==============
+  lastShippingCostPerUnit?: number | null; // Son kargo faturasından hesaplanan birim kargo maliyeti
+
+  // ============== Komisyon ==============
+  lastCommissionRate?: number | null; // Son komisyon faturasından gelen oran (%)
+
+  // ============== Buybox Bilgileri ==============
+  buyboxOrder?: number | null;
+  buyboxPrice?: number | null;
+  hasMultipleSeller?: boolean;
+  buyboxUpdatedAt?: string | null;
 }
 
 // Backend: ProductListResponse
@@ -119,4 +128,42 @@ export interface ProductFilters {
   maxCommission?: number;
   minCost?: number;
   maxCost?: number;
+}
+
+// Buybox types
+export interface BuyboxSummary {
+  totalProducts: number;
+  buyboxWinning: number;
+  buyboxLosing: number;
+  withCompetitors: number;
+  noCompetition: number;
+  notChecked: number;
+  winRate: number;
+}
+
+export type BuyboxStatus = "WINNING" | "LOSING" | "NO_COMPETITION" | "NOT_CHECKED";
+
+export interface BuyboxProduct {
+  productId: string;
+  barcode: string;
+  title: string;
+  image: string;
+  productUrl: string | null;
+  salePrice: number;
+  buyboxOrder: number | null;
+  buyboxPrice: number | null;
+  hasMultipleSeller: boolean;
+  priceDifference: number | null;
+  buyboxStatus: BuyboxStatus;
+  buyboxUpdatedAt: string | null;
+}
+
+export interface BuyboxProductsResponse {
+  content: BuyboxProduct[];
+  totalElements: number;
+  totalPages: number;
+  number: number;
+  size: number;
+  first: boolean;
+  last: boolean;
 }

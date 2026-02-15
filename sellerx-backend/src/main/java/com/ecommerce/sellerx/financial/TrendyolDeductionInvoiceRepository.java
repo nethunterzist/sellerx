@@ -37,6 +37,17 @@ public interface TrendyolDeductionInvoiceRepository extends JpaRepository<Trendy
     List<TrendyolDeductionInvoice> findByStoreIdAndOrderNumber(UUID storeId, String orderNumber);
 
     /**
+     * Sum platform service fee by store and order number.
+     * Used for orders table to show per-order platform fee.
+     */
+    @Query("SELECT COALESCE(SUM(d.debt), 0) FROM TrendyolDeductionInvoice d " +
+            "WHERE d.storeId = :storeId AND d.orderNumber = :orderNumber " +
+            "AND d.transactionType = 'Platform Hizmet Bedeli'")
+    BigDecimal sumPlatformFeeByStoreIdAndOrderNumber(
+            @Param("storeId") UUID storeId,
+            @Param("orderNumber") String orderNumber);
+
+    /**
      * Find all invoices for a store in date range
      */
     List<TrendyolDeductionInvoice> findByStoreIdAndTransactionDateBetween(
@@ -78,13 +89,32 @@ public interface TrendyolDeductionInvoiceRepository extends JpaRepository<Trendy
             @Param("endDate") LocalDateTime endDate);
 
     /**
-     * Calculate total cargo fees in date range
+     * Calculate total cargo fees in date range.
+     * Includes all KARGO category types: Kargo Fatura, Kargo Faturası, AZ - Kargo Fatura.
+     * Excludes MP Kargo İtiraz İade Faturası (refund type).
      */
     @Query("SELECT COALESCE(SUM(d.debt), 0) FROM TrendyolDeductionInvoice d " +
             "WHERE d.storeId = :storeId " +
             "AND d.transactionDate BETWEEN :startDate AND :endDate " +
-            "AND d.transactionType = 'Kargo Fatura'")
+            "AND d.transactionType IN ('Kargo Fatura', 'Kargo Faturası', 'AZ - Kargo Fatura')")
     BigDecimal sumCargoFeesByStoreIdAndDateRange(
+            @Param("storeId") UUID storeId,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate);
+
+    /**
+     * Calculate total commission fees in date range.
+     * Includes all KOMISYON category types from TrendyolInvoiceService.TYPE_TO_CATEGORY:
+     * - Komisyon Faturası
+     * - AZ - Komisyon Faturası
+     * - AZ-Komisyon Geliri
+     * This matches the Faturalar (Invoices) page calculation.
+     */
+    @Query("SELECT COALESCE(SUM(d.debt), 0) FROM TrendyolDeductionInvoice d " +
+            "WHERE d.storeId = :storeId " +
+            "AND d.transactionDate BETWEEN :startDate AND :endDate " +
+            "AND d.transactionType IN ('Komisyon Faturası', 'AZ - Komisyon Faturası', 'AZ-Komisyon Geliri')")
+    BigDecimal sumCommissionFeesByStoreIdAndDateRange(
             @Param("storeId") UUID storeId,
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate);
@@ -114,12 +144,18 @@ public interface TrendyolDeductionInvoiceRepository extends JpaRepository<Trendy
             @Param("endDate") LocalDateTime endDate);
 
     /**
-     * Get breakdown of all deduction types with totals for a date range
+     * Get breakdown of all deduction types with totals for a date range.
+     * Used for dashboard detail panel to show all invoice types individually.
+     * Returns both debt (deductions) and credit (refunds) for each type.
      */
-    @Query("SELECT d.transactionType AS transactionType, COALESCE(SUM(d.debt), 0) AS totalDebt FROM TrendyolDeductionInvoice d " +
+    @Query("SELECT d.transactionType AS transactionType, " +
+            "COALESCE(SUM(d.debt), 0) AS totalDebt, " +
+            "COALESCE(SUM(d.credit), 0) AS totalCredit " +
+            "FROM TrendyolDeductionInvoice d " +
             "WHERE d.storeId = :storeId " +
             "AND d.transactionDate BETWEEN :startDate AND :endDate " +
-            "GROUP BY d.transactionType")
+            "GROUP BY d.transactionType " +
+            "ORDER BY d.transactionType")
     List<DeductionBreakdownProjection> getDeductionBreakdownByStoreIdAndDateRange(
             @Param("storeId") UUID storeId,
             @Param("startDate") LocalDateTime startDate,
@@ -228,16 +264,15 @@ public interface TrendyolDeductionInvoiceRepository extends JpaRepository<Trendy
 
     /**
      * Sum all international fees (Uluslararası Hizmet, AZ-Uluslararası, Yurt Dışı Operasyon)
-     * Note: AZ-Yurtdışı Operasyon Bedeli is excluded - it's treated as a refund (İADE)
-     * because it shows as negative in Trendyol UI (money returned to seller)
+     * Includes AZ-Yurtdışı Operasyon Bedeli - this is an operation fee, not a refund
      */
     @Query("SELECT COALESCE(SUM(d.debt), 0) FROM TrendyolDeductionInvoice d " +
             "WHERE d.storeId = :storeId " +
             "AND d.transactionDate BETWEEN :startDate AND :endDate " +
             "AND (d.transactionType IN ('Uluslararası Hizmet Bedeli', 'AZ-Uluslararası Hizmet Bedeli', " +
-            "'Yurt Dışı Operasyon Bedeli') " +
-            "OR (d.transactionType LIKE '%Uluslararası%' AND d.transactionType NOT LIKE '%Iade%')) " +
-            "AND d.transactionType NOT LIKE 'AZ-%Yurt%Operasyon%' " +
+            "'Yurt Dışı Operasyon Bedeli', 'AZ-Yurtdışı Operasyon Bedeli') " +
+            "OR (d.transactionType LIKE '%Uluslararası%' AND d.transactionType NOT LIKE '%Iade%') " +
+            "OR (d.transactionType LIKE 'AZ-%Yurt%Operasyon%' AND d.transactionType NOT LIKE '%Iade%')) " +
             "AND d.transactionType NOT LIKE '%Iade%' AND d.transactionType NOT LIKE '%İade%'")
     BigDecimal sumInvoicedInternationalFees(
             @Param("storeId") UUID storeId,
@@ -271,18 +306,35 @@ public interface TrendyolDeductionInvoiceRepository extends JpaRepository<Trendy
      * Uses CASE WHEN to capture both credit-based and debt-based refunds:
      * - credit > 0: Direct refund from Trendyol
      * - debt > 0 with refund type: Trendyol sends some refunds as positive debt
-     * Includes AZ-Yurtdışı Operasyon Bedeli which shows as negative in Trendyol UI
+     * Note: TEX Tazmin-İşleme is excluded (processing fee, not refund)
+     * Note: AZ-Yurtdışı Operasyon Bedeli is excluded (operation fee, not refund - goes to International)
      */
     @Query("SELECT COALESCE(SUM(CASE WHEN d.credit > 0 THEN d.credit ELSE d.debt END), 0) FROM TrendyolDeductionInvoice d " +
             "WHERE d.storeId = :storeId " +
             "AND d.transactionDate BETWEEN :startDate AND :endDate " +
             "AND (d.transactionType IN ('Yurtdışı Operasyon Iade Bedeli', 'MP Kargo İtiraz İade Faturası', 'Tazmin Faturası') " +
-            "OR d.transactionType LIKE '%Iade%' OR d.transactionType LIKE '%İade%' OR d.transactionType LIKE '%Tazmin%' " +
-            "OR (d.transactionType LIKE 'AZ-%' AND d.transactionType LIKE '%Yurt%' AND d.transactionType LIKE '%Operasyon%'))")
+            "OR d.transactionType LIKE '%Iade%' OR d.transactionType LIKE '%İade%' " +
+            "OR (d.transactionType LIKE '%Tazmin%' AND d.transactionType NOT LIKE 'TEX%'))")
     BigDecimal sumInvoicedRefunds(
             @Param("storeId") UUID storeId,
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate);
+
+    /**
+     * Check if a deduction invoice exists with the same content (debt, date, type).
+     * Used to prevent duplicate invoices when Trendyol API returns different IDs
+     * for the same invoice (e.g., numeric ID vs DDF/AZD format).
+     */
+    boolean existsByStoreIdAndDebtAndTransactionDateAndTransactionType(
+            UUID storeId, BigDecimal debt, LocalDateTime transactionDate, String transactionType);
+
+    /**
+     * Check if a return invoice exists with the same content (credit, date, type).
+     * Used to prevent duplicate return invoices when Trendyol API returns different IDs
+     * for the same invoice (e.g., numeric ID vs TYE format).
+     */
+    boolean existsByStoreIdAndCreditAndTransactionDateAndTransactionType(
+            UUID storeId, BigDecimal credit, LocalDateTime transactionDate, String transactionType);
 
     /**
      * Aggregate deduction invoice data by barcode for specific transaction types.
@@ -316,6 +368,29 @@ public interface TrendyolDeductionInvoiceRepository extends JpaRepository<Trendy
     List<DeductionByBarcodeProjection> aggregateByBarcodeAndTypesInDateRange(
             @Param("storeId") UUID storeId,
             @Param("types") List<String> types,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate);
+
+    /**
+     * Get all deduction invoices for a specific barcode in date range.
+     * Joins with orders table to filter by barcode from order_items JSONB.
+     * Used for product-specific expense breakdown in "Detay" panel.
+     */
+    @Query(value = """
+            SELECT d.*
+            FROM trendyol_deduction_invoices d
+            INNER JOIN trendyol_orders o ON o.ty_order_number = d.order_number AND o.store_id = d.store_id
+            WHERE d.store_id = :storeId
+            AND d.transaction_date BETWEEN :startDate AND :endDate
+            AND EXISTS (
+                SELECT 1 FROM jsonb_array_elements(o.order_items) item
+                WHERE item->>'barcode' = :barcode
+            )
+            ORDER BY d.transaction_date DESC
+            """, nativeQuery = true)
+    List<TrendyolDeductionInvoice> findByStoreIdAndBarcodeAndDateRange(
+            @Param("storeId") UUID storeId,
+            @Param("barcode") String barcode,
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate);
 }

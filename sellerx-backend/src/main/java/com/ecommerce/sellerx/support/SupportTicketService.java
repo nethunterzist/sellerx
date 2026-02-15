@@ -30,6 +30,7 @@ public class SupportTicketService {
 
     private final SupportTicketRepository ticketRepository;
     private final TicketMessageRepository messageRepository;
+    private final TicketAttachmentRepository attachmentRepository;
     private final StoreRepository storeRepository;
     private final UserService userService;
     private final EmailService emailService;
@@ -296,6 +297,88 @@ public class SupportTicketService {
                 .build();
     }
 
+    // === Attachments ===
+
+    /**
+     * Add attachment to ticket (validates ticket ownership for users).
+     */
+    @Transactional
+    public TicketAttachmentDto addAttachment(Long ticketId, Long userId, boolean isAdmin,
+                                              String fileName, String fileType, long fileSize, byte[] fileData) {
+        SupportTicket ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new EntityNotFoundException("Destek talebi bulunamadı"));
+
+        // Validate ownership for non-admin users
+        if (!isAdmin && !ticket.getUser().getId().equals(userId)) {
+            throw new SecurityException("Bu destek talebine erişim yetkiniz yok");
+        }
+
+        TicketAttachment attachment = TicketAttachment.builder()
+                .ticket(ticket)
+                .fileName(fileName)
+                .fileType(fileType)
+                .fileSize(fileSize)
+                .fileData(fileData)
+                .build();
+
+        attachmentRepository.save(attachment);
+        log.info("Added attachment '{}' to ticket {}", fileName, ticket.getTicketNumber());
+        return toAttachmentDto(attachment);
+    }
+
+    /**
+     * Get attachments for ticket (validates ticket ownership for users).
+     */
+    public List<TicketAttachmentDto> getAttachments(Long ticketId, Long userId, boolean isAdmin) {
+        SupportTicket ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new EntityNotFoundException("Destek talebi bulunamadı"));
+
+        // Validate ownership for non-admin users
+        if (!isAdmin && !ticket.getUser().getId().equals(userId)) {
+            throw new SecurityException("Bu destek talebine erişim yetkiniz yok");
+        }
+
+        return attachmentRepository.findByTicketIdOrderByUploadedAtDesc(ticketId).stream()
+                .map(this::toAttachmentDto)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Get attachment with binary data for download (validates ticket ownership for users).
+     */
+    public TicketAttachment getAttachmentWithData(Long ticketId, Long attachmentId, Long userId, boolean isAdmin) {
+        SupportTicket ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new EntityNotFoundException("Destek talebi bulunamadı"));
+
+        // Validate ownership for non-admin users
+        if (!isAdmin && !ticket.getUser().getId().equals(userId)) {
+            throw new SecurityException("Bu destek talebine erişim yetkiniz yok");
+        }
+
+        return attachmentRepository.findByTicketIdAndId(ticketId, attachmentId)
+                .orElseThrow(() -> new EntityNotFoundException("Dosya bulunamadı"));
+    }
+
+    /**
+     * Delete attachment (validates ticket ownership for users).
+     */
+    @Transactional
+    public void deleteAttachment(Long ticketId, Long attachmentId, Long userId, boolean isAdmin) {
+        SupportTicket ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new EntityNotFoundException("Destek talebi bulunamadı"));
+
+        // Validate ownership for non-admin users
+        if (!isAdmin && !ticket.getUser().getId().equals(userId)) {
+            throw new SecurityException("Bu destek talebine erişim yetkiniz yok");
+        }
+
+        TicketAttachment attachment = attachmentRepository.findByTicketIdAndId(ticketId, attachmentId)
+                .orElseThrow(() -> new EntityNotFoundException("Dosya bulunamadı"));
+
+        attachmentRepository.delete(attachment);
+        log.info("Deleted attachment {} from ticket {}", attachmentId, ticket.getTicketNumber());
+    }
+
     // === Helper Methods ===
 
     private String generateTicketNumber() {
@@ -360,6 +443,16 @@ public class SupportTicketService {
                 .message(message.getMessage())
                 .isAdminReply(message.getIsAdminReply())
                 .createdAt(message.getCreatedAt())
+                .build();
+    }
+
+    private TicketAttachmentDto toAttachmentDto(TicketAttachment attachment) {
+        return TicketAttachmentDto.builder()
+                .id(attachment.getId())
+                .fileName(attachment.getFileName())
+                .fileType(attachment.getFileType())
+                .fileSize(attachment.getFileSize())
+                .uploadedAt(attachment.getUploadedAt())
                 .build();
     }
 }

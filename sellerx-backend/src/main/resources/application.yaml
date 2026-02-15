@@ -6,8 +6,15 @@ spring:
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/sellerx_db}
     username: ${SPRING_DATASOURCE_USERNAME:postgres}
-    password: ${SPRING_DATASOURCE_PASSWORD:}
+    password: ${SPRING_DATASOURCE_PASSWORD:postgres123}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 40
+      minimum-idle: 10
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      leak-detection-threshold: 60000
   jpa:
     show-sql: false
     hibernate:
@@ -53,6 +60,48 @@ app:
     update-cron: "0 0 10 * * ?" # Daily at 10:00 AM Turkey time
     supported: [TRY, USD, EUR]
 
+# RabbitMQ Configuration
+spring.rabbitmq:
+  host: ${RABBITMQ_HOST:localhost}
+  port: ${RABBITMQ_PORT:5672}
+  username: ${RABBITMQ_USER:guest}
+  password: ${RABBITMQ_PASSWORD:guest}
+  connection-timeout: 10s
+  listener:
+    simple:
+      concurrency: 3
+      max-concurrency: 10
+      prefetch: 1
+      acknowledge-mode: auto
+      retry:
+        enabled: true
+        initial-interval: 1000
+        max-attempts: 3
+        multiplier: 2.0
+
+# Parallel Sync Configuration (for 1500+ stores scaling)
+sellerx:
+  # Sync Queue Configuration
+  queue:
+    sync:
+      exchange: sellerx.sync
+      orders-queue: sync.orders
+      products-queue: sync.products
+      financial-queue: sync.financial
+      dlq: sync.dlq
+      routing-key-prefix: sync
+  sync:
+    # Enable queue-based sync via RabbitMQ (default: false for backward compatibility)
+    queue-enabled: ${SYNC_QUEUE_ENABLED:false}
+    parallel:
+      enabled: ${PARALLEL_SYNC_ENABLED:true}
+      threads: ${PARALLEL_SYNC_THREADS:15}  # Concurrent store syncs
+    batch:
+      size: ${SYNC_BATCH_SIZE:50}  # Stores per batch
+    store:
+      timeout:
+        seconds: ${SYNC_STORE_TIMEOUT:120}  # Per-store timeout (2 min)
+
 # iyzico payment gateway configuration
 iyzico:
   api-key: ${IYZICO_API_KEY:sandbox-api-key}
@@ -71,7 +120,35 @@ parasut:
   base-url: ${PARASUT_BASE_URL:https://api.parasut.com}
   redirect-uri: ${PARASUT_REDIRECT_URI:http://localhost:8080/api/webhook/parasut/callback}
 
-# SendGrid Email configuration
+# Email configuration
+email:
+  provider: ${EMAIL_PROVIDER:smtp}  # smtp or sendgrid
+  from-address: ${EMAIL_FROM:noreply@sellerx.com}
+  from-name: ${EMAIL_FROM_NAME:SellerX}
+  enabled: ${EMAIL_ENABLED:false}
+  queue:
+    batch-size: 50
+    retry-delay-minutes: 5
+    cleanup-days: 30  # Delete sent emails older than this
+
+# SMTP configuration (when email.provider=smtp)
+spring.mail:
+  host: ${SMTP_HOST:smtp.example.com}
+  port: ${SMTP_PORT:587}
+  username: ${SMTP_USERNAME:}
+  password: ${SMTP_PASSWORD:}
+  properties:
+    mail:
+      smtp:
+        auth: true
+        starttls:
+          enable: true
+          required: true
+        connectiontimeout: 5000
+        timeout: 5000
+        writetimeout: 5000
+
+# SendGrid configuration (when email.provider=sendgrid)
 sendgrid:
   enabled: ${SENDGRID_ENABLED:false}
   api-key: ${SENDGRID_API_KEY:}
@@ -125,11 +202,110 @@ management:
     loggers:
       enabled: true
 
+# Resilience4j Configuration
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        registerHealthIndicator: true
+        slidingWindowType: COUNT_BASED
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        failureRateThreshold: 50
+        waitDurationInOpenState: 30s
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        recordExceptions:
+          - java.io.IOException
+          - java.net.SocketTimeoutException
+          - org.springframework.web.client.HttpServerErrorException
+          - org.springframework.web.client.ResourceAccessException
+    instances:
+      trendyolApi:
+        baseConfig: default
+        slidingWindowSize: 10
+        failureRateThreshold: 50
+        waitDurationInOpenState: 30s
+      trendyolSync:
+        baseConfig: default
+        slidingWindowSize: 20
+        failureRateThreshold: 40
+        waitDurationInOpenState: 60s
+      externalService:
+        baseConfig: default
+        slidingWindowSize: 5
+        failureRateThreshold: 60
+        waitDurationInOpenState: 20s
+
+  retry:
+    configs:
+      default:
+        maxAttempts: 3
+        waitDuration: 1s
+        enableExponentialBackoff: true
+        exponentialBackoffMultiplier: 2
+        retryExceptions:
+          - java.io.IOException
+          - java.net.SocketTimeoutException
+          - org.springframework.web.client.HttpServerErrorException
+          - org.springframework.web.client.ResourceAccessException
+        ignoreExceptions:
+          - org.springframework.web.client.HttpClientErrorException$Unauthorized
+          - org.springframework.web.client.HttpClientErrorException$Forbidden
+    instances:
+      trendyolApi:
+        baseConfig: default
+        maxAttempts: 3
+        waitDuration: 500ms
+      trendyolSync:
+        baseConfig: default
+        maxAttempts: 5
+        waitDuration: 1s
+        exponentialBackoffMultiplier: 2.5
+
+  ratelimiter:
+    configs:
+      default:
+        limitForPeriod: 10
+        limitRefreshPeriod: 1s
+        timeoutDuration: 5s
+    instances:
+      trendyolApi:
+        baseConfig: default
+        limitForPeriod: 10
+        limitRefreshPeriod: 1s
+        timeoutDuration: 0ms  # Non-blocking: return immediately if limit exceeded
+
+  bulkhead:
+    configs:
+      default:
+        maxConcurrentCalls: 25
+        maxWaitDuration: 0ms
+    instances:
+      trendyolSync:
+        maxConcurrentCalls: 50
+        maxWaitDuration: 100ms
+      trendyolApi:
+        maxConcurrentCalls: 100
+        maxWaitDuration: 0ms
+
+  timelimiter:
+    configs:
+      default:
+        timeoutDuration: 30s
+        cancelRunningFuture: true
+    instances:
+      trendyolApi:
+        timeoutDuration: 30s
+      trendyolSync:
+        timeoutDuration: 180s  # 3 minutes for sync operations
+
 logging:
   level:
     com.ecommerce.sellerx.products: INFO
     com.ecommerce.sellerx.orders: INFO
     org.hibernate.SQL: INFO
+    io.github.resilience4j: INFO
     root: INFO
 #server:
 #  port: 8443

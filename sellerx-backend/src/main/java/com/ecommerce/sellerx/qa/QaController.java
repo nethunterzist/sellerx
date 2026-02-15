@@ -49,6 +49,7 @@ public class QaController {
      * Get single question by ID
      */
     @GetMapping("/questions/{questionId}")
+    @PreAuthorize("@userSecurityRules.canAccessQuestion(authentication, #questionId)")
     public ResponseEntity<QuestionDto> getQuestion(@PathVariable UUID questionId) {
         QuestionDto question = qaService.getQuestion(questionId);
         return ResponseEntity.ok(question);
@@ -94,6 +95,7 @@ public class QaController {
      * Generate AI answer for a question
      */
     @PostMapping("/questions/{questionId}/ai-generate")
+    @PreAuthorize("@userSecurityRules.canAccessQuestion(authentication, #questionId)")
     public ResponseEntity<AiGenerateResponse> generateAiAnswer(@PathVariable UUID questionId) {
         AiGenerateResponse response = aiAnswerService.generateAnswer(questionId);
         return ResponseEntity.ok(response);
@@ -103,6 +105,7 @@ public class QaController {
      * Approve and submit AI-generated answer to Trendyol
      */
     @PostMapping("/questions/{questionId}/ai-approve")
+    @PreAuthorize("@userSecurityRules.canAccessQuestion(authentication, #questionId)")
     public ResponseEntity<AnswerDto> approveAndSubmitAiAnswer(
             @PathVariable UUID questionId,
             @RequestBody AiApproveRequest request,
@@ -158,6 +161,7 @@ public class QaController {
      * Approve a suggestion - creates knowledge base entry
      */
     @PostMapping("/suggestions/{suggestionId}/approve")
+    @PreAuthorize("@userSecurityRules.canAccessSuggestion(authentication, #suggestionId)")
     public ResponseEntity<KnowledgeSuggestionDto> approveSuggestion(
             @PathVariable UUID suggestionId,
             @AuthenticationPrincipal User user) {
@@ -169,6 +173,7 @@ public class QaController {
      * Reject a suggestion
      */
     @PostMapping("/suggestions/{suggestionId}/reject")
+    @PreAuthorize("@userSecurityRules.canAccessSuggestion(authentication, #suggestionId)")
     public ResponseEntity<KnowledgeSuggestionDto> rejectSuggestion(
             @PathVariable UUID suggestionId,
             @RequestBody(required = false) RejectSuggestionRequest request,
@@ -182,6 +187,7 @@ public class QaController {
      * Modify and approve a suggestion
      */
     @PostMapping("/suggestions/{suggestionId}/modify")
+    @PreAuthorize("@userSecurityRules.canAccessSuggestion(authentication, #suggestionId)")
     public ResponseEntity<KnowledgeSuggestionDto> modifySuggestion(
             @PathVariable UUID suggestionId,
             @RequestBody ModifySuggestionRequest request,
@@ -222,6 +228,7 @@ public class QaController {
      * Manually promote a pattern
      */
     @PostMapping("/patterns/{patternId}/promote")
+    @PreAuthorize("@userSecurityRules.canAccessPattern(authentication, #patternId)")
     public ResponseEntity<QaPatternDto> promotePattern(
             @PathVariable UUID patternId,
             @AuthenticationPrincipal User user) {
@@ -233,6 +240,7 @@ public class QaController {
      * Manually demote a pattern
      */
     @PostMapping("/patterns/{patternId}/demote")
+    @PreAuthorize("@userSecurityRules.canAccessPattern(authentication, #patternId)")
     public ResponseEntity<QaPatternDto> demotePattern(
             @PathVariable UUID patternId,
             @RequestBody(required = false) DemotePatternRequest request,
@@ -246,6 +254,7 @@ public class QaController {
      * Enable auto-submit for a pattern (skip waiting period)
      */
     @PostMapping("/patterns/{patternId}/enable-auto-submit")
+    @PreAuthorize("@userSecurityRules.canAccessPattern(authentication, #patternId)")
     public ResponseEntity<QaPatternDto> enableAutoSubmit(
             @PathVariable UUID patternId,
             @AuthenticationPrincipal User user) {
@@ -257,6 +266,7 @@ public class QaController {
      * Disable auto-submit for a pattern
      */
     @PostMapping("/patterns/{patternId}/disable-auto-submit")
+    @PreAuthorize("@userSecurityRules.canAccessPattern(authentication, #patternId)")
     public ResponseEntity<QaPatternDto> disableAutoSubmit(
             @PathVariable UUID patternId,
             @RequestBody(required = false) DisableAutoSubmitRequest request,
@@ -306,6 +316,7 @@ public class QaController {
      * Resolve a conflict alert
      */
     @PostMapping("/conflicts/{conflictId}/resolve")
+    @PreAuthorize("@userSecurityRules.canAccessConflict(authentication, #conflictId)")
     public ResponseEntity<ConflictAlertDto> resolveConflict(
             @PathVariable UUID conflictId,
             @RequestBody(required = false) ResolveConflictRequest request,
@@ -319,6 +330,7 @@ public class QaController {
      * Dismiss a conflict alert
      */
     @PostMapping("/conflicts/{conflictId}/dismiss")
+    @PreAuthorize("@userSecurityRules.canAccessConflict(authentication, #conflictId)")
     public ResponseEntity<ConflictAlertDto> dismissConflict(
             @PathVariable UUID conflictId,
             @AuthenticationPrincipal User user) {

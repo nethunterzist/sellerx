@@ -1,0 +1,35 @@
+{
+  "storeName": "Test Magazasi",
+  "storeEmail": "test@test.com",
+  "timestamp": "15.02.2026 00:01:20",
+  "sections": [
+    {
+      "title": "Dashboard Urun Tablosu (Ilk 10)",
+      "summary": {
+        "total": 0,
+        "matching": 0,
+        "warnings": 0,
+        "errors": 0,
+        "results": []
+      },
+      "screenshots": [
+        "02-products-table-sellerx.png",
+        "02-products-table-trendyol.png"
+      ]
+    },
+    {
+      "title": "Dashboard Urun Tablosu (Ilk 10)",
+      "summary": {
+        "total": 0,
+        "matching": 0,
+        "warnings": 0,
+        "errors": 0,
+        "results": []
+      },
+      "screenshots": [
+        "02-products-table-sellerx.png",
+        "02-products-table-trendyol.png"
+      ]
+    }
+  ]
+}

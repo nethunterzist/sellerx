@@ -113,7 +113,7 @@ export function TopReturnedProducts({
     return (
       <div className="bg-card rounded-lg border border-border p-6">
         <h3 className="text-lg font-semibold text-foreground mb-4">
-          En Çok İade Edilen Ürünler
+          İade Edilen Ürünler
         </h3>
         <div className="h-64 flex items-center justify-center flex-col gap-2">
           <Package className="h-12 w-12 text-muted-foreground" />
@@ -128,7 +128,7 @@ export function TopReturnedProducts({
       <div className="p-4 border-b border-border">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold text-foreground">
-            En Çok İade Edilen Ürünler
+            İade Edilen Ürünler
           </h3>
           <span className="text-sm text-muted-foreground">{products.length} ürün</span>
         </div>

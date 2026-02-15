@@ -3,9 +3,8 @@
 import { useState } from "react";
 import { useSelectedStore } from "@/hooks/queries/use-stores";
 import { useDashboardStats, useDashboardStatsByRange } from "@/hooks/useDashboardStats";
-import { useFinancialStats, useSyncFinancial } from "@/hooks/queries/use-financial";
+import { useFinancialStats } from "@/hooks/queries/use-financial";
 import { useStoreExpenses } from "@/hooks/queries/use-expenses";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
@@ -14,19 +13,18 @@ import {
   TrendingDown,
   DollarSign,
   Percent,
-  AlertCircle,
   MinusCircle,
   PlusCircle,
   Calculator,
   ShoppingCart,
   BarChart3,
-  RefreshCw,
   CheckCircle,
   Clock,
   Package,
   RotateCcw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { FadeIn } from "@/components/motion";
 import { format, subDays } from "date-fns";
 import type { DateRange } from "react-day-picker";
 import {
@@ -226,17 +224,10 @@ export default function DumenPage() {
 
   // Financial stats
   const { data: financialStats, isLoading: financialLoading } = useFinancialStats(storeId || undefined);
-  const syncMutation = useSyncFinancial();
 
   // Expenses
   const { data: expensesData, isLoading: expensesLoading } = useStoreExpenses(storeId || "");
   const expenses = expensesData?.expenses || [];
-
-  const handleSync = () => {
-    if (storeId) {
-      syncMutation.mutate(storeId);
-    }
-  };
 
   const handleDateRangeChange = (range: DateRange | undefined, preset: DateRangePreset) => {
     setDateRange(range);
@@ -300,42 +291,16 @@ export default function DumenPage() {
   }
 
   return (
+    <FadeIn>
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div>
         <DateRangePicker
           dateRange={dateRange}
           onDateRangeChange={handleDateRangeChange}
           className="w-full sm:w-auto"
         />
-        <Button
-          onClick={handleSync}
-          disabled={syncMutation.isPending || !storeId}
-          variant="outline"
-          className="gap-2"
-        >
-          <RefreshCw className={cn("h-4 w-4", syncMutation.isPending && "animate-spin")} />
-          {syncMutation.isPending ? "Senkronize ediliyor..." : "Finansal Senkronize Et"}
-        </Button>
       </div>
-
-      {/* Sync Result Messages */}
-      {syncMutation.isSuccess && (
-        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3">
-          <p className="text-green-800 dark:text-green-200 text-sm flex items-center gap-2">
-            <CheckCircle className="h-4 w-4" />
-            Finansal veriler basariyla senkronize edildi!
-          </p>
-        </div>
-      )}
-
-      {syncMutation.isError && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
-          <p className="text-red-800 dark:text-red-200 text-sm">
-            Senkronizasyon basarisiz: {syncMutation.error.message}
-          </p>
-        </div>
-      )}
 
       {/* KPI Cards - Row 1: Main Metrics */}
       <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
@@ -567,5 +532,6 @@ export default function DumenPage() {
         </Card>
       )}
     </div>
+    </FadeIn>
   );
 }

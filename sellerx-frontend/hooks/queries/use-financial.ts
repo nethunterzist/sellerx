@@ -1,21 +1,10 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { apiRequest, financialApi, type FinancialStats } from "@/lib/api/client";
-import { dashboardKeys } from "@/hooks/useDashboardStats";
-import { orderKeys } from "@/hooks/queries/use-orders";
 import type {
   InvoiceSummary,
   InvoiceListResponse,
-  InvoiceSyncResponse,
   CargoItemsResponse,
 } from "@/types/financial";
-
-// Financial Sync Response
-export interface FinancialSyncResponse {
-  success: boolean;
-  message: string;
-  recordsProcessed: number;
-  recordsUpdated: number;
-}
 
 // Financial Query Keys
 export const financialKeys = {
@@ -33,27 +22,6 @@ export function useFinancialStats(storeId: string | undefined) {
     enabled: !!storeId,
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,
-  });
-}
-
-// Sync financial data from Trendyol
-export function useSyncFinancial() {
-  const queryClient = useQueryClient();
-
-  return useMutation<FinancialSyncResponse, Error, string>({
-    mutationFn: (storeId: string) =>
-      apiRequest<FinancialSyncResponse>(
-        `/financial/stores/${storeId}/sync`,
-        { method: "POST" }
-      ),
-    onSuccess: (data, storeId) => {
-      // Invalidate dashboard stats as financial data has changed
-      queryClient.invalidateQueries({ queryKey: dashboardKeys.stats(storeId) });
-      // Invalidate orders as they may have updated financial info
-      queryClient.invalidateQueries({ queryKey: orderKeys.byStore(storeId) });
-      // Invalidate financial stats
-      queryClient.invalidateQueries({ queryKey: financialKeys.storeStats(storeId) });
-    },
   });
 }
 
@@ -165,35 +133,6 @@ export function useInvoicesList(
     enabled: enabled && !!storeId && !!startDate && !!endDate,
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,
-  });
-}
-
-/**
- * Hook to sync invoices for a store
- */
-export function useSyncInvoices() {
-  const queryClient = useQueryClient();
-
-  return useMutation<
-    InvoiceSyncResponse,
-    Error,
-    { storeId: string; startDate?: string; endDate?: string }
-  >({
-    mutationFn: ({ storeId, startDate, endDate }) => {
-      let url = `/invoices/stores/${storeId}/sync`;
-      const params = new URLSearchParams();
-      if (startDate) params.append("startDate", startDate);
-      if (endDate) params.append("endDate", endDate);
-      if (params.toString()) url += `?${params.toString()}`;
-
-      return apiRequest<InvoiceSyncResponse>(url, { method: "POST" });
-    },
-    onSuccess: (data, { storeId }) => {
-      // Invalidate invoice queries
-      queryClient.invalidateQueries({
-        queryKey: invoiceKeys.all,
-      });
-    },
   });
 }
 

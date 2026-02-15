@@ -30,6 +30,9 @@ public interface TrendyolClaimRepository extends JpaRepository<TrendyolClaim, UU
     // Find by store and order number
     List<TrendyolClaim> findByStoreIdAndOrderNumber(UUID storeId, String orderNumber);
 
+    // Find all claims by store and status (non-paginated, for sync)
+    List<TrendyolClaim> findByStoreIdAndStatus(UUID storeId, String status);
+
     // Find by store and date range
     @Query("SELECT c FROM TrendyolClaim c WHERE c.store.id = :storeId " +
            "AND c.claimDate BETWEEN :startDate AND :endDate " +

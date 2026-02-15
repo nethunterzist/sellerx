@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
+import { FadeIn } from "@/components/motion";
 import { cn } from "@/lib/utils";
-import { ChevronRight, ChevronDown, Package, ShoppingCart, Calendar, Loader2, FileText, AlertCircle } from "lucide-react";
+import { ChevronRight, ChevronDown, Package, ShoppingCart, Calendar, Loader2, FileText, AlertCircle, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -217,7 +218,7 @@ export function OrderDetailPanel({
 
         {/* Header */}
         <div className="sticky top-0 bg-card z-10 border-b border-border">
-          <div className="flex items-start gap-3 p-4">
+          <div className="flex items-start gap-3 p-4 relative">
             <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
               <ShoppingCart className="h-6 w-6 text-primary" />
             </div>
@@ -239,10 +240,19 @@ export function OrderDetailPanel({
                 </span>
               </div>
             </div>
+            {/* Kapatma Butonu */}
+            <button
+              onClick={() => onOpenChange(false)}
+              className="absolute right-4 top-4 p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+              title="Kapat"
+            >
+              <X className="h-5 w-5" />
+            </button>
           </div>
         </div>
 
         {/* Content */}
+        <FadeIn delay={0.1}>
         <div className="divide-y divide-border">
           {/* ========== ÜRÜNLER ========== */}
           <ExpandableRow
@@ -307,157 +317,290 @@ export function OrderDetailPanel({
           <div className="h-2 bg-muted" />
 
           {/* ========== MALİYETLER ========== */}
-          <ExpandableRow
-            label="Maliyetler"
-            value={formatCurrency(-(order.totalProductCost + order.estimatedCommission + order.estimatedShippingCost + order.stoppage))}
-            isNegative
-          >
-            <SubRow
-              label="Ürün Maliyeti"
-              value={formatCurrency(-order.totalProductCost)}
-              isNegative={order.totalProductCost > 0}
-            />
-            <SubRow
-              label="Tahmini Komisyon"
-              value={formatCurrency(-order.estimatedCommission)}
-              isNegative={order.estimatedCommission > 0}
-            />
-            <SubRow
-              label="Kargo Maliyeti"
-              value={formatCurrency(-order.estimatedShippingCost)}
-              isNegative={order.estimatedShippingCost > 0}
-            />
-            <SubRow
-              label="Stopaj"
-              value={formatCurrency(-order.stoppage)}
-              isNegative={order.stoppage > 0}
-            />
-          </ExpandableRow>
+          {(() => {
+            // Fatura komisyon verisi var mı kontrol et
+            const hasActualCommission = invoiceItems?.hasInvoiceData &&
+              invoiceItems?.commissionItems &&
+              invoiceItems.commissionItems.length > 0;
+
+            // Fatura kargo verisi var mı kontrol et
+            const hasActualCargo = invoiceItems?.hasInvoiceData &&
+              invoiceItems?.cargoItems &&
+              invoiceItems.cargoItems.length > 0;
+
+            // Gösterilecek değerler
+            const commissionValue = hasActualCommission
+              ? invoiceItems.totalCommissionAmount
+              : order.estimatedCommission;
+
+            const cargoValue = hasActualCargo
+              ? invoiceItems.totalCargoAmount
+              : order.estimatedShippingCost;
+
+            return (
+              <ExpandableRow
+                label="Maliyetler"
+                value={formatCurrency(-(order.totalProductCost + commissionValue + cargoValue + order.stoppage))}
+                isNegative
+              >
+                <SubRow
+                  label="Ürün Maliyeti"
+                  value={formatCurrency(-order.totalProductCost)}
+                  isNegative={order.totalProductCost > 0}
+                />
+                {/* Komisyon - Dinamik label */}
+                <div className="flex items-center justify-between py-2 px-4 pl-10 border-b border-border">
+                  <span className="text-sm text-muted-foreground flex items-center gap-1.5">
+                    {hasActualCommission ? (
+                      <>
+                        <span className="w-2 h-2 rounded-full bg-green-500" />
+                        Komisyon
+                      </>
+                    ) : (
+                      <>
+                        <span className="px-1.5 py-0.5 text-xs bg-amber-100 text-amber-700 rounded">
+                          Tahmini
+                        </span>
+                        Komisyon
+                      </>
+                    )}
+                  </span>
+                  <span className={cn("text-sm font-medium", commissionValue > 0 ? "text-red-600" : "text-foreground")}>
+                    {formatCurrency(-commissionValue)}
+                  </span>
+                </div>
+                {/* Kargo - Dinamik label */}
+                <div className="flex items-center justify-between py-2 px-4 pl-10 border-b border-border">
+                  <span className="text-sm text-muted-foreground flex items-center gap-1.5">
+                    {hasActualCargo ? (
+                      <>
+                        <span className="w-2 h-2 rounded-full bg-green-500" />
+                        Kargo Maliyeti
+                      </>
+                    ) : (
+                      <>
+                        <span className="px-1.5 py-0.5 text-xs bg-amber-100 text-amber-700 rounded">
+                          Tahmini
+                        </span>
+                        Kargo Maliyeti
+                      </>
+                    )}
+                  </span>
+                  <span className={cn("text-sm font-medium", cargoValue > 0 ? "text-red-600" : "text-foreground")}>
+                    {formatCurrency(-cargoValue)}
+                  </span>
+                </div>
+                <SubRow
+                  label="Stopaj"
+                  value={formatCurrency(-order.stoppage)}
+                  isNegative={order.stoppage > 0}
+                />
+              </ExpandableRow>
+            );
+          })()}
 
           {/* Divider */}
           <div className="h-2 bg-muted" />
 
           {/* ========== FATURA GİDERLERİ ========== */}
-          <ExpandableRow
-            label="Fatura Giderleri"
-            value={
-              isLoadingInvoice
-                ? "Yükleniyor..."
-                : invoiceItems?.hasInvoiceData
-                  ? formatCurrency(-invoiceItems.grandTotal)
-                  : "-"
-            }
-            isNegative={invoiceItems?.hasInvoiceData && invoiceItems.grandTotal > 0}
-          >
-            {isLoadingInvoice ? (
-              <div className="flex items-center justify-center py-4 px-4 pl-10 gap-2 text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span className="text-sm">Fatura verileri yükleniyor...</span>
-              </div>
-            ) : invoiceError ? (
-              <div className="flex items-center gap-2 py-3 px-4 pl-10 text-red-600">
-                <AlertCircle className="h-4 w-4" />
-                <span className="text-sm">Fatura verileri yüklenemedi</span>
-              </div>
-            ) : !invoiceItems?.hasInvoiceData ? (
-              <div className="py-3 px-4 pl-10">
-                <div className="flex items-start gap-2 text-muted-foreground">
-                  <FileText className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="text-sm">Fatura verisi bekleniyor...</p>
-                    <p className="text-xs mt-0.5 text-muted-foreground/70">
-                      Faturalar genellikle siparişten 1-2 ay sonra kesilir
-                    </p>
+          {(() => {
+            // Platform hizmet bedeli ve diğer kesintileri ayır
+            const platformServiceItems = invoiceItems?.deductionItems?.filter(item => {
+              const desc = (item.description || '').toLowerCase();
+              const type = (item.transactionType || '').toLowerCase();
+              return desc.includes('platform') || desc.includes('hizmet') ||
+                     type.includes('platform') || type.includes('service');
+            }) || [];
+
+            const otherDeductionItems = invoiceItems?.deductionItems?.filter(item => {
+              const desc = (item.description || '').toLowerCase();
+              const type = (item.transactionType || '').toLowerCase();
+              return !(desc.includes('platform') || desc.includes('hizmet') ||
+                       type.includes('platform') || type.includes('service'));
+            }) || [];
+
+            const platformServiceTotal = platformServiceItems.reduce((sum, item) => sum + (item.amount || 0), 0);
+            const otherDeductionTotal = otherDeductionItems.reduce((sum, item) => sum + (item.amount || 0), 0);
+
+            // Toplam KDV hesapla
+            const totalVat = (invoiceItems?.totalCargoVatAmount || 0) +
+                            (invoiceItems?.totalCommissionVatAmount || 0) +
+                            (invoiceItems?.totalDeductionVatAmount || 0);
+
+            return (
+              <ExpandableRow
+                label="Fatura Giderleri"
+                value={
+                  isLoadingInvoice
+                    ? "Yükleniyor..."
+                    : invoiceItems?.hasInvoiceData
+                      ? formatCurrency(-invoiceItems.grandTotal)
+                      : "-"
+                }
+                isNegative={invoiceItems?.hasInvoiceData && invoiceItems.grandTotal > 0}
+              >
+                {isLoadingInvoice ? (
+                  <div className="flex items-center justify-center py-4 px-4 pl-10 gap-2 text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="text-sm">Fatura verileri yükleniyor...</span>
                   </div>
-                </div>
-              </div>
-            ) : (
-              <>
-                {/* Kargo Faturaları */}
-                {invoiceItems.cargoItems && invoiceItems.cargoItems.length > 0 && (
+                ) : invoiceError ? (
+                  <div className="flex items-center gap-2 py-3 px-4 pl-10 text-red-600">
+                    <AlertCircle className="h-4 w-4" />
+                    <span className="text-sm">Fatura verileri yüklenemedi</span>
+                  </div>
+                ) : !invoiceItems?.hasInvoiceData ? (
+                  <div className="py-3 px-4 pl-10">
+                    <div className="flex items-start gap-2 text-muted-foreground">
+                      <FileText className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="text-sm">Fatura verisi bekleniyor...</p>
+                        <p className="text-xs mt-0.5 text-muted-foreground/70">
+                          Faturalar genellikle siparişten 1-2 ay sonra kesilir
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
                   <>
-                    <SubRow
-                      label={`Kargo Faturaları (${invoiceItems.cargoItems.length})`}
-                      value={formatCurrency(-invoiceItems.totalCargoAmount)}
-                      isNegative
-                    />
-                    {invoiceItems.cargoItems.map((item, index) => (
-                      <div
-                        key={`cargo-${index}`}
-                        className="flex items-center justify-between py-1.5 px-4 pl-14 text-xs text-muted-foreground"
-                      >
-                        <span className="truncate pr-2">
-                          {item.invoiceSerialNumber || `Gönderi #${index + 1}`}
-                        </span>
-                        <span className="text-red-600">
-                          {formatCurrency(-item.amount)}
+                    {/* Kargo Faturaları */}
+                    {invoiceItems.cargoItems && invoiceItems.cargoItems.length > 0 && (
+                      <>
+                        <SubRow
+                          label={`Kargo Faturaları (${invoiceItems.cargoItems.length})`}
+                          value={formatCurrency(-invoiceItems.totalCargoAmount)}
+                          isNegative
+                        />
+                        {invoiceItems.cargoItems.map((item, index) => (
+                          <div
+                            key={`cargo-${index}`}
+                            className="flex items-center justify-between py-1.5 px-4 pl-14 text-xs text-muted-foreground"
+                          >
+                            <span className="truncate pr-2">
+                              {item.invoiceSerialNumber || `Gönderi #${index + 1}`}
+                            </span>
+                            <span className="text-red-600">
+                              {formatCurrency(-item.amount)}
+                            </span>
+                          </div>
+                        ))}
+                        {/* Kargo KDV */}
+                        {invoiceItems.totalCargoVatAmount > 0 && (
+                          <div className="flex items-center justify-between py-1 px-4 pl-14 text-xs text-muted-foreground/70">
+                            <span>KDV</span>
+                            <span className="text-red-600/70">
+                              {formatCurrency(-invoiceItems.totalCargoVatAmount)}
+                            </span>
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    {/* Komisyon İşlemleri */}
+                    {invoiceItems.commissionItems && invoiceItems.commissionItems.length > 0 && (
+                      <>
+                        <SubRow
+                          label={`Komisyon İşlemleri (${invoiceItems.commissionItems.length})`}
+                          value={formatCurrency(-invoiceItems.totalCommissionAmount)}
+                          isNegative
+                        />
+                        {invoiceItems.commissionItems.map((item, index) => {
+                          const amount = item.commissionAmount ?? item.totalAmount ?? 0;
+                          return (
+                            <div
+                              key={`comm-${index}`}
+                              className="flex items-center justify-between py-1.5 px-4 pl-14 text-xs text-muted-foreground"
+                            >
+                              <span className="truncate pr-2">{item.transactionType || "Komisyon"}</span>
+                              <span className={amount < 0 ? "text-green-600" : "text-red-600"}>
+                                {formatCurrency(-amount)}
+                              </span>
+                            </div>
+                          );
+                        })}
+                        {/* Komisyon KDV */}
+                        {invoiceItems.totalCommissionVatAmount > 0 && (
+                          <div className="flex items-center justify-between py-1 px-4 pl-14 text-xs text-muted-foreground/70">
+                            <span>KDV</span>
+                            <span className="text-red-600/70">
+                              {formatCurrency(-invoiceItems.totalCommissionVatAmount)}
+                            </span>
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    {/* Platform Hizmet Bedeli */}
+                    {platformServiceItems.length > 0 && (
+                      <>
+                        <SubRow
+                          label={`Platform Hizmet Bedeli (${platformServiceItems.length})`}
+                          value={formatCurrency(-platformServiceTotal)}
+                          isNegative
+                        />
+                        {platformServiceItems.map((item, index) => (
+                          <div
+                            key={`plat-${index}`}
+                            className="flex items-center justify-between py-1.5 px-4 pl-14 text-xs text-muted-foreground"
+                          >
+                            <span className="truncate pr-2">{item.description || item.transactionType || "Platform Hizmet"}</span>
+                            <span className="text-red-600">
+                              {formatCurrency(-item.amount)}
+                            </span>
+                          </div>
+                        ))}
+                      </>
+                    )}
+
+                    {/* Diğer Kesintiler */}
+                    {otherDeductionItems.length > 0 && (
+                      <>
+                        <SubRow
+                          label={`Diğer Kesintiler (${otherDeductionItems.length})`}
+                          value={formatCurrency(-otherDeductionTotal)}
+                          isNegative
+                        />
+                        {otherDeductionItems.map((item, index) => (
+                          <div
+                            key={`ded-${index}`}
+                            className="flex items-center justify-between py-1.5 px-4 pl-14 text-xs text-muted-foreground"
+                          >
+                            <span className="truncate pr-2">{item.description || item.transactionType || "Kesinti"}</span>
+                            <span className="text-red-600">
+                              {formatCurrency(-item.amount)}
+                            </span>
+                          </div>
+                        ))}
+                      </>
+                    )}
+
+                    {/* Toplam KDV */}
+                    {totalVat > 0 && (
+                      <div className="flex items-center justify-between py-2 px-4 pl-10 border-t border-border/50 text-xs">
+                        <span className="text-muted-foreground">Toplam KDV (Dahil)</span>
+                        <span className="text-red-600/80 font-medium">
+                          {formatCurrency(-totalVat)}
                         </span>
                       </div>
-                    ))}
-                  </>
-                )}
+                    )}
 
-                {/* Komisyon İşlemleri */}
-                {invoiceItems.commissionItems && invoiceItems.commissionItems.length > 0 && (
-                  <>
-                    <SubRow
-                      label={`Komisyon İşlemleri (${invoiceItems.commissionItems.length})`}
-                      value={formatCurrency(-invoiceItems.totalCommissionAmount)}
-                      isNegative
-                    />
-                    {invoiceItems.commissionItems.map((item, index) => {
-                      const amount = item.commissionAmount ?? item.totalAmount ?? 0;
-                      return (
-                        <div
-                          key={`comm-${index}`}
-                          className="flex items-center justify-between py-1.5 px-4 pl-14 text-xs text-muted-foreground"
-                        >
-                          <span className="truncate pr-2">{item.transactionType || "Komisyon"}</span>
-                          <span className={amount < 0 ? "text-green-600" : "text-red-600"}>
-                            {formatCurrency(-amount)}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </>
-                )}
-
-                {/* Diğer Kesintiler */}
-                {invoiceItems.deductionItems && invoiceItems.deductionItems.length > 0 && (
-                  <>
-                    <SubRow
-                      label={`Diğer Kesintiler (${invoiceItems.deductionItems.length})`}
-                      value={formatCurrency(-invoiceItems.totalDeductionAmount)}
-                      isNegative
-                    />
-                    {invoiceItems.deductionItems.map((item, index) => (
-                      <div
-                        key={`ded-${index}`}
-                        className="flex items-center justify-between py-1.5 px-4 pl-14 text-xs text-muted-foreground"
-                      >
-                        <span className="truncate pr-2">{item.description || item.transactionType || "Kesinti"}</span>
-                        <span className="text-red-600">
-                          {formatCurrency(-item.amount)}
+                    {/* Toplam Fatura Gideri */}
+                    {((invoiceItems.cargoItems?.length || 0) > 0 ? 1 : 0) +
+                      ((invoiceItems.commissionItems?.length || 0) > 0 ? 1 : 0) +
+                      (platformServiceItems.length > 0 ? 1 : 0) +
+                      (otherDeductionItems.length > 0 ? 1 : 0) > 1 && (
+                      <div className="flex items-center justify-between py-2 px-4 pl-10 border-t border-border bg-muted/30">
+                        <span className="text-sm font-medium text-foreground">Toplam Fatura Gideri</span>
+                        <span className="text-sm font-semibold text-red-600">
+                          {formatCurrency(-invoiceItems.grandTotal)}
                         </span>
                       </div>
-                    ))}
+                    )}
                   </>
                 )}
-
-                {/* Toplam (sadece birden fazla kategori varsa göster) */}
-                {((invoiceItems.cargoItems?.length || 0) > 0 ? 1 : 0) +
-                  ((invoiceItems.commissionItems?.length || 0) > 0 ? 1 : 0) +
-                  ((invoiceItems.deductionItems?.length || 0) > 0 ? 1 : 0) > 1 && (
-                  <div className="flex items-center justify-between py-2 px-4 pl-10 border-t border-border bg-muted/30">
-                    <span className="text-sm font-medium text-foreground">Toplam Fatura Gideri</span>
-                    <span className="text-sm font-semibold text-red-600">
-                      {formatCurrency(-invoiceItems.grandTotal)}
-                    </span>
-                  </div>
-                )}
-              </>
-            )}
-          </ExpandableRow>
+              </ExpandableRow>
+            );
+          })()}
 
           {/* Divider */}
           <div className="h-2 bg-muted" />
@@ -565,6 +708,7 @@ export function OrderDetailPanel({
             </>
           )}
         </div>
+        </FadeIn>
       </SheetContent>
     </Sheet>
   );

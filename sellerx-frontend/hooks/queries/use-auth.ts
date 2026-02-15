@@ -85,3 +85,51 @@ export function useLogout() {
     },
   });
 }
+
+// Forgot password mutation
+export function useForgotPassword() {
+  return useMutation({
+    mutationFn: authApi.forgotPassword,
+  });
+}
+
+// Verify reset token query
+export function useVerifyResetToken(token: string | null) {
+  return useQuery({
+    queryKey: ["auth", "verify-reset-token", token],
+    queryFn: () => authApi.verifyResetToken(token!),
+    enabled: !!token,
+    retry: false,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+}
+
+// Reset password mutation
+export function useResetPassword() {
+  return useMutation({
+    mutationFn: authApi.resetPassword,
+  });
+}
+
+// Verify email mutation
+export function useVerifyEmail() {
+  return useMutation({
+    mutationFn: (token: string) => authApi.verifyEmail(token),
+  });
+}
+
+// Resend verification email mutation
+export function useResendVerification() {
+  return useMutation({
+    mutationFn: () => authApi.resendVerification(),
+  });
+}
+
+// Check email verification status
+export function useVerificationStatus() {
+  return useQuery({
+    queryKey: ["auth", "verification-status"],
+    queryFn: authApi.verificationStatus,
+    staleTime: 60 * 1000, // 1 minute
+  });
+}

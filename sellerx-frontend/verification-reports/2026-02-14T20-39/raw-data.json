@@ -1,0 +1,533 @@
+{
+  "storeName": "Test Magazasi",
+  "storeEmail": "test@test.com",
+  "timestamp": "14.02.2026 23:39:44",
+  "sections": [
+    {
+      "title": "Siparisler Sayfasi",
+      "summary": {
+        "total": 6,
+        "matching": 6,
+        "warnings": 0,
+        "errors": 0,
+        "results": [
+          {
+            "field": "FE Tabloda Sipariş Sayısı",
+            "match": true,
+            "dbValue": 5,
+            "frontendValue": 5,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Siparis #10966065613 - Tutar",
+            "match": true,
+            "dbValue": 899.2,
+            "frontendValue": 899.2,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Siparis #10966046045 - Tutar",
+            "match": true,
+            "dbValue": 899.2,
+            "frontendValue": 899.2,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Siparis #10966044785 - Tutar",
+            "match": true,
+            "dbValue": 2419.1,
+            "frontendValue": 2419.1,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Siparis #10966019238 - Tutar",
+            "match": true,
+            "dbValue": 1349.1,
+            "frontendValue": 1349.1,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Siparis #10966011466 - Tutar",
+            "match": true,
+            "dbValue": 2419.1,
+            "frontendValue": 2419.1,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          }
+        ]
+      },
+      "screenshots": [
+        "04-orders-sellerx.png",
+        "04-orders-trendyol.png"
+      ]
+    },
+    {
+      "title": "Faturalar Sayfasi (Son 30 Gun)",
+      "summary": {
+        "total": 17,
+        "matching": 10,
+        "warnings": 1,
+        "errors": 6,
+        "results": [
+          {
+            "field": "Fatura - KOMISYON Toplam",
+            "match": true,
+            "dbValue": 865145.23,
+            "frontendValue": 865145.23,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Fatura - KOMISYON Adet",
+            "match": true,
+            "dbValue": 8,
+            "frontendValue": 8,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Fatura - KARGO Toplam",
+            "match": true,
+            "dbValue": 516232.05,
+            "frontendValue": 516232.05,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Fatura - KARGO Adet",
+            "match": true,
+            "dbValue": 17,
+            "frontendValue": 17,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Fatura - CEZA Toplam",
+            "match": true,
+            "dbValue": 1100,
+            "frontendValue": 1100,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Fatura - CEZA Adet",
+            "match": true,
+            "dbValue": 4,
+            "frontendValue": 4,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Fatura - IADE Toplam",
+            "match": false,
+            "dbValue": 374.5,
+            "frontendValue": 1906.91,
+            "trendyolValue": null,
+            "deviation": 409.19,
+            "severity": "critical",
+            "note": "DB vs FE: diff=1532.41"
+          },
+          {
+            "field": "Fatura - IADE Adet",
+            "match": false,
+            "dbValue": 1,
+            "frontendValue": 3,
+            "trendyolValue": null,
+            "deviation": 200,
+            "severity": "critical",
+            "note": "DB vs FE: diff=2.00"
+          },
+          {
+            "field": "Fatura - REKLAM Toplam",
+            "match": false,
+            "dbValue": 196308.33,
+            "frontendValue": 196808.33,
+            "trendyolValue": null,
+            "deviation": 0.25,
+            "severity": "warning",
+            "note": "DB vs FE: diff=500.00"
+          },
+          {
+            "field": "Fatura - REKLAM Adet",
+            "match": false,
+            "dbValue": 14,
+            "frontendValue": 13,
+            "trendyolValue": null,
+            "deviation": 7.14,
+            "severity": "critical",
+            "note": "DB vs FE: diff=1.00"
+          },
+          {
+            "field": "Fatura - ULUSLARARASI Toplam",
+            "match": true,
+            "dbValue": 6484.91,
+            "frontendValue": 6484.91,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Fatura - ULUSLARARASI Adet",
+            "match": false,
+            "dbValue": 11,
+            "frontendValue": 9,
+            "trendyolValue": null,
+            "deviation": 18.18,
+            "severity": "critical",
+            "note": "DB vs FE: diff=2.00"
+          },
+          {
+            "field": "Fatura - PLATFORM_UCRETLERI Toplam",
+            "match": true,
+            "dbValue": 62729.33,
+            "frontendValue": 62729.33,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Fatura - PLATFORM_UCRETLERI Adet",
+            "match": true,
+            "dbValue": 17,
+            "frontendValue": 17,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Fatura - DIGER Toplam",
+            "match": false,
+            "dbValue": 2811,
+            "frontendValue": 3843.41,
+            "trendyolValue": null,
+            "deviation": 36.73,
+            "severity": "critical",
+            "note": "DB vs FE: diff=1032.41"
+          },
+          {
+            "field": "Fatura - DIGER Adet",
+            "match": false,
+            "dbValue": 3,
+            "frontendValue": 4,
+            "trendyolValue": null,
+            "deviation": 33.33,
+            "severity": "critical",
+            "note": "DB vs FE: diff=1.00"
+          },
+          {
+            "field": "Toplam Fatura Sayisi (DB)",
+            "match": true,
+            "dbValue": 75,
+            "frontendValue": null,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          }
+        ]
+      },
+      "screenshots": [
+        "05-invoices-sellerx.png",
+        "05-invoices-trendyol.png"
+      ]
+    },
+    {
+      "title": "İadeler Sayfası (Son 3 Yıl)",
+      "summary": {
+        "total": 3,
+        "matching": 3,
+        "warnings": 0,
+        "errors": 0,
+        "results": [
+          {
+            "field": "İade Adedi (Son 3 Yıl)",
+            "match": true,
+            "dbValue": 1,
+            "frontendValue": 1,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "İade Oranı (%)",
+            "match": true,
+            "dbValue": 0.0032510809844273217,
+            "frontendValue": 0,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Toplam İade Kaybi (FE Only)",
+            "match": true,
+            "dbValue": null,
+            "frontendValue": 151.5,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          }
+        ]
+      },
+      "screenshots": [
+        "06-returns-sellerx.png",
+        "06-returns-trendyol.png"
+      ]
+    },
+    {
+      "title": "Ürünler Sayfası (İlk 10)",
+      "summary": {
+        "total": 25,
+        "matching": 25,
+        "warnings": 0,
+        "errors": 0,
+        "results": [
+          {
+            "field": "FE Tabloda Ürün Sayısı",
+            "match": true,
+            "dbValue": 10,
+            "frontendValue": 10,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Ürün 1 (8809686120352) - Satış Fiyatı",
+            "match": true,
+            "dbValue": 1133,
+            "frontendValue": 1133,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Ürün 1 (8809686120352) - Stok",
+            "match": true,
+            "dbValue": 713,
+            "frontendValue": 713,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Ürün 1 (8809686120352) - Komisyon Oranı",
+            "match": true,
+            "dbValue": 19,
+            "frontendValue": null,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Ürün 2 (769915190311) - Satış Fiyatı",
+            "match": true,
+            "dbValue": 546,
+            "frontendValue": 546,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Ürün 2 (769915190311) - Stok",
+            "match": true,
+            "dbValue": 72,
+            "frontendValue": 72,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Ürün 2 (769915190311) - Komisyon Oranı",
+            "match": true,
+            "dbValue": 14.2,
+            "frontendValue": null,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Ürün 3 (8809686120321) - Satış Fiyatı",
+            "match": true,
+            "dbValue": 1133,
+            "frontendValue": 1133,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Ürün 3 (8809686120321) - Stok",
+            "match": true,
+            "dbValue": 303,
+            "frontendValue": 303,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Ürün 3 (8809686120321) - Komisyon Oranı",
+            "match": true,
+            "dbValue": 19,
+            "frontendValue": null,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Ürün 5 (8809640733550) - Satış Fiyatı",
+            "match": true,
+            "dbValue": 1199,
+            "frontendValue": 1199,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Ürün 5 (8809640733550) - Stok",
+            "match": true,
+            "dbValue": 57,
+            "frontendValue": 57,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Ürün 5 (8809640733550) - Komisyon Oranı",
+            "match": true,
+            "dbValue": 19,
+            "frontendValue": null,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Ürün 6 (8803463007300) - Satış Fiyatı",
+            "match": true,
+            "dbValue": 580,
+            "frontendValue": 580,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Ürün 6 (8803463007300) - Stok",
+            "match": true,
+            "dbValue": 20,
+            "frontendValue": 20,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Ürün 6 (8803463007300) - Komisyon Oranı",
+            "match": true,
+            "dbValue": 19,
+            "frontendValue": null,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Ürün 7 (8809625246082) - Satış Fiyatı",
+            "match": true,
+            "dbValue": 499,
+            "frontendValue": 499,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Ürün 7 (8809625246082) - Stok",
+            "match": true,
+            "dbValue": 1,
+            "frontendValue": 1,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Ürün 7 (8809625246082) - Komisyon Oranı",
+            "match": true,
+            "dbValue": 19,
+            "frontendValue": null,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Ürün 8 (8809782551814) - Satış Fiyatı",
+            "match": true,
+            "dbValue": 870,
+            "frontendValue": 870,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Ürün 8 (8809782551814) - Stok",
+            "match": true,
+            "dbValue": 33,
+            "frontendValue": 33,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Ürün 8 (8809782551814) - Komisyon Oranı",
+            "match": true,
+            "dbValue": 19,
+            "frontendValue": null,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Ürün 10 (8809679696468) - Satış Fiyatı",
+            "match": true,
+            "dbValue": 1199,
+            "frontendValue": 1199,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Ürün 10 (8809679696468) - Stok",
+            "match": true,
+            "dbValue": 10,
+            "frontendValue": 10,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          },
+          {
+            "field": "Ürün 10 (8809679696468) - Komisyon Oranı",
+            "match": true,
+            "dbValue": 17.8,
+            "frontendValue": null,
+            "trendyolValue": null,
+            "deviation": 0,
+            "severity": "info"
+          }
+        ]
+      },
+      "screenshots": [
+        "07-products-sellerx.png",
+        "07-products-trendyol.png"
+      ]
+    }
+  ]
+}

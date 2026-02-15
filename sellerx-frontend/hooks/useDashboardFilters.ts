@@ -7,7 +7,6 @@ import type {
   PeriodType,
   DateRangePreset,
   ViewFilterConfig,
-  ComparisonMode,
 } from "@/types/dashboard";
 import {
   createInitialTabFilters,
@@ -102,13 +101,6 @@ export function useDashboardFilters(activeView: DashboardViewType) {
     [updateFilter]
   );
 
-  const setSelectedComparison = useCallback(
-    (comparison: ComparisonMode) => {
-      updateFilter("selectedComparison", comparison);
-    },
-    [updateFilter]
-  );
-
   const setSelectedCurrency = useCallback(
     (currency: string) => {
       updateFilter("selectedCurrency", currency);
@@ -156,7 +148,6 @@ export function useDashboardFilters(activeView: DashboardViewType) {
     selectedPeriodGroup: currentFilters.selectedPeriodGroup,
     customDateRange: currentFilters.customDateRange,
     selectedPeriod: currentFilters.selectedPeriod,
-    selectedComparison: currentFilters.selectedComparison,
     selectedCurrency: currentFilters.selectedCurrency,
 
     // Setters
@@ -164,7 +155,6 @@ export function useDashboardFilters(activeView: DashboardViewType) {
     setSelectedPeriodGroup,
     setCustomDateRange,
     setSelectedPeriod,
-    setSelectedComparison,
     setSelectedCurrency,
     resetCurrentTab,
 

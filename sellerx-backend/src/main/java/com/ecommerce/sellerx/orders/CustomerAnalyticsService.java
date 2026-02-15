@@ -4,6 +4,8 @@ import com.ecommerce.sellerx.orders.dto.*;
 import com.ecommerce.sellerx.orders.dto.CustomerAnalyticsProjections.*;
 import com.ecommerce.sellerx.products.TrendyolProduct;
 import com.ecommerce.sellerx.products.TrendyolProductRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.Query;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -58,6 +60,7 @@ public class CustomerAnalyticsService {
     private final TrendyolOrderRepository orderRepository;
     private final TrendyolOrderService orderService;
     private final TrendyolProductRepository productRepository;
+    private final EntityManager entityManager;
 
     /**
      * Get full analytics summary: summary stats + segmentation + city analysis + monthly trend.
@@ -138,58 +141,193 @@ public class CustomerAnalyticsService {
     }
 
     /**
-     * Get paginated customer list with RFM scoring and optional search.
+     * Get paginated customer list with RFM scoring, filtering, and sorting.
      */
-    public Map<String, Object> getCustomerList(UUID storeId, int page, int size, String sort, String search) {
-        int offset = page * size;
-        List<CustomerSummaryProjection> customers;
-        long totalCount;
-
-        if (search != null && !search.isBlank()) {
-            customers = orderRepository.findCustomerSummariesWithSearch(storeId, search.trim(), size, offset);
-            totalCount = orderRepository.countDistinctCustomersWithSearch(storeId, search.trim());
-        } else {
-            customers = orderRepository.findCustomerSummaries(storeId, size, offset);
-            totalCount = orderRepository.countDistinctCustomers(storeId);
-        }
-
-        // Fetch per-customer repeat interval data
+    public Map<String, Object> getCustomerList(UUID storeId, int page, int size, String sortBy, String sortDir, String search, CustomerListFilter filter) {
+        // Fetch per-customer repeat interval data (needed for filtering)
         List<CustomerRepeatIntervalProjection> repeatIntervals = orderRepository.getPerCustomerRepeatIntervalDays(storeId);
         Map<Long, Double> repeatIntervalMap = repeatIntervals.stream()
                 .filter(r -> r.getCustomerId() != null && r.getAvgDays() != null)
                 .collect(Collectors.toMap(
                         CustomerRepeatIntervalProjection::getCustomerId,
                         CustomerRepeatIntervalProjection::getAvgDays,
-                        (a, b) -> a  // In case of duplicates, keep first
+                        (a, b) -> a
                 ));
 
-        // Calculate RFM scores for this page
-        // RFM Frequency uses orderCount (number of orders placed) to measure return behavior
-        List<CustomerListItem> items = customers.stream().map(c -> {
-            int orderCount = c.getOrderCount() != null ? c.getOrderCount() : 0;
-            int itemCount = c.getItemCount() != null ? c.getItemCount() : 0;
-            BigDecimal totalSpend = c.getTotalSpend() != null ? c.getTotalSpend() : BigDecimal.ZERO;
-            LocalDateTime lastOrder = c.getLastOrderDate();
+        // Build dynamic query
+        String validSortDir = "asc".equalsIgnoreCase(sortDir) ? "ASC" : "DESC";
+        String sortColumn = mapSortField(sortBy);
 
-            // Simple RFM scoring (1-5 scale) - Frequency uses orderCount (return behavior)
-            int recencyScore = calculateRecencyScore(lastOrder);
+        // Build the base query with CTE for repeat interval
+        StringBuilder sql = new StringBuilder();
+        sql.append("""
+            WITH repeat_intervals AS (
+                SELECT customer_id, AVG(days_diff) as avg_days
+                FROM (
+                    SELECT customer_id,
+                           EXTRACT(EPOCH FROM (order_date - LAG(order_date) OVER (PARTITION BY customer_id ORDER BY order_date))) / 86400 as days_diff
+                    FROM trendyol_orders
+                    WHERE store_id = :storeId
+                    AND customer_id IS NOT NULL
+                    AND order_items IS NOT NULL
+                    AND status IN ('Created', 'Picking', 'Invoiced', 'Shipped', 'Delivered', 'AtCollectionPoint', 'UnPacked')
+                ) sub
+                WHERE days_diff IS NOT NULL
+                GROUP BY customer_id
+            ),
+            customer_stats AS (
+                SELECT
+                    o.customer_id as customerId,
+                    CONCAT(MAX(o.customer_first_name), ' ', MAX(o.customer_last_name)) as displayName,
+                    MAX(o.shipment_city) as city,
+                    COUNT(*) as orderCount,
+                    COALESCE(SUM(
+                        (SELECT COALESCE(SUM((item->>'quantity')::int), 0)
+                         FROM jsonb_array_elements(o.order_items) AS item)
+                    ), 0) as itemCount,
+                    COALESCE(SUM(o.total_price), 0) as totalSpend,
+                    MIN(o.order_date) as firstOrderDate,
+                    MAX(o.order_date) as lastOrderDate,
+                    ri.avg_days as avgRepeatDays
+                FROM trendyol_orders o
+                LEFT JOIN repeat_intervals ri ON o.customer_id = ri.customer_id
+                WHERE o.store_id = :storeId
+                AND o.customer_id IS NOT NULL
+                AND o.order_items IS NOT NULL
+                AND o.status IN ('Created', 'Picking', 'Invoiced', 'Shipped', 'Delivered', 'AtCollectionPoint', 'UnPacked')
+                GROUP BY o.customer_id, ri.avg_days
+            )
+            SELECT * FROM customer_stats cs
+            WHERE 1=1
+            """);
+
+        // Add search filter
+        if (search != null && !search.isBlank()) {
+            sql.append(" AND (LOWER(cs.displayName) LIKE LOWER(:search) OR LOWER(cs.city) LIKE LOWER(:search))");
+        }
+
+        // Add filters
+        if (filter != null) {
+            if (filter.getMinOrderCount() != null) {
+                sql.append(" AND cs.orderCount >= :minOrderCount");
+            }
+            if (filter.getMaxOrderCount() != null) {
+                sql.append(" AND cs.orderCount <= :maxOrderCount");
+            }
+            if (filter.getMinItemCount() != null) {
+                sql.append(" AND cs.itemCount >= :minItemCount");
+            }
+            if (filter.getMaxItemCount() != null) {
+                sql.append(" AND cs.itemCount <= :maxItemCount");
+            }
+            if (filter.getMinTotalSpend() != null) {
+                sql.append(" AND cs.totalSpend >= :minTotalSpend");
+            }
+            if (filter.getMaxTotalSpend() != null) {
+                sql.append(" AND cs.totalSpend <= :maxTotalSpend");
+            }
+            if (filter.getMinAvgOrderValue() != null) {
+                sql.append(" AND (cs.totalSpend / NULLIF(cs.orderCount, 0)) >= :minAvgOrderValue");
+            }
+            if (filter.getMaxAvgOrderValue() != null) {
+                sql.append(" AND (cs.totalSpend / NULLIF(cs.orderCount, 0)) <= :maxAvgOrderValue");
+            }
+            if (filter.getMinRepeatInterval() != null) {
+                sql.append(" AND cs.avgRepeatDays >= :minRepeatInterval");
+            }
+            if (filter.getMaxRepeatInterval() != null) {
+                sql.append(" AND cs.avgRepeatDays <= :maxRepeatInterval");
+            }
+        }
+
+        // Add sorting
+        if ("avgOrderValue".equals(sortBy)) {
+            sql.append(" ORDER BY (cs.totalSpend / NULLIF(cs.orderCount, 0)) ").append(validSortDir).append(" NULLS LAST");
+        } else if ("avgRepeatIntervalDays".equals(sortBy)) {
+            sql.append(" ORDER BY cs.avgRepeatDays ").append(validSortDir).append(" NULLS LAST");
+        } else {
+            sql.append(" ORDER BY cs.").append(sortColumn).append(" ").append(validSortDir).append(" NULLS LAST");
+        }
+
+        // Count query (same filters, no pagination)
+        String countSql = sql.toString().replaceFirst("SELECT \\* FROM customer_stats cs", "SELECT COUNT(*) FROM customer_stats cs");
+        // Handle text block whitespace - try again with flexible whitespace if first replace didn't work
+        if (countSql.contains("SELECT *")) {
+            countSql = countSql.replaceFirst("\\s*SELECT \\* FROM customer_stats cs", " SELECT COUNT(*) FROM customer_stats cs");
+        }
+        // Remove ORDER BY - use specific pattern to avoid matching ORDER BY inside OVER clause
+        int orderByIndex = countSql.lastIndexOf(" ORDER BY ");
+        if (orderByIndex > 0) {
+            countSql = countSql.substring(0, orderByIndex);
+        }
+
+        // Add pagination to main query
+        sql.append(" LIMIT :limit OFFSET :offset");
+
+        // Execute count query
+        log.debug("Customer list count SQL: {}", countSql);
+        Query countQuery = entityManager.createNativeQuery(countSql);
+        countQuery.setParameter("storeId", storeId);
+        if (search != null && !search.isBlank()) {
+            countQuery.setParameter("search", "%" + search.trim() + "%");
+        }
+        setFilterParameters(countQuery, filter);
+        long totalCount;
+        try {
+            totalCount = ((Number) countQuery.getSingleResult()).longValue();
+            log.debug("Customer list count result: {}", totalCount);
+        } catch (Exception e) {
+            log.error("Error executing customer list count query for store {}: {}", storeId, e.getMessage(), e);
+            throw e;
+        }
+
+        // Execute main query
+        Query query = entityManager.createNativeQuery(sql.toString());
+        query.setParameter("storeId", storeId);
+        query.setParameter("limit", size);
+        query.setParameter("offset", page * size);
+        if (search != null && !search.isBlank()) {
+            query.setParameter("search", "%" + search.trim() + "%");
+        }
+        setFilterParameters(query, filter);
+
+        @SuppressWarnings("unchecked")
+        List<Object[]> results;
+        try {
+            results = query.getResultList();
+            log.debug("Customer list query returned {} results", results.size());
+        } catch (Exception e) {
+            log.error("Error executing customer list query for store {}: {}", storeId, e.getMessage(), e);
+            throw e;
+        }
+
+        // Map results to CustomerListItem
+        List<CustomerListItem> items = results.stream().map(row -> {
+            Long customerId = row[0] != null ? ((Number) row[0]).longValue() : null;
+            String displayName = (String) row[1];
+            String city = (String) row[2];
+            int orderCount = row[3] != null ? ((Number) row[3]).intValue() : 0;
+            int itemCount = row[4] != null ? ((Number) row[4]).intValue() : 0;
+            BigDecimal totalSpend = row[5] != null ? new BigDecimal(row[5].toString()) : BigDecimal.ZERO;
+            LocalDateTime firstOrderDate = row[6] != null ? ((java.sql.Timestamp) row[6]).toLocalDateTime() : null;
+            LocalDateTime lastOrderDate = row[7] != null ? ((java.sql.Timestamp) row[7]).toLocalDateTime() : null;
+            Double avgRepeatDays = row[8] != null ? ((Number) row[8]).doubleValue() : null;
+
+            // Calculate RFM scores
+            int recencyScore = calculateRecencyScore(lastOrderDate);
             int frequencyScore = calculateFrequencyScore(orderCount);
             int monetaryScore = calculateMonetaryScore(totalSpend);
             String rfmSegment = determineRfmSegment(recencyScore, frequencyScore, monetaryScore);
 
-            // Get per-customer repeat interval (null if only 1 order)
-            Long customerId = c.getCustomerId();
-            Double avgRepeatIntervalDays = customerId != null ? repeatIntervalMap.get(customerId) : null;
-
             return CustomerListItem.builder()
-                    .customerKey(c.getCustomerId() != null ? String.valueOf(c.getCustomerId()) : "")
-                    .displayName(c.getDisplayName() != null ? c.getDisplayName().trim() : "")
-                    .city(c.getCity())
+                    .customerKey(customerId != null ? String.valueOf(customerId) : "")
+                    .displayName(displayName != null ? displayName.trim() : "")
+                    .city(city)
                     .orderCount(orderCount)
                     .itemCount(itemCount)
                     .totalSpend(totalSpend)
-                    .firstOrderDate(c.getFirstOrderDate())
-                    .lastOrderDate(lastOrder)
+                    .firstOrderDate(firstOrderDate)
+                    .lastOrderDate(lastOrderDate)
                     .avgOrderValue(orderCount > 0
                             ? totalSpend.divide(BigDecimal.valueOf(orderCount), 2, RoundingMode.HALF_UP).doubleValue()
                             : 0)
@@ -197,7 +335,7 @@ public class CustomerAnalyticsService {
                     .recencyScore(recencyScore)
                     .frequencyScore(frequencyScore)
                     .monetaryScore(monetaryScore)
-                    .avgRepeatIntervalDays(avgRepeatIntervalDays)
+                    .avgRepeatIntervalDays(avgRepeatDays)
                     .build();
         }).collect(Collectors.toList());
 
@@ -208,6 +346,51 @@ public class CustomerAnalyticsService {
         result.put("page", page);
         result.put("size", size);
         return result;
+    }
+
+    private String mapSortField(String sortBy) {
+        return switch (sortBy) {
+            case "orderCount" -> "orderCount";
+            case "itemCount" -> "itemCount";
+            case "totalSpend" -> "totalSpend";
+            case "avgOrderValue" -> "totalSpend"; // Will be handled specially
+            case "avgRepeatIntervalDays" -> "avgRepeatDays"; // Will be handled specially
+            default -> "totalSpend";
+        };
+    }
+
+    private void setFilterParameters(Query query, CustomerListFilter filter) {
+        if (filter == null) return;
+        if (filter.getMinOrderCount() != null) {
+            query.setParameter("minOrderCount", filter.getMinOrderCount());
+        }
+        if (filter.getMaxOrderCount() != null) {
+            query.setParameter("maxOrderCount", filter.getMaxOrderCount());
+        }
+        if (filter.getMinItemCount() != null) {
+            query.setParameter("minItemCount", filter.getMinItemCount());
+        }
+        if (filter.getMaxItemCount() != null) {
+            query.setParameter("maxItemCount", filter.getMaxItemCount());
+        }
+        if (filter.getMinTotalSpend() != null) {
+            query.setParameter("minTotalSpend", filter.getMinTotalSpend());
+        }
+        if (filter.getMaxTotalSpend() != null) {
+            query.setParameter("maxTotalSpend", filter.getMaxTotalSpend());
+        }
+        if (filter.getMinAvgOrderValue() != null) {
+            query.setParameter("minAvgOrderValue", filter.getMinAvgOrderValue());
+        }
+        if (filter.getMaxAvgOrderValue() != null) {
+            query.setParameter("maxAvgOrderValue", filter.getMaxAvgOrderValue());
+        }
+        if (filter.getMinRepeatInterval() != null) {
+            query.setParameter("minRepeatInterval", filter.getMinRepeatInterval());
+        }
+        if (filter.getMaxRepeatInterval() != null) {
+            query.setParameter("maxRepeatInterval", filter.getMaxRepeatInterval());
+        }
     }
 
     /**

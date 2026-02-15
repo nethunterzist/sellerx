@@ -442,8 +442,8 @@ class OrderCostCalculatorTest extends BaseUnitTest {
         }
 
         @Test
-        @DisplayName("should not set cost when no available stock (all used)")
-        void shouldNotSetCostWhenNoAvailableStock() {
+        @DisplayName("should use last known cost fallback when no available stock (all used)")
+        void shouldUseLastKnownCostWhenNoAvailableStock() {
             // Given
             UUID storeId = UUID.randomUUID();
             String barcode = "TEST-BARCODE";
@@ -472,10 +472,12 @@ class OrderCostCalculatorTest extends BaseUnitTest {
             // When
             calculator.setCostInfo(builder, barcode, storeId, LocalDate.of(2024, 6, 1).atStartOfDay());
 
-            // Then - Cost should not be set because no remaining stock
+            // Then - LAST_KNOWN_COST fallback should be used when FIFO stock is depleted
             OrderItem item = builder.build();
-            assertThat(item.getCost()).isNull();
-            // But commission info should still be set
+            assertThat(item.getCost()).isEqualByComparingTo(new BigDecimal("100.0"));
+            assertThat(item.getCostSource()).isEqualTo("LAST_KNOWN");
+            assertThat(item.getStockDate()).isEqualTo(LocalDate.of(2024, 1, 1));
+            // Commission info should also be set
             assertThat(item.getEstimatedCommissionRate()).isEqualByComparingTo(new BigDecimal("15.00"));
         }
 

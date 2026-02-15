@@ -82,6 +82,17 @@ class CustomerAnalyticsControllerTest extends BaseControllerTest {
             performWithoutAuth(get(BASE_URL + "/summary", testStore.getId()))
                     .andExpect(status().isUnauthorized());
         }
+
+        @Test
+        @DisplayName("should return 403 for non-owner user")
+        void shouldReturn403ForNonOwnerUser() throws Exception {
+            // Given
+            User otherUser = createAndSaveTestUser("other-summary@example.com");
+
+            // When/Then
+            performWithAuth(get(BASE_URL + "/summary", testStore.getId()), otherUser)
+                    .andExpect(status().isForbidden());
+        }
     }
 
     @Nested
@@ -93,7 +104,7 @@ class CustomerAnalyticsControllerTest extends BaseControllerTest {
         void shouldReturnPaginatedCustomerListWithDefaultParams() throws Exception {
             // Given
             Map<String, Object> response = createMockCustomerListResponse();
-            when(analyticsService.getCustomerList(eq(testStore.getId()), eq(0), eq(20), eq("totalSpend"), isNull()))
+            when(analyticsService.getCustomerList(eq(testStore.getId()), eq(0), eq(20), eq("totalSpend"), eq("desc"), isNull(), any()))
                     .thenReturn(response);
 
             // When/Then
@@ -105,7 +116,7 @@ class CustomerAnalyticsControllerTest extends BaseControllerTest {
                     .andExpect(jsonPath("$.size").value(20))
                     .andExpect(jsonPath("$.content", hasSize(2)));
 
-            verify(analyticsService).getCustomerList(testStore.getId(), 0, 20, "totalSpend", null);
+            verify(analyticsService).getCustomerList(eq(testStore.getId()), eq(0), eq(20), eq("totalSpend"), eq("desc"), isNull(), any());
         }
 
         @Test
@@ -113,14 +124,14 @@ class CustomerAnalyticsControllerTest extends BaseControllerTest {
         void shouldAcceptCustomPaginationParams() throws Exception {
             // Given
             Map<String, Object> response = createMockCustomerListResponse();
-            when(analyticsService.getCustomerList(eq(testStore.getId()), eq(2), eq(10), eq("orderCount"), isNull()))
+            when(analyticsService.getCustomerList(eq(testStore.getId()), eq(2), eq(10), eq("orderCount"), eq("desc"), isNull(), any()))
                     .thenReturn(response);
 
             // When/Then
-            performWithAuth(get(BASE_URL + "/customers?page=2&size=10&sort=orderCount", testStore.getId()), testUser)
+            performWithAuth(get(BASE_URL + "/customers?page=2&size=10&sortBy=orderCount", testStore.getId()), testUser)
                     .andExpect(status().isOk());
 
-            verify(analyticsService).getCustomerList(testStore.getId(), 2, 10, "orderCount", null);
+            verify(analyticsService).getCustomerList(eq(testStore.getId()), eq(2), eq(10), eq("orderCount"), eq("desc"), isNull(), any());
         }
 
         @Test
@@ -129,6 +140,17 @@ class CustomerAnalyticsControllerTest extends BaseControllerTest {
             // When/Then
             performWithoutAuth(get(BASE_URL + "/customers", testStore.getId()))
                     .andExpect(status().isUnauthorized());
+        }
+
+        @Test
+        @DisplayName("should return 403 for non-owner user")
+        void shouldReturn403ForNonOwnerUser() throws Exception {
+            // Given
+            User otherUser = createAndSaveTestUser("other-customers@example.com");
+
+            // When/Then
+            performWithAuth(get(BASE_URL + "/customers", testStore.getId()), otherUser)
+                    .andExpect(status().isForbidden());
         }
     }
 
@@ -250,6 +272,17 @@ class CustomerAnalyticsControllerTest extends BaseControllerTest {
             // When/Then
             performWithoutAuth(post(BASE_URL + "/trigger-backfill", testStore.getId()))
                     .andExpect(status().isUnauthorized());
+        }
+
+        @Test
+        @DisplayName("should return 403 for non-owner user")
+        void shouldReturn403ForNonOwnerUser() throws Exception {
+            // Given
+            User otherUser = createAndSaveTestUser("other-backfill@example.com");
+
+            // When/Then
+            performWithAuth(post(BASE_URL + "/trigger-backfill", testStore.getId()), otherUser)
+                    .andExpect(status().isForbidden());
         }
     }
 
