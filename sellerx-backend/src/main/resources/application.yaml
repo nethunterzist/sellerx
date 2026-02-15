@@ -199,6 +199,11 @@ management:
           include: readinessState,db,trendyol
       probes:
         enabled: true
+  health:
+    mail:
+      enabled: false  # Disable mail health indicator (not configured)
+    rabbit:
+      enabled: false  # Disable RabbitMQ health indicator (optional feature)
     loggers:
       enabled: true
 
