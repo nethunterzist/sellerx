@@ -164,7 +164,40 @@ curl -k https://sellerx.157.180.78.53.sslip.io
 - `.github/workflows/deploy-backend.yml` - Backend deploy
 - `.github/workflows/deploy-frontend.yml` - Frontend deploy
 
-Detailed guide: [docs/deployment/CI_CD_GUIDE.md](docs/deployment/CI_CD_GUIDE.md)
+### 📋 Deployment Documentation
+
+**CRITICAL: Before any deployment, ALWAYS check:**
+
+1. **Primary Guide**: [docs/deployment/DEPLOYMENT_GUIDE.md](docs/deployment/DEPLOYMENT_GUIDE.md)
+   - Comprehensive deployment procedures
+   - Production readiness checklist (MUST review before deploy)
+   - Known errors and solutions (6 major production errors documented)
+   - Health check procedures
+   - Rollback procedures
+
+2. **Pre-Deployment Checklist** (from DEPLOYMENT_GUIDE.md):
+   - ✅ JWT_SECRET ≥32 characters in GitHub Secrets
+   - ✅ package.json and package-lock.json committed together
+   - ✅ Health check timeout: 210s (60s initial + 15×10s retries)
+   - ✅ Application class name: "Started StoreApplication" (not SellerxApplication)
+   - ✅ RabbitMQ health indicator disabled: `spring.rabbitmq.enabled=false`
+   - ✅ Mail health indicator disabled: `management.health.mail.enabled=false`
+   - ✅ All tests passing locally before push
+   - ✅ Database migrations tested locally
+
+3. **Known Production Errors** (see DEPLOYMENT_GUIDE.md "Bilinen Hatalar ve Çözümler"):
+   - RabbitMQ health indicator (optional service) → disable in application.yaml
+   - Health check timeout (cold start) → 210s total timeout
+   - package-lock.json conflicts → regenerate with npm install
+   - Application name mismatch → use "Started StoreApplication"
+   - JWT secret <32 chars → causes 500 error on login
+   - Mail health indicator → disable when not configured
+
+**When user says "deploy" or "canlıya al":**
+- ALWAYS reference DEPLOYMENT_GUIDE.md first
+- Check pre-deployment checklist
+- Verify no known errors apply
+- Monitor deployment with health checks
 
 ---
 
@@ -485,6 +518,15 @@ All frontend API calls go through Next.js API routes (not directly to Spring Boo
 ## Documentation Reference
 
 All documentation (inventory, maps, architecture) is in the **docs/** directory. Entry point: [docs/README.md](docs/README.md).
+
+**🚀 Deployment Documentation** (`docs/deployment/`):
+- **`DEPLOYMENT_GUIDE.md`** - **PRIMARY DEPLOYMENT REFERENCE** (MUST READ before deploy)
+  - Comprehensive deployment procedures and architecture
+  - Production readiness checklist (critical!)
+  - Known errors and solutions (6 major production errors)
+  - Health check and rollback procedures
+  - GitHub Secrets configuration
+  - Troubleshooting guide
 
 Detailed architecture docs in `docs/architecture/`:
 - `ADMIN_IMPERSONATION.md` - Admin read-only user view system
